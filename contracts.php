@@ -356,6 +356,7 @@ $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
     </div>
 
     <?php $paperlessType = 'contract'; require 'includes/paperless_panel.php'; ?>
+    <?php $filesType = 'contract'; require 'includes/files_panel.php'; ?>
 
     <div class="buttons">
       <input type="button" value="<?= translate('delete', $i18n) ?>" class="warning-button left thin"
@@ -369,6 +370,7 @@ $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
 
 <?php require 'includes/cancellation_modal.php'; ?>
 <script src="scripts/paperless.js?<?= $version ?>"></script>
+<script src="scripts/files.js?<?= $version ?>"></script>
 <script src="scripts/contracts.js?<?= $version ?>"></script>
 <?php
 $db->close();

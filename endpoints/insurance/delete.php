@@ -12,6 +12,8 @@ $deleteStmt->bindParam(':insuranceId', $insuranceId, SQLITE3_INTEGER);
 $deleteStmt->bindParam(':userId', $userId, SQLITE3_INTEGER);
 
 if ($deleteStmt->execute()) {
+    require_once '../../includes/item_files.php';
+    itemFilesDeleteFor($db, (int) $userId, 'insurance', $insuranceId);
     $linkStmt = $db->prepare("DELETE FROM item_documents WHERE item_type = 'insurance' AND item_id = :itemId AND user_id = :userId");
     $linkStmt->bindValue(':itemId', $insuranceId, SQLITE3_INTEGER);
     $linkStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);

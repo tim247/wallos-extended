@@ -697,3 +697,14 @@ function openInstanceNotificationSettings(type) {
     target.classList.toggle('is-open');
   }
 }
+
+function saveBackupSettings() {
+  fetch("endpoints/admin/savebackupsettings.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": window.csrfToken },
+    body: JSON.stringify({ keep: document.getElementById("backupKeep").value }),
+  })
+    .then((response) => response.json())
+    .then((data) => (data.success ? showSuccessMessage(data.message) : showErrorMessage(data.message)))
+    .catch(() => showErrorMessage(translate("unknown_error")));
+}

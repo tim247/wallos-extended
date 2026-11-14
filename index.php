@@ -403,6 +403,24 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     ];
 }
 
+/* ---------- price increases (last 12 months, from the price_history triggers) ---------- */
+$priceIncreases = [];
+$stmt = $db->prepare("SELECT ph.item_type, ph.old_price, ph.new_price, ph.changed_at,
+        COALESCE(s.name, c.name, i.name) AS name, COALESCE(s.currency_id, c.currency_id, i.currency_id) AS currency_id
+    FROM price_history ph
+    LEFT JOIN subscriptions s ON ph.item_type = 'subscription' AND s.id = ph.item_id AND s.archived = 0
+    LEFT JOIN contracts c ON ph.item_type = 'contract' AND c.id = ph.item_id AND c.archived = 0
+    LEFT JOIN insurances i ON ph.item_type = 'insurance' AND i.id = ph.item_id AND i.archived = 0
+    WHERE ph.user_id = :userId AND ph.new_price > ph.old_price AND ph.changed_at >= date('now', '-12 months')
+    ORDER BY ph.changed_at DESC LIMIT 8");
+$stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$result = $stmt->execute();
+while ($result && $row = $result->fetchArray(SQLITE3_ASSOC)) {
+    if ($row['name'] !== null) {
+        $priceIncreases[] = $row;
+    }
+}
+
 usort($upcomingEvents, fn($a, $b) => strcmp($a['date'], $b['date']));
 $upcomingEvents = array_slice($upcomingEvents, 0, 10);
 
@@ -583,6 +601,34 @@ if ($consumptionMonthly > 0) {
                 </ul>
             <?php endif; ?>
         </div>
+
+        <?php if (!empty($priceIncreases)): ?>
+            <div class="dashboard-panel">
+                <h2><i class="fa-solid fa-arrow-trend-up"></i> <?= translate('price_increases', $i18n) ?></h2>
+                <ul class="upcoming-events">
+                    <?php foreach ($priceIncreases as $pi):
+                        $code = $currencies[$pi['currency_id']]['code'] ?? $mainCurrencyCode;
+                        $pct = $pi['old_price'] > 0 ? ($pi['new_price'] / $pi['old_price'] - 1) * 100 : 0;
+                        $link = ['subscription' => 'subscriptions.php', 'contract' => 'contracts.php', 'insurance' => 'insurance.php'][$pi['item_type']];
+                        ?>
+                        <li class="upcoming-event warning">
+                            <a href="<?= $link ?>">
+                                <span class="upcoming-event-date"><?= formatDate($pi['changed_at'], $lang) ?></span>
+                                <span class="upcoming-event-icon"><i class="fa-solid fa-arrow-trend-up"></i></span>
+                                <span class="upcoming-event-name"><?= htmlspecialchars($pi['name']) ?></span>
+                                <span class="upcoming-event-detail">
+                                    <?= formatPrice($pi['old_price'], $code, $currencies) ?> → <?= formatPrice($pi['new_price'], $code, $currencies) ?>
+                                    (+<?= number_format($pct, 1, ',', '.') ?> %)
+                                    <?php if ($pi['item_type'] !== 'subscription'): ?>
+                                        · <?= translate('special_termination_hint', $i18n) ?>
+                                    <?php endif; ?>
+                                </span>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
 
         <?php if (count($burdenSplitDataPoints) > 1): ?>
             <div class="dashboard-panel">

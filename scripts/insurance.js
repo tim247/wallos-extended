@@ -19,6 +19,7 @@ function resetInsuranceForm() {
   form.reset();
   document.querySelector("#insurance-id").value = "";
   if (typeof resetPaperlessPanel === "function") resetPaperlessPanel();
+  if (typeof resetFilesPanel === "function") resetFilesPanel();
   document.querySelector("#insurance-form-title").textContent = translate("add_insurance");
   document.querySelector("#insurance-start-date").value = new Date().toISOString().split("T")[0];
   document.querySelector("#insurance-notify-days").disabled = true;
@@ -45,6 +46,7 @@ function fillInsuranceForm(insurance) {
   document.querySelector("#insurance-form-title").textContent = translate("edit_insurance");
   document.querySelector("#insurance-id").value = insurance.id;
   if (typeof loadPaperlessPanel === "function") loadPaperlessPanel("insurance", insurance.id);
+  if (typeof loadFilesPanel === "function") loadFilesPanel("insurance", insurance.id);
   document.querySelector("#insurance-name").value = insurance.name;
   document.querySelector("#insurance-insurer").value = insurance.insurer;
   document.querySelector("#insurance-policy-number").value = insurance.policy_number;

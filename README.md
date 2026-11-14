@@ -38,6 +38,8 @@ Selbst gehostet, ohne Cloud, ohne Tracking. Deine Daten bleiben auf deinem Serve
 - Aufteilung nach Bereich, Kategorie, Zahler, Zahlungsmethode
 - 12-Monats-Trend, Preisentwicklung, Prognose
 - Nächste Zahlungen und Fristen auf einen Blick
+- **Preiserhöhungen** automatisch erkannt, mit Hinweis aufs Sonderkündigungsrecht
+- **Kostenbericht** mit Aufteilung je Person – drucken oder als PDF
 
 </td>
 <td width="50%" valign="top">
@@ -67,6 +69,7 @@ Selbst gehostet, ohne Cloud, ohne Tracking. Deine Daten bleiben auf deinem Serve
 - Zähler für Strom, Gas, Wasser, **PV-Einspeisung**
 - Verbrauch je Monat, Abschlag vs. tatsächlicher Verbrauch
 - Nachzahlung / Erstattung abschätzen
+- **Tarifvergleich**: neues Angebot gegen deinen Jahresverbrauch
 - **Home Assistant**: Zählerstände täglich automatisch
 - Ablese-Erinnerung
 
@@ -79,6 +82,7 @@ Selbst gehostet, ohne Cloud, ohne Tracking. Deine Daten bleiben auf deinem Serve
 - Verträge und Policen direkt mit Dokumenten verknüpfen
 - Suche und **automatische Vorschläge** (Korrespondent, Tag, Vertragsnummer)
 - Vorschau und Download ohne Paperless-Login
+- Ohne Paperless: **Dokumente direkt hochladen** (PDF, Bilder, Office)
 
 </td>
 <td valign="top">
@@ -88,6 +92,8 @@ Selbst gehostet, ohne Cloud, ohne Tracking. Deine Daten bleiben auf deinem Serve
 - Vorschlag für die **monatliche Rücklage**
 - Kalender mit allen Zahlungen, **iCal-Feed** für Outlook/Google/Apple
 - Benachrichtigungen per E-Mail, Push, Telegram, ntfy, Gotify, Discord …
+- **Kontoabgleich**: Kontoauszug (CSV) gegen erfasste Kosten – findet Vergessenes
+- **Home Assistant**: Fixkosten und nächste Frist als Sensor
 
 </td>
 </tr>
@@ -160,7 +166,9 @@ Alle Optionen, Datenübernahme und Updates: [lxc/README.md](lxc/README.md).
 ### 🔄 Von Wallos umsteigen
 
 *Admin → Sicherung und Wiederherstellung → Wiederherstellen* nimmt eine Wallos-Sicherung (`.zip`)
-oder direkt die Datei `wallos.db` (bis Wallos 4.x). Die Datenbank wird automatisch aktualisiert.
+oder direkt die Datei `wallos.db` – aus jeder Wallos-Version, auch 5.x. Die Datenbank wird automatisch aktualisiert.
+
+Jede Nacht sichert Wallos Extended die Datenbank zusätzlich selbst nach `db/backups/` (einstellbar unter *Admin*).
 
 ## 📖 Dokumentation
 

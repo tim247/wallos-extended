@@ -207,6 +207,12 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
             <a href="yearly.php">
               <?php include "images/siteicons/svg/mobile-menu/calendar.php"; ?>
               <?= translate('yearly_overview', $i18n) ?></a>
+            <a href="report.php">
+              <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
+              <?= translate('cost_report', $i18n) ?></a>
+            <a href="bankimport.php">
+              <?php include "images/siteicons/svg/mobile-menu/financing.php"; ?>
+              <?= translate('bank_import', $i18n) ?></a>
             <a href="stats.php" class="mobileNavigationHideOnMobile">
               <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
               <?= translate('stats', $i18n) ?></a>

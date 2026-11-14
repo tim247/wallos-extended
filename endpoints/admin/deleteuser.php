@@ -200,6 +200,39 @@ if ($userId == 1) {
     $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
     $result = $stmt->execute();
 
+    // Wallos Extended: uploaded documents (files first, then the rows) and all extension tables.
+    require_once __DIR__ . '/../../includes/item_files.php';
+    $stmt = $db->prepare('SELECT stored_name FROM item_files WHERE user_id = :id');
+    $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
+    $fileResult = $stmt->execute();
+    while ($fileResult && $fileRow = $fileResult->fetchArray(SQLITE3_ASSOC)) {
+        @unlink(itemFilesDir() . '/' . basename($fileRow['stored_name']));
+    }
+    $extensionDeletes = [
+        'DELETE FROM item_files WHERE user_id = :id',
+        'DELETE FROM item_documents WHERE user_id = :id',
+        'DELETE FROM price_history WHERE user_id = :id',
+        'DELETE FROM subscription_price_changes WHERE user_id = :id',
+        'DELETE FROM contracts WHERE user_id = :id',
+        'DELETE FROM insurances WHERE user_id = :id',
+        'DELETE FROM loan_extra_payments WHERE user_id = :id',
+        'DELETE FROM loan_schedule_overrides WHERE user_id = :id',
+        'DELETE FROM loan_balance_anchors WHERE user_id = :id',
+        'DELETE FROM loans WHERE user_id = :id',
+        'DELETE FROM meter_readings WHERE user_id = :id',
+        'DELETE FROM meters WHERE user_id = :id',
+        'DELETE FROM paperless_settings WHERE user_id = :id',
+        'DELETE FROM homeassistant_settings WHERE user_id = :id',
+        'DELETE FROM letter_profiles WHERE user_id = :id',
+    ];
+    foreach ($extensionDeletes as $sql) {
+        $stmt = $db->prepare($sql);
+        if ($stmt) {
+            $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);
+            $stmt->execute();
+        }
+    }
+
     // Delete ServerChan notifications
     $stmt = $db->prepare('DELETE FROM serverchan_notifications WHERE user_id = :id');
     $stmt->bindValue(':id', $userId, SQLITE3_INTEGER);

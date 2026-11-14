@@ -794,6 +794,7 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
     </div>
 
     <?php $paperlessType = 'loan'; require 'includes/paperless_panel.php'; ?>
+    <?php $filesType = 'loan'; require 'includes/files_panel.php'; ?>
 
     <div class="buttons">
       <input type="button" value="<?= translate('delete', $i18n) ?>" class="warning-button left thin" id="delete-loan"
@@ -829,6 +830,7 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
 <script src="scripts/libs/apexcharts.min.js"></script>
 <script src="scripts/apex-base.js?<?= $version ?>"></script>
 <script src="scripts/paperless.js?<?= $version ?>"></script>
+<script src="scripts/files.js?<?= $version ?>"></script>
 <script src="scripts/financing.js?<?= $version ?>"></script>
 <?php if ($detailLoan !== null && $detailLoan['schedule']['error'] === null):
   $loanTypeDetail2 = $detailLoan['loan_type'] ?? 'annuity';

@@ -644,3 +644,23 @@ document.addEventListener('DOMContentLoaded', function () {
     reader.readAsText(file, 'UTF-8');
   });
 });
+
+function compareTariff(input) {
+  const box = input.closest(".tariff-compare");
+  const units = parseFloat(box.dataset.units);
+  const current = parseFloat(box.dataset.current);
+  const price = parseFloat(box.querySelector(".tariff-price").value);
+  const fee = parseFloat(box.querySelector(".tariff-fee").value) || 0;
+  const bonus = parseFloat(box.querySelector(".tariff-bonus").value) || 0;
+  const result = box.querySelector(".tariff-result");
+  if (isNaN(price)) {
+    result.textContent = "";
+    return;
+  }
+  const fmt = (v) => new Intl.NumberFormat(document.documentElement.lang || "de", { style: "currency", currency: box.dataset.currency }).format(v);
+  const offer = units * price + fee * 12 - bonus;
+  const diff = current - offer;
+  result.innerHTML = `${translate("tariff_new")}: <strong>${fmt(offer)}</strong> · ` +
+    (diff >= 0 ? `<span class="positive">${translate("tariff_saving")}: ${fmt(diff)}</span>`
+               : `<span class="negative">${translate("tariff_more")}: ${fmt(-diff)}</span>`);
+}

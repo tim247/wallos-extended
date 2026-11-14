@@ -277,4 +277,7 @@ let i18n = {
   yearly_reserve_balance: "Rücklagenstand",
   bausparen_repayment_chart: "Bausparvertrag (Tilgung)",
   restore_confirm: "Alle aktuellen Daten werden durch die gewählte Datei ersetzt. Die bisherige Datenbank wird vorher als Sicherungsdatei im Ordner db gespeichert. Fortfahren?",
+  tariff_new: "Neuer Tarif",
+  tariff_saving: "Ersparnis",
+  tariff_more: "Mehrkosten",
 }

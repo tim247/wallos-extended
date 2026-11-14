@@ -22,6 +22,7 @@ function resetContractForm() {
   form.reset();
   document.querySelector("#contract-id").value = "";
   if (typeof resetPaperlessPanel === "function") resetPaperlessPanel();
+  if (typeof resetFilesPanel === "function") resetFilesPanel();
   document.querySelector("#contract-form-title").textContent = translate("add_contract");
   document.querySelector("#contract-start-date").value = new Date().toISOString().split("T")[0];
   document.querySelector("#contract-notify-days").disabled = true;
@@ -48,6 +49,7 @@ function fillContractForm(contract) {
   document.querySelector("#contract-form-title").textContent = translate("edit_contract");
   document.querySelector("#contract-id").value = contract.id;
   if (typeof loadPaperlessPanel === "function") loadPaperlessPanel("contract", contract.id);
+  if (typeof loadFilesPanel === "function") loadFilesPanel("contract", contract.id);
   document.querySelector("#contract-name").value = contract.name;
   document.querySelector("#contract-provider").value = contract.provider;
   document.querySelector("#contract-number").value = contract.contract_number;

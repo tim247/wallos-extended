@@ -6156,3 +6156,20 @@ body.details-open {
   background-color: var(--box-background-color);
   cursor: pointer;
 }
+
+/* Bank import, cost report */
+.bank-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.bank-table th, .bank-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color, #ccc3); vertical-align: top; }
+.bank-table tr.warning td { background: #f59e0b22; }
+.bank-import form { flex-wrap: wrap; gap: 10px; }
+.tariff-compare { margin-top: 10px; }
+.tariff-compare summary { cursor: pointer; }
+.tariff-compare .form-group-inline { gap: 8px; flex-wrap: wrap; }
+.tariff-result .positive { color: #16a34a; }
+.tariff-result .negative { color: #dc2626; }
+.files-panel .files-upload-button { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; width: auto; }
+@media print {
+  header, nav, .mobile-nav, .no-print, footer { display: none !important; }
+  .report .statistic { border: 1px solid #999; }
+  .bank-table th, .bank-table td { border-bottom: 1px solid #999; }
+}

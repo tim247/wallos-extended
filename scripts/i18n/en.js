@@ -276,4 +276,7 @@ let i18n = {
   yearly_reserve_balance: "Reserve balance",
   bausparen_repayment_chart: "Bausparvertrag (repayment)",
   restore_confirm: "All current data will be replaced by the selected file. The current database is first kept as a safety copy in the db folder. Continue?",
+  tariff_new: "New tariff",
+  tariff_saving: "Saving",
+  tariff_more: "Extra cost",
 }

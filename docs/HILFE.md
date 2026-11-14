@@ -49,6 +49,8 @@ Eine Kurzfassung gibt es in der App selbst unter *Menü → Hilfe*.
 | **Kalender** | alle Zahlungen eines Monats | iCal-Link für Outlook/Google/Apple |
 | **Jahresübersicht** | jährliche Beiträge je Monat | Vorschlag für die monatliche Rücklage |
 | **Statistiken** | Auswertungen | Abschnitt „Haushalt“ über alle Bereiche |
+| **Kostenbericht** | alle laufenden Kosten auf einer Seite | Aufteilung nach Person, Preisänderungen, als PDF speichern |
+| **Kontoabgleich** | Kontoauszug (CSV) gegen erfasste Kosten | findet Preisänderungen und nicht erfasste Abbuchungen |
 
 ### Kündigungsschreiben
 
@@ -59,6 +61,69 @@ ab „Verschickt“ hören die Fristerinnerungen auf. Den Text der Vorlage ände
 *Admin → Kündigungsvorlage*. Verfügbare Platzhalter: `{{absender_name}}`, `{{absender_adresse}}`,
 `{{anbieter}}`, `{{bezeichnung}}`, `{{nummer}}`, `{{nummer_info}}`, `{{kuendigung_zum}}`, `{{frist}}`,
 `{{datum}}`, `{{ort}}`. Die Vorschau zeigt das Ergebnis als PDF.
+
+### Preiserhöhungen
+
+Jede Preisänderung eines Abos, Vertrags oder einer Versicherung wird automatisch protokolliert –
+egal ob du den Preis von Hand änderst oder eine angekündigte Preisänderung greift. Erhöhungen der
+letzten 12 Monate zeigt das Dashboard im Panel **Preiserhöhungen** mit altem und neuem Preis und
+Prozent. Bei Verträgen und Versicherungen steht dazu der Hinweis *Sonderkündigungsrecht prüfen*:
+Erhöht ein Anbieter einseitig den Preis, darfst du meist außerordentlich kündigen – das
+Kündigungsschreiben ist einen Klick entfernt.
+
+### Tarifvergleich (Strom, Gas, Wasser)
+
+Unter *Verbrauch* bei einem Zähler *Zählerstand erfassen* aufklappen, dann *Tarifvergleich*.
+Grundlage ist dein Jahresverbrauch: die letzten 12 Monate, wenn die Zählerstände so weit
+zurückreichen, sonst die Hochrechnung für dieses Jahr. Trage Arbeitspreis, monatliche
+Grundgebühr und einen einmaligen Bonus des neuen Angebots ein – sofort steht da, was der neue
+Tarif im Jahr kostet und wie viel du sparst oder mehr zahlst. Bei Gas mit Umrechnungsfaktor wird
+in kWh gerechnet.
+
+### Eigene Dokumente (ohne Paperless)
+
+Bei Verträgen, Versicherungen und Finanzierungen gibt es im Bearbeiten-Dialog den Abschnitt
+**Eigene Dokumente**. Dort lädst du Vertrag, Police oder Kontoauszug direkt hoch: PDF, Bilder
+(PNG, JPG, WebP, GIF), Text, Word, Excel, OpenDocument und E-Mails (`.eml`, `.msg`), je Datei
+bis 20 MB. Ein Klick auf den Namen öffnet PDFs und Bilder im Browser, andere Dateien werden
+heruntergeladen.
+
+Die Dateien liegen im Ordner `db/files` (also im selben Volume wie die Datenbank), sind von außen
+nicht abrufbar und in der Sicherung (*Admin → Sichern*) enthalten. Wird ein Eintrag gelöscht,
+werden seine Dateien mit gelöscht.
+
+### Kostenbericht
+
+*Menü → Kostenbericht* zeigt alle laufenden Kosten auf einer Seite: Summe pro Monat und Jahr,
+die **Aufteilung nach Person** (aus dem Zahler der Einträge; Einträge ohne Zahler stehen unter
+„Gemeinsam“), jede Position nach Bereich und die Preisänderungen der letzten 12 Monate.
+*Drucken / PDF* öffnet den Druckdialog des Browsers – mit **Als PDF speichern** entsteht ein PDF,
+z. B. für die Steuererklärung, das Gespräch mit der Bank oder die Haushaltsplanung zu zweit.
+Menü und Schaltflächen werden beim Drucken ausgeblendet.
+
+### Kontoabgleich mit dem Kontoauszug
+
+*Menü → Kontoabgleich* vergleicht einen Kontoauszug mit deinen erfassten Kosten.
+
+1. Im Online-Banking die Umsätze als **CSV** exportieren, am besten die letzten 2–3 Monate.
+   Getestet ist das Format der Sparkassen; DKB, ING, comdirect, Volksbank, Postbank und N26
+   werden ebenso erkannt (Trennzeichen, Kopfzeile, Spalten und Zeichensatz werden selbst ermittelt).
+2. Datei auswählen, *Abgleichen*.
+
+Das Ergebnis hat drei Teile:
+
+| Abschnitt | Bedeutung | Was tun |
+|---|---|---|
+| **Gefunden** | Abbuchung passt zu einem Eintrag; gelb, wenn der Betrag mehr als 2 % abweicht | gelbe Zeilen: Preis anpassen (wird als Preiserhöhung protokolliert) |
+| **Regelmäßig, aber nicht erfasst** | mindestens zwei Abbuchungen an denselben Empfänger mit etwa gleichem Betrag | als Abo oder Vertrag anlegen – oder ignorieren (z. B. Miete, Sparplan) |
+| **Keine Abbuchung gefunden** | zu diesem Eintrag gibt es im Zeitraum keine Buchung | bei jährlichen Zahlungen normal; sonst den Anbieter so eintragen, wie er auf dem Auszug steht |
+
+Zugeordnet wird über den **Namen und den Anbieter** eines Eintrags (Wörter ab 4 Buchstaben), die
+im Empfänger oder Verwendungszweck vorkommen müssen. Heißt dein Vertrag „Handy“, die Abbuchung aber
+„Vodafone GmbH“, trage *Vodafone* als Anbieter ein.
+
+> [!NOTE]
+> Die Datei wird nur gelesen und **nicht gespeichert** – weder die Buchungen noch die Datei selbst.
 
 ### Finanzierung: Abgleich mit dem Kontoauszug
 
@@ -196,6 +261,83 @@ curl -s -H "Authorization: Bearer DEIN_TOKEN" \
 # erwartet: "state": "12345.67" und "unit_of_measurement": "kWh"
 ```
 
+### Kosten in Home Assistant anzeigen
+
+Umgekehrt kann Home Assistant die Kosten aus Wallos Extended abfragen – z. B. für eine Karte
+„Fixkosten“ im Dashboard oder eine Automation, die vor einer Kündigungsfrist erinnert.
+
+1. In Wallos Extended unter *Profil* den **API-Schlüssel** kopieren.
+2. In der `configuration.yaml` von Home Assistant einen REST-Sensor anlegen:
+
+```yaml
+rest:
+  - resource: http://192.168.1.20:8282/api/summary/get_summary.php
+    headers:
+      X-API-Key: !secret wallos_api_key
+    scan_interval: 3600
+    sensor:
+      - name: "Fixkosten pro Monat"
+        value_template: "{{ value_json.monthly_total }}"
+        unit_of_measurement: "€"
+        device_class: monetary
+        json_attributes:
+          - monthly
+          - yearly_total
+          - count
+          - price_increases_12m
+      - name: "Nächste Kündigungsfrist"
+        value_template: "{{ value_json.next_deadline.date if value_json.next_deadline else 'unknown' }}"
+        device_class: date
+        json_attributes_path: "$.next_deadline"
+        json_attributes:
+          - name
+          - days
+      - name: "Nächste Abo-Zahlung"
+        value_template: "{{ value_json.next_payment.date if value_json.next_payment else 'unknown' }}"
+        device_class: date
+        json_attributes_path: "$.next_payment"
+        json_attributes:
+          - name
+          - amount
+```
+
+und in der `secrets.yaml`: `wallos_api_key: DEIN_API_SCHLÜSSEL`. Danach Home Assistant neu starten.
+
+Die Antwort von `get_summary.php` sieht so aus:
+
+```json
+{
+  "success": true,
+  "currency": "EUR",
+  "monthly_total": 714.15,
+  "yearly_total": 8569.8,
+  "monthly": {"subscription": 15.99, "contract": 34.9, "insurance": 4.92, "loan": 658.34, "meter": 0},
+  "count": 5,
+  "price_increases_12m": 1,
+  "next_payment": {"name": "Netflix", "date": "2026-12-01", "amount": 15.99},
+  "next_deadline": {"name": "Fitnessstudio", "date": "2027-06-01", "days": 199}
+}
+```
+
+`monthly.meter` sind die monatlichen Abschläge der Zähler. Der Schlüssel kann statt im Header auch
+als `?api_key=…` übergeben werden – der Header ist sicherer, weil er nicht in Logdateien landet.
+
+Beispiel-Automation: drei Wochen vor einer Kündigungsfrist aufs Handy.
+
+```yaml
+automation:
+  - alias: "Kündigungsfrist naht"
+    trigger:
+      - platform: template
+        value_template: "{{ state_attr('sensor.nachste_kundigungsfrist', 'days') == 21 }}"
+    action:
+      - service: notify.mobile_app_mein_handy
+        data:
+          message: >
+            In 3 Wochen endet die Kündigungsfrist für
+            {{ state_attr('sensor.nachste_kundigungsfrist', 'name') }}.
+```
+
 ---
 
 ## 5. Paperless-ngx anbinden
@@ -284,9 +426,9 @@ Wallos Extended erinnert an
 
 *Admin → Sicherung und Wiederherstellung*:
 
-- **Sichern** lädt eine `.zip` mit Datenbank und hochgeladenen Logos herunter.
-- **Wiederherstellen** nimmt eine solche `.zip` **oder** eine einzelne `wallos.db` – auch aus
-  älteren Versionen von Wallos (bis 4.x) bzw. Wallos Extended. Die Datei wird geprüft, die bisherige
+- **Sichern** lädt eine `.zip` mit Datenbank, hochgeladenen Logos und eigenen Dokumenten herunter.
+- **Wiederherstellen** nimmt eine solche `.zip` **oder** eine einzelne `wallos.db` – aus jeder
+  Version des Original-Wallos (auch 5.x) bzw. von Wallos Extended. Die Datei wird geprüft, die bisherige
   Datenbank bleibt als `before-restore-JJJJMMTT-HHMMSS.db` im Ordner `db` liegen, alte Datenbanken
   werden automatisch auf den aktuellen Stand gebracht. Danach wirst du abgemeldet.
 
@@ -298,9 +440,27 @@ Die Datenbank liegt
 | Docker (Ordner `docker/`) | `./data/db` |
 | LXC-Container | `/var/www/wallos-extended/db` |
 
-> [!NOTE]
-> Eine Datenbank aus dem **Original-Wallos ab Version 5** lässt sich nicht direkt einspielen,
-> weil sich die Nummern der Datenbank-Migrationen überschneiden.
+### Automatische Sicherung
+
+Jede Nacht um **3:15 Uhr** wird die Datenbank nach `db/backups/wallos-JJJJMMTT-HHMMSS.db`
+kopiert – konsistent, auch während die App benutzt wird. Unter *Admin → Sicherung und
+Wiederherstellung → Automatische Sicherung* stellst du ein, wie viele Sicherungen aufbewahrt
+werden (Standard 14, `0` schaltet sie ab); dort steht auch die letzte Sicherung.
+
+Zum Zurückspielen die gewünschte Datei aus `db/backups/` holen (z. B. per `docker cp` oder über
+die Freigabe des Volumes) und bei *Wiederherstellen* auswählen.
+
+> [!TIP]
+> Die automatischen Sicherungen liegen auf demselben Datenträger wie die Datenbank. Sie schützen
+> vor Bedienfehlern und kaputten Updates, nicht vor einem defekten Datenträger – sichere den Ordner
+> `db` also zusätzlich auf ein anderes Gerät (NAS, Proxmox-Backup).
+
+### Umstieg vom Original-Wallos
+
+Eine `wallos.db` oder Sicherung aus dem Original-Wallos lässt sich in jeder Version einspielen.
+Bei Datenbanken ab Wallos 5 werden die Migrationsnummern beim Einspielen automatisch umgesetzt
+(im Original heißen sie 000047 ff., in Wallos Extended 000101 ff.), danach werden die
+Erweiterungen (Verträge, Versicherungen …) ergänzt.
 
 ---
 
@@ -314,6 +474,7 @@ Diese Aufgaben laufen im Hintergrund (in Docker und im LXC-Container bereits ein
 | Wechselkurse aktualisieren | täglich |
 | Benachrichtigungen und Kündigungserinnerungen | täglich |
 | Home-Assistant-Import | täglich 23:55 Uhr |
+| Automatische Sicherung der Datenbank | täglich 3:15 Uhr |
 | Nach neuen Versionen suchen | täglich |
 
 ---
@@ -327,6 +488,9 @@ Diese Aufgaben laufen im Hintergrund (in Docker und im LXC-Container bereits ein
 | E-Mail an Server im Heimnetz scheitert | IP in *Admin → Sicherheitseinstellungen* freigeben |
 | Home Assistant: „Verbindung fehlgeschlagen“ | Adresse vom Container aus erreichbar? (`curl` siehe oben); `homeassistant.local` durch IP ersetzen |
 | Home Assistant: Sensor „nicht verfügbar“ | Entitäts-ID prüfen, Sensor liefert eine Zahl? Einheit Wh/kWh? |
+| Kontoabgleich: „keine Buchungen gefunden“ | Export als CSV (nicht PDF/MT940/CAMT) wählen; die Datei braucht eine Kopfzeile mit Datum und Betrag |
+| Kontoabgleich ordnet nichts zu | Anbieter beim Eintrag so eintragen, wie er auf dem Kontoauszug steht |
+| Home-Assistant-Sensor „Fixkosten“ bleibt leer | API-Schlüssel im Profil prüfen; `curl -H "X-API-Key: …" http://SERVER:8282/api/summary/get_summary.php` |
 | Paperless: 401/403 | Token neu erzeugen; Benutzer braucht Leserechte auf Dokumente, Korrespondenten und Tags |
 | Paperless: keine Vorschläge | Korrespondent wie den Anbieter benennen oder Tag `wallos-contract-ID` vergeben |
 | Diagramme leer | Diagramme erscheinen, sobald genug Daten vorhanden sind (z. B. mindestens zwei Ablesungen) |

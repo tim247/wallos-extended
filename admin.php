@@ -767,7 +767,24 @@ $loginDisabledAllowed = $userCount == 1 && $settings['registrations_open'] == 0;
             <input type="file" name="restoreDBFile" id="restoreDBFile" style="display: none;" onChange="restoreDB()"
                 accept=".zip,.db">
         </div>
+        <?php
+        $autoBackups = glob(__DIR__ . '/db/backups/wallos-*.db') ?: [];
+        rsort($autoBackups);
+        ?>
+        <h3><?= translate('auto_backup', $i18n) ?></h3>
+        <div class="form-group-inline">
+            <label for="backupKeep"><?= translate('auto_backup_keep', $i18n) ?></label>
+            <input type="number" id="backupKeep" min="0" max="365" value="<?= (int) ($settings['backup_keep'] ?? 14) ?>" style="max-width: 90px">
+            <input type="button" class="thin" value="<?= translate('save', $i18n) ?>" onClick="saveBackupSettings()">
+        </div>
         <div class="settings-notes">
+            <p>
+                <i class="fa-solid fa-circle-info"></i>
+                <?= translate('auto_backup_info', $i18n) ?>
+                <?php if ($autoBackups): ?>
+                    <br><?= translate('auto_backup_last', $i18n) ?>: <code><?= htmlspecialchars(basename($autoBackups[0])) ?></code> (<?= count($autoBackups) ?>)
+                <?php endif; ?>
+            </p>
             <p>
                 <i class="fa-solid fa-circle-info"></i>
                 <?= translate('restore_info', $i18n) ?>

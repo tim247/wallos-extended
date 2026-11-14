@@ -37,6 +37,7 @@ $sections = [
         'Abschlag vs. Verbrauch: Hinterlegst du Abschlag und Arbeitspreis, schätzt die App eine Nachzahlung oder Erstattung.',
         'Ablese-Erinnerung: Auf Wunsch wirst du regelmäßig an das Ablesen erinnert.',
         'Home Assistant: Unter Einstellungen → Home Assistant Adresse und Token eintragen und einem Zähler eine Entität zuordnen. Die Stände (Strom, PV) werden täglich um 23:55 Uhr automatisch übernommen.',
+        'Tarifvergleich: Unter „Zählerstand erfassen“ eines Zählers Arbeitspreis, Grundgebühr und Bonus eines neuen Angebots eintragen – die App rechnet mit deinem Jahresverbrauch aus, was du sparst oder mehr zahlst.',
     ]],
     ['Kalender', 'calendar.php', [
         'Monatsansicht aller Zahlungen mit Betrag; Verträge, Versicherungen und Darlehensraten erscheinen mit eigenem Symbol. Ist ein eigener Abrechnungszeitraum eingestellt (z. B. von Gehalt zu Gehalt), zeigt der Kalender diesen Zeitraum statt des Kalendermonats.',
@@ -46,6 +47,19 @@ $sections = [
         'Zwölf-Monats-Ansicht: In welchem Monat fallen jährliche oder quartalsweise Beiträge an (Versicherungen, Kfz-Steuer …)?',
         'Darunter steht ein Vorschlag für die monatliche Rücklage, damit große Beiträge nicht überraschen.',
     ]],
+    ['Kostenbericht', 'report.php', [
+        'Alle laufenden Kosten nach Bereich, die Aufteilung nach Person (Zahler) und die Preisänderungen der letzten 12 Monate auf einer Seite.',
+        '„Drucken / PDF“ öffnet den Druckdialog; mit „Als PDF speichern“ entsteht ein PDF, z. B. für die Steuer oder die Haushaltsplanung.',
+    ]],
+    ['Kontoabgleich', 'bankimport.php', [
+        'Kontoauszug als CSV hochladen (Sparkasse, DKB, ING, comdirect, Volksbank, N26 …). Die Abbuchungen werden mit deinen Abos, Verträgen, Versicherungen und Raten verglichen.',
+        'Du siehst, was gefunden wurde und wo der Betrag abweicht (Preiserhöhung?), welche regelmäßigen Abbuchungen noch nicht erfasst sind und für welche Einträge keine Abbuchung gefunden wurde.',
+        'Zugeordnet wird über den Namen bzw. Anbieter. Steht der Anbieter auf dem Kontoauszug anders, trage ihn beim Eintrag als Anbieter ein. Die Datei wird nicht gespeichert.',
+    ]],
+    ['Preiserhöhungen', 'index.php', [
+        'Jede Preisänderung eines Abos, Vertrags oder einer Versicherung wird automatisch protokolliert. Erhöhungen der letzten 12 Monate zeigt das Dashboard mit Prozentangabe.',
+        'Bei Verträgen und Versicherungen erinnert der Hinweis an das Sonderkündigungsrecht, das bei einer Preiserhöhung oft besteht.',
+    ]],
     ['Statistiken', 'stats.php', [
         'Übersicht, Kostentrend und Prognose, Budget, Aufteilung nach Kategorie, Zahler, Zahlungsmethode, Zahlungsrhythmus und Währung sowie die Abo-Historie.',
         'Im Abschnitt „Haushalt“ stehen die monatliche Gesamtbelastung aller Bereiche, die Aufteilung nach Bereich und die Preisentwicklung. Der Kostentrend zählt alle Bereiche mit.',
@@ -54,6 +68,7 @@ $sections = [
     ['Dokumente (Paperless-ngx)', 'settings.php', [
         'Unter Einstellungen → Paperless Adresse und API-Token deines Paperless-ngx eintragen.',
         'In Abos, Verträgen, Versicherungen und Finanzierungen kannst du dann Dokumente suchen und verknüpfen; passende Dokumente werden auch vorgeschlagen. Die Dateien bleiben in Paperless.',
+        'Ohne Paperless: Bei Verträgen, Versicherungen und Finanzierungen lassen sich unter „Eigene Dokumente“ PDFs, Bilder und Office-Dateien (bis 20 MB) direkt hochladen. Sie liegen im Ordner db/files und sind in der Sicherung enthalten.',
     ]],
     ['Einstellungen', 'settings.php', [
         'Haushalt (Zahler), Kategorien, Ordner, Zahlungsmethoden, Währungen, Benachrichtigungen, Anzeige, Design, KI-Empfehlungen sowie Paperless und Home Assistant.',
@@ -66,10 +81,11 @@ $sections = [
     ]],
     ['Administration (nur Admin)', 'admin.php', [
         'Benutzer verwalten, Registrierung erlauben, Anmeldung per OIDC (Single Sign-on), SMTP für E-Mails, Sicherheitseinstellungen, Benachrichtigungsdienste für alle Benutzer und die Kündigungsvorlage.',
-        'Backup und Wiederherstellung: „Sichern“ lädt eine .zip mit Datenbank und Logos. „Wiederherstellen“ nimmt eine .zip oder eine einzelne wallos.db (auch aus älteren Versionen). Die bisherige Datenbank bleibt als before-restore-….db im Ordner db, alte Datenbanken werden automatisch aktualisiert.',
+        'Backup und Wiederherstellung: „Sichern“ lädt eine .zip mit Datenbank, Logos und Dokumenten. „Wiederherstellen“ nimmt eine .zip oder eine einzelne wallos.db – auch aus dem Original-Wallos (alle Versionen). Die bisherige Datenbank bleibt als before-restore-….db im Ordner db, alte Datenbanken werden automatisch aktualisiert.',
+        'Automatische Sicherung: Jede Nacht um 3:15 Uhr wird die Datenbank nach db/backups/ kopiert. Wie viele Sicherungen aufbewahrt werden, stellst du dort ein (0 = aus).',
     ]],
     ['Automatische Aufgaben', null, [
-        'Im Hintergrund laufen täglich: nächste Zahlungstermine aktualisieren, Wechselkurse holen, Benachrichtigungen und Kündigungserinnerungen senden sowie der Home-Assistant-Import. In Docker und im LXC-Container ist das bereits eingerichtet.',
+        'Im Hintergrund laufen täglich: nächste Zahlungstermine aktualisieren, Wechselkurse holen, Benachrichtigungen und Kündigungserinnerungen senden, der Home-Assistant-Import und die automatische Sicherung. In Docker und im LXC-Container ist das bereits eingerichtet.',
     ]],
 ];
 ?>

@@ -83,6 +83,18 @@ foreach ($meters as &$meter) {
     }
   }
 
+  // Yearly consumption for the tariff comparison: the last 12 months when the
+  // readings reach back that far, otherwise this year's projection.
+  $meter['annual_units'] = null;
+  if (count($computed['segments']) > 0) {
+    $firstDate = $computed['segments'][0]['from'] ?? null;
+    if ($firstDate !== null && $firstDate <= date('Y-m-d', strtotime('-365 days'))) {
+      $meter['annual_units'] = computeUnitsInWindow($computed['segments'], date('Y-m-d', strtotime('-365 days')), $today) * $conversion;
+    } elseif ($meter['forecast'] !== null) {
+      $meter['annual_units'] = ($meter['ytd_units'] + $meter['forecast']['projected_units']) * $conversion;
+    }
+  }
+
   // Advance payments (Abschlag) vs. projected cost of the current billing year.
   $meter['settlement'] = null;
   $advance = floatval($meter['monthly_advance'] ?? 0);
@@ -273,6 +285,23 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
               · <?= CurrencyFormatter::format($meter['ytd_cost'], $meterCode) ?>
               <?= translate($isPv ? 'earnings' : 'cost', $i18n) ?>
             </p>
+          <?php endif; ?>
+
+          <?php if (!$isPv && !empty($meter['annual_units'])):
+            $currentYearly = $meter['annual_units'] * floatval($meter['price_per_unit']) + floatval($meter['base_fee_monthly']) * 12; ?>
+            <details class="tariff-compare" data-units="<?= round($meter['annual_units'], 2) ?>"
+              data-current="<?= round($currentYearly, 2) ?>" data-currency="<?= htmlspecialchars($meterCode) ?>">
+              <summary><i class="fa-solid fa-scale-balanced"></i> <?= translate('tariff_compare', $i18n) ?></summary>
+              <p><?= translate('tariff_compare_basis', $i18n) ?>:
+                <strong><?= number_format($meter['annual_units'], 0, ',', '.') ?> <?= $meter['meter_type'] === 'gas' && !empty($meter['conversion_factor']) ? 'kWh' : $unitLabel ?></strong>
+                · <?= translate('tariff_current', $i18n) ?>: <strong><?= CurrencyFormatter::format($currentYearly, $meterCode) ?></strong> / <?= translate('year', $i18n) ?></p>
+              <div class="form-group-inline">
+                <input type="number" step="0.0001" min="0" placeholder="<?= translate('price_per_unit', $i18n) ?>" oninput="compareTariff(this)" class="tariff-price">
+                <input type="number" step="0.01" min="0" placeholder="<?= translate('base_fee_monthly', $i18n) ?>" oninput="compareTariff(this)" class="tariff-fee">
+                <input type="number" step="0.01" placeholder="<?= translate('tariff_bonus', $i18n) ?>" oninput="compareTariff(this)" class="tariff-bonus">
+              </div>
+              <p class="tariff-result"></p>
+            </details>
           <?php endif; ?>
           </div>
         </details>

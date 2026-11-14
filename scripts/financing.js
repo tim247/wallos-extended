@@ -174,6 +174,7 @@ function resetLoanForm() {
   form.reset();
   document.querySelector("#loan-id").value = "";
   if (typeof resetPaperlessPanel === "function") resetPaperlessPanel();
+  if (typeof resetFilesPanel === "function") resetFilesPanel();
   document.querySelector("#loan-form-title").textContent = translate("add_loan");
   document.querySelector("#loan-start-date").value = new Date().toISOString().split("T")[0];
   const deleteButton = document.querySelector("#delete-loan");
@@ -200,6 +201,7 @@ function fillLoanForm(loan) {
   document.querySelector("#loan-form-title").textContent = translate("edit_loan");
   document.querySelector("#loan-id").value = loan.id;
   if (typeof loadPaperlessPanel === "function") loadPaperlessPanel("loan", loan.id);
+  if (typeof loadFilesPanel === "function") loadFilesPanel("loan", loan.id);
 
   const loanType = loan.loan_type || "annuity";
   document.querySelector("#loan-type").value = loanType;

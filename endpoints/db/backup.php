@@ -15,6 +15,9 @@ function addFolderToZip($dir, $zipArchive, $zipdir = '')
                     continue;
                 }
                 //If it's a folder, run the function again!
+                if ($file === 'backups' && $zipdir === '') {
+                    continue; // automatic backups stay on the server
+                }
                 if (is_dir($dir . $file)) {
                     $newdir = $dir . $file . '/';
                     addFolderToZip($newdir, $zipArchive, $zipdir . $file . '/');

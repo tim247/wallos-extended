@@ -28,6 +28,9 @@ Based on Wallos **v5.11.1**. Changes made in Wallos Extended (2026):
   the default categories.
 - Renamed to "Wallos Extended" with a modified logo; database migrations of upstream
   v5.x renumbered to `000101`+.
+- Bank statement (CSV) comparison, cost report, price-increase history, tariff comparison,
+  document uploads, automatic nightly backups, a summary API for Home Assistant, and restore
+  of databases from upstream Wallos 5.x.
 - Docker image and Proxmox LXC installer for this fork.
 
 The full list of changes is in the Git history of this repository.
