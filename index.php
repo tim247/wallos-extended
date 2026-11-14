@@ -705,6 +705,130 @@ if ($consumptionMonthly > 0) {
             </div>
         <?php } ?>
 
+        <?php if (isset($totalCostPerMonth)) { ?>
+            <div class="dashboard-panel">
+                <h2><?= translate('monthly_budget', $i18n) ?></h2>
+                <div>
+                    <div class="dashboard-subscriptions-list">
+                        <div class="subscription-item thin">
+                            <p class="subscription-item-title"><?= translate("monthly_cost", $i18n) ?></p>
+                            <div class="subscription-item-info">
+                                <p class="subscription-item-value">
+                                    <?= CurrencyFormatter::format($totalCostPerMonth, $currencies[$userData['main_currency']]['code']) ?>
+                                </p>
+                            </div>
+                        </div>
+                        <?php if (isset($monthlyBudget) && $monthlyBudget > 0) { ?>
+                            <div class="subscription-item thin">
+                                <p class="subscription-item-title"><?= translate("budget", $i18n) ?></p>
+                                <div class="subscription-item-info">
+                                    <p class="subscription-item-value">
+                                        <?= formatPrice($monthlyBudget, $currencies[$userData['main_currency']]['code'], $currencies) ?>
+                                    </p>
+                                </div>
+                            </div>
+                            <?php if (isset($monthlyBudgetUsed)) { ?>
+                                <div class="subscription-item thin">
+                                    <p class="subscription-item-title"><?= translate("budget_used", $i18n) ?></p>
+                                    <div class="subscription-item-info">
+                                        <p class="subscription-item-value">
+                                            <?= number_format($monthlyBudgetUsed, 2) ?>%
+                                        </p>
+                                    </div>
+                                </div>
+                            <?php } ?>
+                            <div class="subscription-item thin">
+                                <p class="subscription-item-title"><?= translate("budget_remaining", $i18n) ?></p>
+                                <div class="subscription-item-info">
+                                    <p class="subscription-item-value">
+                                        <?= formatPrice($monthlyBudgetLeft, $currencies[$userData['main_currency']]['code'], $currencies) ?>
+                                    </p>
+                                </div>
+                            </div>
+                            <?php if (isset($monthlyOverBudgetAmount) && $monthlyOverBudgetAmount > 0) { ?>
+                                <div class="subscription-item thin">
+                                    <p class="subscription-item-title"><?= translate("over_budget", $i18n) ?></p>
+                                    <div class="subscription-item-info">
+                                        <p class="subscription-item-value">
+                                            <?= formatPrice($monthlyOverBudgetAmount, $currencies[$userData['main_currency']]['code'], $currencies) ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            <?php } ?>
+                        <?php } ?>
+                    </div>
+                </div>
+            </div>
+        <?php } ?>
+
+        <?php
+        // The period block is about the period, not about the budget: a user who
+        // aligns the period to their payslip wants to see what is left to pay
+        // whether or not they also set an amount to compare it against. The
+        // second arm keeps the block for anyone who had a period budget before
+        // the opt-in existed.
+        if ($periodScopesStatistics || (isset($periodBudget) && $periodBudget > 0)) { ?>
+            <div class="dashboard-panel">
+                <h2><?= translate(isset($periodBudget) && $periodBudget > 0 ? 'period_budget' : 'payment_period', $i18n) ?></h2>
+                <?php if (isset($budgetPeriodLabel)) { ?>
+                    <p class="header-subtitle"><?= translate('current_period', $i18n) ?>: <?= htmlspecialchars($budgetPeriodLabel, ENT_QUOTES, 'UTF-8') ?></p>
+                <?php } ?>
+                <div>
+                    <div class="dashboard-subscriptions-list">
+                        <div class="subscription-item thin">
+                            <p class="subscription-item-title"><?= translate("amount_needed_this_period", $i18n) ?></p>
+                            <div class="subscription-item-info">
+                                <p class="subscription-item-value">
+                                    <?= CurrencyFormatter::format($amountNeededThisPeriod, $currencies[$userData['main_currency']]['code']) ?>
+                                </p>
+                            </div>
+                        </div>
+                        <?php if (isset($periodBudget) && $periodBudget > 0) { ?>
+                        <div class="subscription-item thin">
+                            <p class="subscription-item-title"><?= translate("budget", $i18n) ?></p>
+                            <div class="subscription-item-info">
+                                <p class="subscription-item-value">
+                                    <?= formatPrice($periodBudget, $currencies[$userData['main_currency']]['code'], $currencies) ?>
+                                </p>
+                            </div>
+                        </div>
+                        <?php } ?>
+                        <?php if (isset($periodBudgetUsed)) { ?>
+                            <div class="subscription-item thin">
+                                <p class="subscription-item-title"><?= translate("budget_used", $i18n) ?></p>
+                                <div class="subscription-item-info">
+                                    <p class="subscription-item-value">
+                                        <?= number_format($periodBudgetUsed, 2) ?>%
+                                    </p>
+                                </div>
+                            </div>
+                        <?php } ?>
+                        <?php if (isset($periodBudgetLeft)) { ?>
+                        <div class="subscription-item thin">
+                            <p class="subscription-item-title"><?= translate("budget_remaining", $i18n) ?></p>
+                            <div class="subscription-item-info">
+                                <p class="subscription-item-value">
+                                    <?= formatPrice($periodBudgetLeft, $currencies[$userData['main_currency']]['code'], $currencies) ?>
+                                </p>
+                            </div>
+                        </div>
+                        <?php } ?>
+                        <?php if (isset($periodOverBudgetAmount) && $periodOverBudgetAmount > 0) { ?>
+                            <div class="subscription-item thin">
+                                <p class="subscription-item-title"><?= translate("over_budget", $i18n) ?></p>
+                                <div class="subscription-item-info">
+                                    <p class="subscription-item-value">
+                                        <?= formatPrice($periodOverBudgetAmount, $currencies[$userData['main_currency']]['code'], $currencies) ?>
+                                    </p>
+                                </div>
+                            </div>
+                        <?php } ?>
+                    </div>
+                </div>
+            </div>
+        <?php } ?>
+    </div>
+
         <?php if (isset($inactiveSubscriptions) && $inactiveSubscriptions > 0 && isset($totalSavingsPerMonth) && $totalSavingsPerMonth > 0) { ?>
             <div class="dashboard-panel">
                 <h2><?= translate('your_savings', $i18n) ?></h2>

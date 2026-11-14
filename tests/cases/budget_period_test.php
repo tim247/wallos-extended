@@ -199,8 +199,7 @@ wallos_test('the pay-period migration can run twice', function () {
 wallos_test('only the opt-in flag lets the period take over the statistics', function () {
     // The views must not read $periodDiffersFromCalendarMonth directly for this
     // decision: that variable is true for nearly every migrated account.
-    // Wallos Extended: the dashboard has no budget panel, so only stats.php is checked.
-    foreach (['stats.php'] as $page) {
+    foreach (['stats.php', 'index.php'] as $page) {
         $source = file_get_contents(WALLOS_ROOT . '/' . $page);
 
         assert_contains('$periodScopesStatistics', $source,

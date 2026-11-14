@@ -4768,6 +4768,17 @@ a.statistic:hover {
   font-size: 14px;
 }
 
+/* value tiles (budget, savings) wrap inside a dashboard panel instead of scrolling sideways */
+.dashboard-panel .dashboard-subscriptions-list {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.dashboard-panel .dashboard-subscriptions-list>.subscription-item {
+  flex: 1 1 130px;
+  width: auto;
+}
+
 .dashboard-chart-wrapper {
   position: relative;
   height: 260px;
