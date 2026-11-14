@@ -30,10 +30,12 @@ Oder mit den Dateien aus diesem Ordner:
    zeigt am Ende die Adresse (`http://<IP>/`). Beim ersten Aufruf registrierst du den
    ersten Benutzer (wird Administrator).
 
-Einstellungen per Umgebungsvariable, z. B.:
+Das Skript fragt wie die community-scripts nach **Standard-** oder **erweiterten Einstellungen** (Container-ID, Hostname, CPU, RAM, Speicher, Netzwerk, Zeitzone, Datenübernahme) und zeigt vor dem Anlegen eine Zusammenfassung.
+
+Ohne Dialoge (z. B. für Automatisierung) mit `MODE=default` und Umgebungsvariablen:
 
 ```bash
-CTID=120 IP=192.168.1.50/24 GATEWAY=192.168.1.1 STORAGE=local-zfs bash create-lxc.sh
+MODE=default CTID=120 IP=192.168.1.50/24 GATEWAY=192.168.1.1 STORAGE=local-zfs bash create-lxc.sh
 ```
 
 | Variable | Standard |
@@ -57,15 +59,27 @@ Die Datenbank wird nach dem Anlegen eingespielt und auf den neuen Stand migriert
 
 ## Aktualisieren
 
-Neues Archiv `wallos-extended-app.tar.gz` in den Container kopieren und im Container ausführen:
+Im Container (z. B. `pct enter 120`) einfach eingeben:
 
 ```bash
-pct push 120 wallos-extended-app.tar.gz /root/wallos-extended-app.tar.gz
-pct push 120 install.sh /root/install.sh
-pct exec 120 -- bash /root/install.sh --update
+update
 ```
 
-Datenbank und hochgeladene Logos bleiben erhalten, der Code wird ersetzt und die Datenbank migriert.
+Das Skript fragt die neueste Version bei GitHub ab, sichert die Datenbank nach
+`/var/backups/wallos-extended/` (die letzten 10 bleiben), prüft die Prüfsummen, ersetzt den Code und
+migriert die Datenbank. Datenbank und hochgeladene Logos bleiben erhalten.
+
+| Befehl | Wirkung |
+|---|---|
+| `update` | neueste Version installieren, falls neuer |
+| `update --force` | neueste Version neu installieren |
+| `update v5.11.1-ext.2` | bestimmte Version installieren |
+
+**Ältere Installationen** ohne den Befehl `update` richten ihn einmalig so ein:
+
+```bash
+curl -fsSL https://github.com/tim247/wallos-extended/releases/latest/download/update.sh -o /usr/local/bin/update && chmod +x /usr/local/bin/update && update
+```
 
 ## Wo liegt was?
 

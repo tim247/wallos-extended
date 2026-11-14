@@ -122,6 +122,20 @@ for job in updatenextpayment updateexchange checkforupdates; do
     as_app "$APP_DIR/endpoints/cronjobs/$job.php" >/dev/null 2>&1 || true
 done
 
+echo "==> Update-Befehl einrichten"
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+if [ -f "$HERE/update.sh" ]; then
+    install -m 755 "$HERE/update.sh" /usr/local/bin/update
+fi
+cat > /etc/motd <<EOF
+
+  Wallos Extended $(cat "$APP_DIR/RELEASE" 2>/dev/null || echo "")
+  Web:     http://$(hostname -I | awk '{print $1}')/
+  Update:  update   (sichert die Datenbank, installiert die neueste Version)
+  Daten:   $APP_DIR/db
+
+EOF
+
 echo "==> Dienste starten"
 if [ -d /run/systemd/system ]; then
     systemctl enable --now "php$PHP_VER-fpm" nginx cron >/dev/null 2>&1

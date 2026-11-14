@@ -52,8 +52,9 @@ jobs:
           mkdir -p dist app
           git archive HEAD | tar -x -C app
           rm -rf app/docker app/lxc app/tests app/.github app/docs app/screenshots
+          echo "${GITHUB_REF_NAME}" > app/RELEASE
           tar -czf dist/wallos-extended-app.tar.gz -C app .
-          cp lxc/create-lxc.sh lxc/install.sh dist/
+          cp lxc/create-lxc.sh lxc/install.sh lxc/update.sh dist/
           (cd dist && sha256sum * > SHA256SUMS)
       - uses: softprops/action-gh-release@v2
         with:

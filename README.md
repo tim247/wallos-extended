@@ -143,10 +143,15 @@ Auf dem **Proxmox-Host** als root – legt einen Debian-12-Container an und inst
 bash -c "$(curl -fsSL https://github.com/tim247/wallos-extended/releases/latest/download/create-lxc.sh)"
 ```
 
-Mit eigenen Einstellungen, z. B. fester IP:
+Wie bei den [community-scripts](https://community-scripts.org) führen Dialoge durch die Einrichtung:
+**Standard** oder **Erweitert** (Container-ID, CPU, RAM, Speicher, feste IP, Datenübernahme).
+
+**Update:** im Container einfach `update` eingeben – sichert die Datenbank und installiert die neueste Version.
+
+Ohne Dialoge, z. B. für Automatisierung:
 
 ```bash
-CTID=120 IP=192.168.1.50/24 GATEWAY=192.168.1.1 STORAGE=local-zfs \
+MODE=default CTID=120 IP=192.168.1.50/24 GATEWAY=192.168.1.1 STORAGE=local-zfs \
   bash -c "$(curl -fsSL https://github.com/tim247/wallos-extended/releases/latest/download/create-lxc.sh)"
 ```
 
