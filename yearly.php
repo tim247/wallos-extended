@@ -72,7 +72,7 @@ $chartData = [
       <div class="graph x2">
         <h3><?= translate('yearly_chart_title', $i18n) ?></h3>
         <div style="position:relative; height:300px; width:100%;">
-          <canvas id="yearlyChart"></canvas>
+          <div id="yearlyChart" class="apex-chart"></div>
         </div>
       </div>
     </div>
@@ -132,7 +132,8 @@ $chartData = [
 </section>
 
 <?php if (count($items) > 0): ?>
-  <script src="scripts/libs/chart.js"></script>
+  <script src="scripts/libs/apexcharts.min.js"></script>
+<script src="scripts/apex-base.js?<?= $version ?>"></script>
   <script src="scripts/yearly.js?<?= $version ?>"></script>
   <script>
     initYearly(<?= json_encode($chartData, JSON_UNESCAPED_UNICODE) ?>);

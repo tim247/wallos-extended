@@ -33,4 +33,4 @@ Based on Wallos **v5.11.1**. Changes made in Wallos Extended (2026):
 The full list of changes is in the Git history of this repository.
 
 Third-party components keep their own licenses (see `libs/` and `scripts/libs/`, e.g.
-PHPMailer, Chart.js, ApexCharts, Sortable). Icons by [icons8](https://icons8.com/).
+PHPMailer, ApexCharts, Sortable). Icons by [icons8](https://icons8.com/).

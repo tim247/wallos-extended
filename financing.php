@@ -325,7 +325,7 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
           <div class="graph x2">
             <h3><?= translate('balance_over_time', $i18n) ?></h3>
             <div style="position:relative; height:250px; width:100%;">
-              <canvas id="loanBalanceChart"></canvas>
+              <div id="loanBalanceChart" class="apex-chart"></div>
             </div>
           </div>
         </div>
@@ -481,7 +481,7 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
           <div class="graph x2">
             <h3><?= translate('balance_over_time', $i18n) ?></h3>
             <div style="position:relative; height:250px; width:100%;">
-              <canvas id="loanBalanceChart"></canvas>
+              <div id="loanBalanceChart" class="apex-chart"></div>
             </div>
           </div>
         </div>
@@ -826,7 +826,8 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
 </section>
 <?php endif; ?>
 
-<script src="scripts/libs/chart.js"></script>
+<script src="scripts/libs/apexcharts.min.js"></script>
+<script src="scripts/apex-base.js?<?= $version ?>"></script>
 <script src="scripts/paperless.js?<?= $version ?>"></script>
 <script src="scripts/financing.js?<?= $version ?>"></script>
 <?php if ($detailLoan !== null && $detailLoan['schedule']['error'] === null):

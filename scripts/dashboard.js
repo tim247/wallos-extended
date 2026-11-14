@@ -1,5 +1,3 @@
-// Chart text follows the theme's text colour (legible in dark mode)
-if (window.Chart) Chart.defaults.color = getComputedStyle(document.body).color;
 
 document.addEventListener("DOMContentLoaded", function () {
   function updateAiRecommendationNumbers() {
@@ -57,100 +55,43 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", function () {
   const data = window.dashboardData;
-  if (!data || typeof Chart === "undefined") {
+  if (!data || typeof ApexCharts === "undefined") {
     return;
   }
+  const money = apexMoney(data.currency);
 
-  const mainColor =
-    getComputedStyle(document.documentElement).getPropertyValue("--main-color").trim() || "#007BFF";
-  const palette = [mainColor, "#f0a04b", "#7c5cbf", "#2e9e44", "#d9534f", "#3aa6b9"];
-
-  const burdenCanvas = document.getElementById("burdenSplitChart");
-  if (burdenCanvas && data.burdenSplit && data.burdenSplit.length > 1) {
-    new Chart(burdenCanvas.getContext("2d"), {
-      type: "doughnut",
-      data: {
-        labels: data.burdenSplit.map(
-          (p) =>
-            `${p.label} (${new Intl.NumberFormat(navigator.language, {
-              style: "currency",
-              currency: data.currency,
-            }).format(p.y)})`
-        ),
-        datasets: [
-          {
-            data: data.burdenSplit.map((p) => p.y),
-            backgroundColor: palette,
-            borderWidth: 0,
-          },
-        ],
-      },
-      options: {
-        maintainAspectRatio: false,
-        cutout: "60%",
-        plugins: {
-          legend: { display: true, position: "bottom" },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                return (
-                  " " +
-                  new Intl.NumberFormat(navigator.language, {
-                    style: "currency",
-                    currency: data.currency,
-                  }).format(context.raw)
-                );
-              },
-            },
-          },
-        },
-      },
+  if (data.burdenSplit && data.burdenSplit.length > 1) {
+    apexRender("burdenSplitChart", (el, t) => {
+      const b = apexBase(el, "donut", 280);
+      return {
+        ...b,
+        series: data.burdenSplit.map((p) => p.y),
+        labels: data.burdenSplit.map((p) => `${p.label} (${money(p.y)})`),
+        colors: [t.main, ...APEX_PALETTE],
+        plotOptions: { pie: { donut: { size: "60%" } } },
+        stroke: { width: 0 },
+        legend: { ...b.legend, position: "bottom" },
+        tooltip: { ...b.tooltip, y: { formatter: money } },
+      };
     });
   }
 
+  const value = apexNumber(1);
   (data.meters || []).forEach(function (meter) {
-    const canvas = document.getElementById("dashboardMeterChart-" + meter.id);
-    if (!canvas) {
-      return;
-    }
     const labels = Object.keys(meter.monthly);
-    const values = labels.map((l) => meter.monthly[l]);
-    const color = meter.is_pv ? "#2e9e44" : mainColor;
-    new Chart(canvas.getContext("2d"), {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            data: values,
-            backgroundColor: color + "B3",
-            borderColor: color,
-            borderWidth: 1,
-            borderRadius: 4,
-          },
-        ],
-      },
-      options: {
-        maintainAspectRatio: false,
-        scales: {
-          y: { beginAtZero: true, ticks: { maxTicksLimit: 5 } },
-          x: { ticks: { maxTicksLimit: 6 } },
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                return (
-                  new Intl.NumberFormat(navigator.language, { maximumFractionDigits: 1 }).format(
-                    context.parsed.y
-                  ) + " " + meter.unit
-                );
-              },
-            },
-          },
-        },
-      },
+    apexRender("dashboardMeterChart-" + meter.id, (el, t) => {
+      const b = apexBase(el, "bar", 160);
+      return {
+        ...b,
+        series: [{ name: meter.unit, data: labels.map((l) => meter.monthly[l]) }],
+        colors: [meter.is_pv ? APEX_GREEN : t.main],
+        plotOptions: { bar: { borderRadius: 3, columnWidth: "70%" } },
+        fill: { opacity: 0.8 },
+        xaxis: { ...b.xaxis, categories: labels, tickAmount: 6, labels: { ...b.xaxis.labels, rotate: 0, hideOverlappingLabels: true } },
+        yaxis: { ...b.yaxis, min: 0, tickAmount: 4, labels: { ...b.yaxis.labels, formatter: value } },
+        tooltip: { ...b.tooltip, y: { formatter: (v) => value(v) + " " + meter.unit } },
+        legend: { show: false },
+      };
     });
   });
 });

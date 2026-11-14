@@ -17,40 +17,34 @@ function yearlyReservePlan(totals, start) {
 }
 
 function initYearly(data) {
-  const formatter = new Intl.NumberFormat(navigator.language, { style: "currency", currency: data.currency });
-  const mainColor = getComputedStyle(document.documentElement).getPropertyValue("--main-color").trim() || "#007BFF";
-  Chart.defaults.color = getComputedStyle(document.body).color;
-
+  const money = apexMoney(data.currency);
   let plan = yearlyReservePlan(data.totals, 0);
-  const chart = new Chart(document.getElementById("yearlyChart").getContext("2d"), {
-    data: {
-      labels: data.labels,
-      datasets: [
-        { type: "bar", label: translate("yearly_due"), data: data.totals, backgroundColor: mainColor + "B3", order: 2 },
-        {
-          type: "line",
-          label: translate("yearly_reserve_balance"),
-          data: plan.balances,
-          borderColor: "#2e9e44",
-          backgroundColor: "transparent",
-          tension: 0.15,
-          pointRadius: 3,
-          order: 1,
-        },
-      ],
-    },
-    options: {
-      maintainAspectRatio: false,
-      scales: { y: { beginAtZero: true, ticks: { callback: (value) => formatter.format(value) } } },
-      plugins: { tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${formatter.format(ctx.raw)}` } } },
-    },
+  const series = () => [
+    { name: translate("yearly_due"), type: "column", data: data.totals },
+    { name: translate("yearly_reserve_balance"), type: "line", data: plan.balances.map((v) => Math.round(v * 100) / 100) },
+  ];
+
+  const chart = apexRender("yearlyChart", (el, t) => {
+    const b = apexBase(el, "line", 360);
+    return {
+      ...b,
+      series: series(),
+      colors: [t.main, APEX_GREEN],
+      stroke: { curve: "smooth", width: [0, 2] },
+      fill: { opacity: [0.75, 1] },
+      plotOptions: { bar: { borderRadius: 4, columnWidth: "60%" } },
+      markers: { size: [0, 3] },
+      xaxis: { ...b.xaxis, categories: data.labels },
+      yaxis: { ...b.yaxis, min: 0, labels: { ...b.yaxis.labels, formatter: money } },
+      tooltip: { ...b.tooltip, shared: true, intersect: false, y: { formatter: money } },
+      legend: { ...b.legend, position: "top" },
+    };
   });
 
   document.getElementById("yearly-start").addEventListener("input", (event) => {
     const start = Math.max(0, parseFloat(event.target.value) || 0);
     plan = yearlyReservePlan(data.totals, start);
-    chart.data.datasets[1].data = plan.balances;
-    chart.update();
-    document.getElementById("yearly-reserve-monthly").textContent = formatter.format(plan.monthly);
+    if (chart) chart.updateSeries(series());
+    document.getElementById("yearly-reserve-monthly").textContent = money(plan.monthly);
   });
 }

@@ -1,5 +1,3 @@
-// Chart text follows the theme's text colour (legible in dark mode)
-if (window.Chart) Chart.defaults.color = getComputedStyle(document.body).color;
 
 /* Consumption tracker: charts, reading entry, forecast control, CSV import. */
 
@@ -40,91 +38,38 @@ function getFilteredMonthly(meterId) {
 
 function renderMeterChart(meterId) {
   const data = window.meterChartData[meterId];
-  const canvas = document.getElementById('meterChart-' + meterId);
-  if (!data || !canvas) return;
+  if (!data || !document.getElementById('meterChart-' + meterId)) return;
 
   const monthly = getFilteredMonthly(meterId);
   const rawLabels = Object.keys(monthly);
   const labels = rawLabels.map(formatMonthLabel);
   const values = rawLabels.map((l) => monthly[l]);
-
-  const mainColor =
-    getComputedStyle(document.documentElement).getPropertyValue('--main-color').trim() || '#007BFF';
-  const color = data.is_pv ? '#2e9e44' : mainColor;
-  const gridColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--box-border-color').trim() || 'rgba(0,0,0,0.1)';
-  const textColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--text-color').trim() || '#333';
+  const axis = apexNumber(1);
+  const exact = apexNumber(2);
 
   if (meterCharts[meterId]) {
     meterCharts[meterId].destroy();
   }
 
-  meterCharts[meterId] = new Chart(canvas.getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: data.unit,
-          data: values,
-          backgroundColor: color + 'B3',
-          borderColor: color,
-          borderWidth: 1,
-          borderRadius: 4,
-        },
-      ],
-    },
-    options: {
-      maintainAspectRatio: false,
-      animation: { duration: values.length > 24 ? 0 : 300 },
-      scales: {
-        x: {
-          grid: { color: gridColor },
-          ticks: {
-            color: textColor,
-            maxRotation: 45,
-            autoSkip: true,
-            maxTicksLimit: 18,
-          },
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: gridColor },
-          ticks: {
-            color: textColor,
-            callback: function (value) {
-              return new Intl.NumberFormat(navigator.language, { maximumFractionDigits: 1 }).format(value);
-            },
-          },
-          title: {
-            display: true,
-            text: data.unit,
-            color: textColor,
-            font: { size: 12 },
-          },
-        },
+  meterCharts[meterId] = apexRender('meterChart-' + meterId, (el, t) => {
+    const b = apexBase(el, 'bar', 300);
+    return {
+      ...b,
+      chart: { ...b.chart, animations: { enabled: values.length <= 24, speed: 300 } },
+      series: [{ name: data.unit, data: values }],
+      colors: [data.is_pv ? APEX_GREEN : t.main],
+      plotOptions: { bar: { borderRadius: 4, columnWidth: '70%' } },
+      fill: { opacity: 0.8 },
+      xaxis: { ...b.xaxis, categories: labels, tickAmount: Math.min(labels.length, 18), labels: { ...b.xaxis.labels, rotate: -45, hideOverlappingLabels: true } },
+      yaxis: {
+        ...b.yaxis,
+        min: 0,
+        labels: { ...b.yaxis.labels, formatter: axis },
+        title: { text: data.unit, style: { color: t.text, fontFamily: t.font, fontWeight: 400 } },
       },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: function (items) {
-              return items[0]?.label || '';
-            },
-            label: function (context) {
-              return (
-                new Intl.NumberFormat(navigator.language, { maximumFractionDigits: 2 }).format(
-                  context.parsed.y
-                ) +
-                ' ' +
-                data.unit
-              );
-            },
-          },
-        },
-      },
-    },
+      tooltip: { ...b.tooltip, y: { formatter: (v) => exact(v) + ' ' + data.unit } },
+      legend: { show: false },
+    };
   });
 }
 

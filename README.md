@@ -165,7 +165,7 @@ oder direkt die Datei `wallos.db` (bis Wallos 4.x). Die Datenbank wird automatis
 
 ## 🛠️ Technik
 
-PHP 8.3 · SQLite · nginx · Vanilla JS · Chart.js / ApexCharts – keine externen Dienste nötig.
+PHP 8.3 · SQLite · nginx · Vanilla JS · ApexCharts – keine externen Dienste nötig.
 
 ## ⚖️ Lizenz & Herkunft
 

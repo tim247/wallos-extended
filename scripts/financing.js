@@ -1,14 +1,8 @@
-// Chart text follows the theme's text colour (legible in dark mode)
-if (window.Chart) Chart.defaults.color = getComputedStyle(document.body).color;
-
 // ── Chart instances ──────────────────────────────────────────────────────────
 var loanChartInstance = null;
 
 // ── Chart: annuity / interest-only balance over time ─────────────────────────
 function loadLoanBalanceChart(container, labels, actualData, planData, todayIndex, currency, bausparData = []) {
-  const ctx = document.getElementById(container);
-  if (!ctx) return;
-
   const planMap = {};
   planData.forEach((p) => { planMap[p.label] = p.y; });
   const allLabels = labels.slice();
@@ -20,123 +14,61 @@ function loadLoanBalanceChart(container, labels, actualData, planData, todayInde
     if (!allLabels.includes(p.label)) allLabels.push(p.label);
   });
   const actualSeries = allLabels.map((_, i) => (i < actualData.length ? actualData[i] : null));
-  const planSeries  = allLabels.map((label) => (label in planMap ? planMap[label] : null));
+  const planSeries = allLabels.map((label) => (label in planMap ? planMap[label] : null));
   const bausparSeries = allLabels.map((label) => (label in bausparMap ? bausparMap[label] : null));
+  const money = apexMoney(currency);
 
-  const formatter = new Intl.NumberFormat(navigator.language, { style: "currency", currency });
-
-  loanChartInstance = new Chart(ctx.getContext("2d"), {
-    type: "line",
-    data: {
-      labels: allLabels,
-      datasets: [
-        {
-          label: translate("with_extra_payments"),
-          data: actualSeries,
-          borderColor: getComputedStyle(document.documentElement).getPropertyValue("--main-color").trim() || "#007BFF",
-          backgroundColor: "transparent",
-          pointRadius: allLabels.map((_, i) => (i === todayIndex ? 5 : 0)),
-          tension: 0.15,
-        },
-        {
-          label: translate("plan_without_extra_payments"),
-          data: planSeries,
-          borderColor: "#999999",
-          borderDash: [6, 4],
-          backgroundColor: "transparent",
-          pointRadius: 0,
-          tension: 0.15,
-        },
-        ...(bausparData.length
-          ? [{
-              label: translate("bausparen_repayment_chart"),
-              data: bausparSeries,
-              borderColor: "#f0a04b",
-              backgroundColor: "transparent",
-              pointRadius: 0,
-              tension: 0.15,
-            }]
-          : []),
-      ],
-    },
-    options: {
-      maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { callback: (v) => formatter.format(v) },
-        },
-        x: { ticks: { maxTicksLimit: 16 } },
+  loanChartInstance = apexRender(container, (el, t) => {
+    const b = apexBase(el, "line", 350);
+    const series = [
+      { name: translate("with_extra_payments"), data: actualSeries },
+      { name: translate("plan_without_extra_payments"), data: planSeries },
+    ];
+    const colors = [t.main, "#999999"];
+    if (bausparData.length) {
+      series.push({ name: translate("bausparen_repayment_chart"), data: bausparSeries });
+      colors.push(APEX_ORANGE);
+    }
+    return {
+      ...b,
+      series,
+      colors,
+      stroke: { curve: "smooth", width: 2, dashArray: series.map((_, i) => (i === 1 ? 6 : 0)) },
+      markers: {
+        size: 0,
+        hover: { size: 4 },
+        discrete: todayIndex >= 0 && todayIndex < allLabels.length
+          ? [{ seriesIndex: 0, dataPointIndex: todayIndex, size: 5, fillColor: t.main, strokeColor: t.dark ? "#171B23" : "#FFFFFF" }]
+          : [],
       },
-      plugins: {
-        legend: { display: true, position: "top" },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => ctx.dataset.label + ": " + formatter.format(ctx.parsed.y),
-          },
-        },
-      },
-    },
+      xaxis: { ...b.xaxis, categories: allLabels, tickAmount: 12, labels: { ...b.xaxis.labels, rotate: -45, hideOverlappingLabels: true } },
+      yaxis: { ...b.yaxis, min: 0, labels: { ...b.yaxis.labels, formatter: money } },
+      tooltip: { ...b.tooltip, shared: true, y: { formatter: money } },
+      legend: { ...b.legend, position: "top" },
+    };
   });
 }
 
 // ── Chart: Bausparvertrag savings + debt ──────────────────────────────────────
 function loadBausparChart(container, labels, savingsData, debtData, currency) {
-  const ctx = document.getElementById(container);
-  if (!ctx) return;
-
-  const formatter = new Intl.NumberFormat(navigator.language, { style: "currency", currency });
-  const mainColor = getComputedStyle(document.documentElement).getPropertyValue("--main-color").trim() || "#007BFF";
-
-  loanChartInstance = new Chart(ctx.getContext("2d"), {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: translate("savings_phase"),
-          data: savingsData,
-          borderColor: "#2e9e44",
-          backgroundColor: "rgba(46,158,68,0.08)",
-          fill: true,
-          pointRadius: 0,
-          tension: 0.2,
-          spanGaps: false,
-        },
-        {
-          label: translate("repayment_phase"),
-          data: debtData,
-          borderColor: mainColor,
-          backgroundColor: "transparent",
-          pointRadius: 0,
-          tension: 0.15,
-          spanGaps: false,
-        },
+  const money = apexMoney(currency);
+  loanChartInstance = apexRender(container, (el, t) => {
+    const b = apexBase(el, "line", 350);
+    return {
+      ...b,
+      series: [
+        { name: translate("savings_phase"), type: "area", data: savingsData },
+        { name: translate("repayment_phase"), type: "line", data: debtData },
       ],
-    },
-    options: {
-      maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { callback: (v) => formatter.format(v) },
-        },
-        x: { ticks: { maxTicksLimit: 16 } },
-      },
-      plugins: {
-        legend: { display: true, position: "top" },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => {
-              if (ctx.parsed.y === null) return null;
-              return ctx.dataset.label + ": " + formatter.format(ctx.parsed.y);
-            },
-          },
-        },
-      },
-    },
+      colors: [APEX_GREEN, t.main],
+      stroke: { curve: "smooth", width: 2 },
+      fill: { type: ["gradient", "solid"], gradient: { opacityFrom: 0.25, opacityTo: 0.02 } },
+      markers: { size: 0, hover: { size: 4 } },
+      xaxis: { ...b.xaxis, categories: labels, tickAmount: 12, labels: { ...b.xaxis.labels, rotate: -45, hideOverlappingLabels: true } },
+      yaxis: { ...b.yaxis, min: 0, labels: { ...b.yaxis.labels, formatter: money } },
+      tooltip: { ...b.tooltip, shared: true, y: { formatter: money } },
+      legend: { ...b.legend, position: "top" },
+    };
   });
 }
 

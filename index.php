@@ -588,7 +588,7 @@ if ($consumptionMonthly > 0) {
             <div class="dashboard-panel">
                 <h2><?= translate('monthly_burden_split', $i18n) ?></h2>
                 <div class="dashboard-chart-wrapper">
-                    <canvas id="burdenSplitChart"></canvas>
+                    <div id="burdenSplitChart" class="apex-chart"></div>
                 </div>
             </div>
         <?php endif; ?>
@@ -619,7 +619,7 @@ if ($consumptionMonthly > 0) {
                 <div class="dashboard-panel">
                     <h2><i class="fa-solid <?= $snapshot['icon'] ?>"></i> <?= $snapshot['name'] ?></h2>
                     <div class="dashboard-chart-wrapper small">
-                        <canvas id="dashboardMeterChart-<?= $snapshot['id'] ?>"></canvas>
+                        <div id="dashboardMeterChart-<?= $snapshot['id'] ?>" class="apex-chart"></div>
                     </div>
                     <?php if ($snapshot['forecast'] !== null): ?>
                         <p class="dashboard-meter-forecast <?= $snapshot['is_pv'] ? 'positive' : '' ?>">
@@ -738,7 +738,8 @@ if ($consumptionMonthly > 0) {
 
 </section>
 
-<script src="scripts/libs/chart.js"></script>
+<script src="scripts/libs/apexcharts.min.js"></script>
+<script src="scripts/apex-base.js?<?= $version ?>"></script>
 <script type="text/javascript">
     window.dashboardData = {
         burdenSplit: <?= json_encode($burdenSplitDataPoints, JSON_NUMERIC_CHECK) ?>,

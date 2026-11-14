@@ -293,7 +293,7 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
             </div>
           </div>
           <div class="meter-chart-container">
-            <canvas id="meterChart-<?= $meter['id'] ?>"></canvas>
+            <div id="meterChart-<?= $meter['id'] ?>" class="apex-chart"></div>
           </div>
         </div>
       </div>
@@ -536,7 +536,8 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
   </form>
 </section>
 
-<script src="scripts/libs/chart.js"></script>
+<script src="scripts/libs/apexcharts.min.js"></script>
+<script src="scripts/apex-base.js?<?= $version ?>"></script>
 <script type="text/javascript">
   window.mainCurrencyCode = "<?= $mainCurrencyCode ?>";
   window.meterChartData = <?php
