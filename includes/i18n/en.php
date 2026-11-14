@@ -969,6 +969,19 @@ $i18n = [
     'report_shared' => 'Shared / unassigned',
     'report_payment' => 'Payment',
     'report_price_changes' => 'Price changes of the last 12 months',
+    'tax_deductible' => 'Tax deductible',
+    'price_increase_notification' => 'Price increase',
+    'bank_import_adopt' => 'Adopt price',
+    'report_payer' => 'Payer',
+    'report_vs_last_year' => 'per year more/less than 12 months ago',
+    'report_last_year' => '12 months ago / year',
+    'report_tax_yearly' => 'tax deductible / year',
+    'savings_potential' => 'Savings potential',
+    'savings_duplicate_category' => 'Several subscriptions in "%s": %s - all needed?',
+    'savings_duplicate_insurance' => 'Double insured? Several %s insurances: %s',
+    'savings_cancellable' => '%s can be cancelled until %s - compare offers.',
+    'savings_price_increase' => '%s got more expensive - use the special termination right.',
+    'savings_fixed_interest' => 'Fixed interest of %s ends on %s - compare follow-up financing.',
 ];
 
 

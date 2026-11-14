@@ -6,7 +6,7 @@ require_once __DIR__ . '/price_helpers.php';
 require_once __DIR__ . '/financing_calculations.php';
 
 /**
- * @return array<int, array{type: string, id: int, name: string, match: string, amount: float, monthly: float, payer_id: int}>
+ * @return array<int, array{type: string, id: int, name: string, match: string, amount: float, monthly: float, payer_id: int, tax: int}>
  *   amount = one payment in the main currency, match = text to find it on a bank statement
  */
 function householdCostItems(SQLite3 $db, int $userId): array
@@ -39,6 +39,7 @@ function householdCostItems(SQLite3 $db, int $userId): array
                 'amount' => round($amount, 2),
                 'monthly' => round(getPricePerMonth((int) $row['cycle'], (int) $row['frequency'], $amount), 2),
                 'payer_id' => (int) ($row['payer_user_id'] ?? 0),
+                'tax' => (int) ($row['tax_deductible'] ?? 0),
             ];
         }
     }
@@ -49,12 +50,12 @@ function householdCostItems(SQLite3 $db, int $userId): array
         }
         $amount = round(getPriceConverted((float) $row['monthly_rate'], $row['currency_id'], $db, $userId), 2);
         $items[] = ['type' => 'loan', 'id' => (int) $row['id'], 'name' => $row['name'], 'match' => trim($row['name'] . ' ' . $row['lender']),
-            'amount' => $amount, 'monthly' => $amount, 'payer_id' => 0];
+            'amount' => $amount, 'monthly' => $amount, 'payer_id' => 0, 'tax' => 0];
     }
     foreach ($rows("SELECT * FROM meters WHERE user_id = :userId AND archived = 0 AND monthly_advance > 0") as $row) {
         $amount = round(getPriceConverted((float) $row['monthly_advance'], $row['currency_id'], $db, $userId), 2);
         $items[] = ['type' => 'meter', 'id' => (int) $row['id'], 'name' => $row['name'], 'match' => $row['name'],
-            'amount' => $amount, 'monthly' => $amount, 'payer_id' => 0];
+            'amount' => $amount, 'monthly' => $amount, 'payer_id' => 0, 'tax' => 0];
     }
     return $items;
 }

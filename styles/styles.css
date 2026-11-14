@@ -5795,6 +5795,15 @@ body.details-open {
   font-size: 13px;
 }
 
+.price-increases a {
+  flex-wrap: wrap;
+}
+
+.price-increases .upcoming-event-detail {
+  flex: 1 1 100%;
+  padding-left: 30px;
+}
+
 .dashboard-loan {
   display: block;
   text-decoration: none;
@@ -6172,4 +6181,19 @@ body.details-open {
   header, nav, .mobile-nav, .no-print, footer { display: none !important; }
   .report .statistic { border: 1px solid #999; }
   .bank-table th, .bank-table td { border-bottom: 1px solid #999; }
+}
+
+.savings-list {
+  list-style: none;
+  padding: 0;
+}
+
+.savings-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--box-border-color);
+}
+
+.savings-list i {
+  width: 20px;
+  color: var(--main-color);
 }

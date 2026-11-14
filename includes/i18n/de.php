@@ -988,6 +988,19 @@ $i18n = [
     'report_shared' => 'Gemeinsam / ohne Zuordnung',
     'report_payment' => 'Zahlung',
     'report_price_changes' => 'Preisänderungen der letzten 12 Monate',
+    'tax_deductible' => 'Steuerlich absetzbar',
+    'price_increase_notification' => 'Preiserhöhung',
+    'bank_import_adopt' => 'Preis übernehmen',
+    'report_payer' => 'Zahler/in',
+    'report_vs_last_year' => 'pro Jahr mehr/weniger als vor 12 Monaten',
+    'report_last_year' => 'vor 12 Monaten / Jahr',
+    'report_tax_yearly' => 'steuerlich absetzbar / Jahr',
+    'savings_potential' => 'Sparpotenzial',
+    'savings_duplicate_category' => 'Mehrere Abos in „%s“: %s – alle nötig?',
+    'savings_duplicate_insurance' => 'Doppelt versichert? Mehrere %s-Versicherungen: %s',
+    'savings_cancellable' => '%s ist bis %s kündbar – Angebote vergleichen.',
+    'savings_price_increase' => '%s wurde teurer – Sonderkündigungsrecht nutzen.',
+    'savings_fixed_interest' => 'Zinsbindung von %s endet am %s – Anschlussfinanzierung vergleichen.',
 ];
 
 

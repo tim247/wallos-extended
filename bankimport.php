@@ -63,7 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <td><a href="<?= $link ?>"><?= htmlspecialchars($m['item']['name']) ?></a> <small>(<?= $m['count'] ?>×)</small></td>
           <td><?= $fmt($m['item']['amount']) ?></td>
           <td><?= $fmt($m['booked']) ?>
-            <?php if ($m['changed']): ?><br><small><i class="fa-solid fa-triangle-exclamation"></i> <?= translate('bank_import_changed', $i18n) ?></small><?php endif; ?></td>
+            <?php if ($m['changed']): ?><br><small><i class="fa-solid fa-triangle-exclamation"></i> <?= translate('bank_import_changed', $i18n) ?></small>
+              <?php if (in_array($m['item']['type'], ['subscription', 'contract', 'insurance'], true)): ?>
+                <br><button type="button" class="button tiny" onclick="adoptPrice(this, '<?= $m['item']['type'] ?>', <?= $m['item']['id'] ?>, <?= $m['booked'] ?>)"><?= translate('bank_import_adopt', $i18n) ?></button>
+              <?php endif; ?>
+            <?php endif; ?></td>
           <td><?= htmlspecialchars($m['date']) ?></td>
         </tr>
       <?php endforeach; ?>
@@ -96,5 +100,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </table>
   <?php endif; ?>
 </section>
+
+<script>
+  function adoptPrice(button, type, id, booked) {
+    button.disabled = true;
+    const body = new FormData();
+    body.append('type', type);
+    body.append('id', id);
+    body.append('booked', booked);
+    fetch('endpoints/bank/setprice.php', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken }, body })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showSuccessMessage(data.message);
+          button.closest('tr').classList.remove('warning');
+          button.remove();
+        } else {
+          showErrorMessage(data.message);
+          button.disabled = false;
+        }
+      })
+      .catch(() => { showErrorMessage(translate('unknown_error')); button.disabled = false; });
+  }
+</script>
 
 <?php require_once 'includes/footer.php'; ?>

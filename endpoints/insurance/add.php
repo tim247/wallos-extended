@@ -119,6 +119,11 @@ if ($isEdit) {
 
 header('Content-Type: application/json');
 if ($stmt->execute()) {
+    $taxStmt = $db->prepare('UPDATE insurances SET tax_deductible = :tax WHERE id = :id AND user_id = :userId');
+    $taxStmt->bindValue(':tax', isset($_POST['tax_deductible']) ? 1 : 0, SQLITE3_INTEGER);
+    $taxStmt->bindValue(':id', $isEdit ? $id : $db->lastInsertRowID(), SQLITE3_INTEGER);
+    $taxStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $taxStmt->execute();
     $text = $isEdit ? 'insurance_updated_successfully' : 'insurance_added_successfully';
     echo json_encode(['success' => true, 'status' => 'Success', 'message' => translate($text, $i18n)]);
 } else {

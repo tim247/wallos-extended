@@ -63,6 +63,7 @@ function fillContractForm(contract) {
   document.querySelector("#contract-start-date").value = contract.start_date;
   document.querySelector("#contract-initial-term").value = contract.initial_term_months;
   document.querySelector("#contract-auto-renews").checked = !!contract.auto_renews;
+  document.querySelector("#contract-tax-deductible").checked = !!contract.tax_deductible;
   document.querySelector("#contract-renewal-term").value = contract.renewal_term_months;
   document.querySelector("#contract-end-date").value = contract.end_date ?? "";
   document.querySelector("#contract-notice-months").value = contract.notice_period_months;

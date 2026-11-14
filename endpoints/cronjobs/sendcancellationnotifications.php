@@ -376,6 +376,44 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
             $updateStmt->execute();
         }
 
+        // Price increases recorded by the price_history triggers, each reported once.
+        $stmt = $db->prepare("SELECT ph.id, ph.item_type, ph.old_price, ph.new_price, ph.changed_at,
+                COALESCE(s.name, c.name, ins.name) AS name, COALESCE(s.currency_id, c.currency_id, ins.currency_id) AS currency_id,
+                COALESCE(s.payer_user_id, c.payer_user_id, ins.payer_user_id) AS payer_id
+            FROM price_history ph
+            LEFT JOIN subscriptions s ON ph.item_type = 'subscription' AND s.id = ph.item_id
+            LEFT JOIN contracts c ON ph.item_type = 'contract' AND c.id = ph.item_id
+            LEFT JOIN insurances ins ON ph.item_type = 'insurance' AND ins.id = ph.item_id
+            WHERE ph.user_id = :user_id AND ph.notified = 0");
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $resultChanges = $stmt->execute();
+        $changeIds = [];
+        while ($change = $resultChanges->fetchArray(SQLITE3_ASSOC)) {
+            $changeIds[] = (int) $change['id'];
+            if ($change['name'] === null || $change['new_price'] <= $change['old_price'] || $change['changed_at'] < date('Y-m-d', strtotime('-30 days'))) {
+                continue;
+            }
+            $payerId = isset($household[$change['payer_id']]) ? $change['payer_id'] : $mainMemberId;
+            $symbol = $currencies[$change['currency_id']]['symbol'] ?? '';
+            $label = translate('price_increase_notification', $i18n);
+            $pct = $change['old_price'] > 0 ? sprintf(' (+%.1f %%)', ($change['new_price'] / $change['old_price'] - 1) * 100) : '';
+            $hint = $change['item_type'] !== 'subscription' ? ' · ' . translate('special_termination_hint', $i18n) : '';
+            $notify[$payerId][$i] = [
+                'name' => $label . ': ' . $change['name'] . ' ' . $change['old_price'] . $symbol . ' → ' . $change['new_price'] . $symbol . $pct . $hint,
+                'price' => $change['new_price'] . $symbol,
+                'currency' => $currencies[$change['currency_id']]['name'] ?? '',
+                'category' => $label,
+                'payer' => $household[$payerId]['name'] ?? '',
+                'date' => $todayString,
+                'url' => '',
+                'notes' => '',
+            ];
+            $i++;
+        }
+        if ($changeIds) {
+            $db->exec('UPDATE price_history SET notified = 1 WHERE id IN (' . implode(',', $changeIds) . ')');
+        }
+
         // Email reaches every payer, the other channels the primary one only
         $notifyEmail = $notify;
         foreach ($notifyOtherPayers as $payerId => $entries) {

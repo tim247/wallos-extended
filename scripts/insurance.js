@@ -62,6 +62,7 @@ function fillInsuranceForm(insurance) {
   document.querySelector("#insurance-start-date").value = insurance.start_date;
   document.querySelector("#insurance-renewal-term").value = insurance.renewal_term_months;
   document.querySelector("#insurance-auto-renews").checked = !!insurance.auto_renews;
+  document.querySelector("#insurance-tax-deductible").checked = !!insurance.tax_deductible;
   document.querySelector("#insurance-end-date").value = insurance.end_date ?? "";
   document.querySelector("#insurance-notice-months").value = insurance.notice_period_months;
   document.querySelector("#insurance-notice-days").value = insurance.notice_period_days;

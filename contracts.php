@@ -287,6 +287,13 @@ $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
 
     <div class="form-group">
       <div class="inline grow">
+        <input type="checkbox" id="contract-tax-deductible" name="tax_deductible">
+        <label for="contract-tax-deductible" class="grow"><?= translate('tax_deductible', $i18n) ?></label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="inline grow">
         <input type="checkbox" id="contract-auto-renews" name="auto_renews" checked
           onchange="toggleContractRenewalFields()">
         <label for="contract-auto-renews" class="grow"><?= translate('automatically_renews', $i18n) ?></label>

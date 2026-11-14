@@ -605,7 +605,7 @@ if ($consumptionMonthly > 0) {
         <?php if (!empty($priceIncreases)): ?>
             <div class="dashboard-panel">
                 <h2><i class="fa-solid fa-arrow-trend-up"></i> <?= translate('price_increases', $i18n) ?></h2>
-                <ul class="upcoming-events">
+                <ul class="upcoming-events price-increases">
                     <?php foreach ($priceIncreases as $pi):
                         $code = $currencies[$pi['currency_id']]['code'] ?? $mainCurrencyCode;
                         $pct = $pi['old_price'] > 0 ? ($pi['new_price'] / $pi['old_price'] - 1) * 100 : 0;
