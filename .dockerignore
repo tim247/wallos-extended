@@ -1,0 +1,42 @@
+# Exclude .vscode directory
+.vscode/
+
+# Exclude .git directory
+.git/
+.github/
+
+*.md
+.gitignore
+.dockerignore
+# Never bake personal data or local tooling into the image
+db/wallos.db
+db/setup_token.db
+images/uploads/logos/*
+!images/uploads/logos/wallos.png
+.claude/
+.tmp/
+docker/
+compose.yaml
+docker-compose.yaml
+screenshots/
+
+# README screenshots and capture script; not used at runtime
+/screenshots/
+
+# AI assistant files
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+AGENTS.md
+GEMINI.md
+.gemini/
+.cursor/
+.cursorrules
+.cursorignore
+.windsurf/
+.windsurfrules
+.aider*
+.continue/
+.codex/
+.antigravitycli
+plan.html

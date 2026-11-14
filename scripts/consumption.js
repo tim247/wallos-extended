@@ -1,0 +1,701 @@
+// Chart text follows the theme's text colour (legible in dark mode)
+if (window.Chart) Chart.defaults.color = getComputedStyle(document.body).color;
+
+/* Consumption tracker: charts, reading entry, forecast control, CSV import. */
+
+const meterCharts = {};
+
+/* ---------- chart helpers ---------- */
+
+function formatMonthLabel(yyyyMm) {
+  const [year, month] = yyyyMm.split('-').map(Number);
+  const d = new Date(year, month - 1, 1);
+  const monthName = d.toLocaleString(navigator.language, { month: 'short' });
+  const shortYear = String(year).slice(-2);
+  return `${monthName} '${shortYear}`;
+}
+
+function getFilteredMonthly(meterId) {
+  const data = window.meterChartData[meterId];
+  if (!data) return {};
+
+  const fromInput = document.querySelector(`.chart-from[data-meter="${meterId}"]`);
+  const toInput = document.querySelector(`.chart-to[data-meter="${meterId}"]`);
+
+  if (!fromInput?.value || !toInput?.value) {
+    return data.monthly;
+  }
+
+  const fromMonth = fromInput.value.substring(0, 7);
+  const toMonth = toInput.value.substring(0, 7);
+
+  const filtered = {};
+  Object.keys(data.monthly).forEach((month) => {
+    if (month >= fromMonth && month <= toMonth) {
+      filtered[month] = data.monthly[month];
+    }
+  });
+  return filtered;
+}
+
+function renderMeterChart(meterId) {
+  const data = window.meterChartData[meterId];
+  const canvas = document.getElementById('meterChart-' + meterId);
+  if (!data || !canvas) return;
+
+  const monthly = getFilteredMonthly(meterId);
+  const rawLabels = Object.keys(monthly);
+  const labels = rawLabels.map(formatMonthLabel);
+  const values = rawLabels.map((l) => monthly[l]);
+
+  const mainColor =
+    getComputedStyle(document.documentElement).getPropertyValue('--main-color').trim() || '#007BFF';
+  const color = data.is_pv ? '#2e9e44' : mainColor;
+  const gridColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--box-border-color').trim() || 'rgba(0,0,0,0.1)';
+  const textColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--text-color').trim() || '#333';
+
+  if (meterCharts[meterId]) {
+    meterCharts[meterId].destroy();
+  }
+
+  meterCharts[meterId] = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: data.unit,
+          data: values,
+          backgroundColor: color + 'B3',
+          borderColor: color,
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+      ],
+    },
+    options: {
+      maintainAspectRatio: false,
+      animation: { duration: values.length > 24 ? 0 : 300 },
+      scales: {
+        x: {
+          grid: { color: gridColor },
+          ticks: {
+            color: textColor,
+            maxRotation: 45,
+            autoSkip: true,
+            maxTicksLimit: 18,
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: gridColor },
+          ticks: {
+            color: textColor,
+            callback: function (value) {
+              return new Intl.NumberFormat(navigator.language, { maximumFractionDigits: 1 }).format(value);
+            },
+          },
+          title: {
+            display: true,
+            text: data.unit,
+            color: textColor,
+            font: { size: 12 },
+          },
+        },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: function (items) {
+              return items[0]?.label || '';
+            },
+            label: function (context) {
+              return (
+                new Intl.NumberFormat(navigator.language, { maximumFractionDigits: 2 }).format(
+                  context.parsed.y
+                ) +
+                ' ' +
+                data.unit
+              );
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function initChartRange(meterId) {
+  const data = window.meterChartData[meterId];
+  if (!data) return;
+
+  const months = Object.keys(data.monthly);
+  const fromInput = document.querySelector(`.chart-from[data-meter="${meterId}"]`);
+  const toInput = document.querySelector(`.chart-to[data-meter="${meterId}"]`);
+  if (!fromInput || !toInput) return;
+
+  if (months.length > 0) {
+    const minMonth = months[0];
+    const maxMonth = months[months.length - 1];
+    fromInput.value = minMonth + '-01';
+    const [y, m] = maxMonth.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    toInput.value = `${maxMonth}-${String(lastDay).padStart(2, '0')}`;
+  }
+}
+
+function setChartPreset(meterId, preset) {
+  const data = window.meterChartData[meterId];
+  const fromInput = document.querySelector(`.chart-from[data-meter="${meterId}"]`);
+  const toInput = document.querySelector(`.chart-to[data-meter="${meterId}"]`);
+  if (!data || !fromInput || !toInput) return;
+
+  const months = Object.keys(data.monthly);
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+
+  let fromDate, toDate;
+
+  if (preset === 'all') {
+    if (months.length === 0) return;
+    const minMonth = months[0];
+    const maxMonth = months[months.length - 1];
+    fromDate = minMonth + '-01';
+    const [y, m] = maxMonth.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    toDate = `${maxMonth}-${String(lastDay).padStart(2, '0')}`;
+  } else if (preset === '12m') {
+    const from = new Date(today);
+    from.setFullYear(from.getFullYear() - 1);
+    fromDate = from.toISOString().slice(0, 10);
+    toDate = todayStr;
+  } else if (preset === '1m') {
+    const from = new Date(today);
+    from.setMonth(from.getMonth() - 1);
+    fromDate = from.toISOString().slice(0, 10);
+    toDate = todayStr;
+  } else {
+    return;
+  }
+
+  fromInput.value = fromDate;
+  toInput.value = toDate;
+
+  document.querySelectorAll(`.chart-preset-btn[data-meter="${meterId}"]`).forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.preset === preset);
+  });
+
+  renderMeterChart(meterId);
+}
+
+/* ---------- meter form ---------- */
+
+function toggleMeterTypeFields() {
+  const type = document.querySelector('#meter-type').value;
+  const conversionGroup = document.querySelector('#meter-conversion-group');
+  const baseFeeGroup = document.querySelector('#meter-base-fee-group');
+  const priceLabel = document.querySelector('#meter-price-label');
+  conversionGroup.classList.toggle('hide', type !== 'gas');
+  baseFeeGroup.classList.toggle('hide', type === 'pv_feed_in');
+  document.querySelector('#meter-advance-group').classList.toggle('hide', type === 'pv_feed_in');
+  priceLabel.textContent =
+    type === 'pv_feed_in' ? translate('feed_in_compensation') : translate('price_per_unit');
+}
+
+function resetMeterForm() {
+  const form = document.querySelector('#meter-form-data');
+  form.reset();
+  document.querySelector('#meter-id').value = '';
+  document.querySelector('#meter-form-title').textContent = translate('add_meter');
+  const deleteButton = document.querySelector('#delete-meter');
+  deleteButton.style.display = 'none';
+  deleteButton.removeAttribute('onClick');
+  document.querySelector('#meter-save-button').disabled = false;
+  toggleMeterTypeFields();
+}
+
+function addMeter() {
+  resetMeterForm();
+  document.getElementById('meter-form').classList.add('is-open');
+  document.querySelector('body').classList.add('no-scroll');
+}
+
+function closeMeterForm() {
+  document.getElementById('meter-form').classList.remove('is-open');
+  document.querySelector('body').classList.remove('no-scroll');
+  resetMeterForm();
+}
+
+function openEditMeter(event, id) {
+  event.stopPropagation();
+  fetch(`endpoints/consumption/get_meter.php?id=${id}`)
+    .then((response) => response.json())
+    .then((meter) => {
+      if (meter.error) {
+        showErrorMessage(meter.error);
+        return;
+      }
+      document.querySelector('#meter-form-title').textContent = translate('edit_meter');
+      document.querySelector('#meter-id').value = meter.id;
+      document.querySelector('#meter-name').value = meter.name;
+      document.querySelector('#meter-type').value = meter.meter_type;
+      document.querySelector('#meter-number').value = meter.meter_number;
+      document.querySelector('#meter-price-per-unit').value = meter.price_per_unit;
+      document.querySelector('#meter-base-fee').value = meter.base_fee_monthly;
+      document.querySelector('#meter-conversion-factor').value = meter.conversion_factor ?? '';
+      document.querySelector('#meter-currency').value = meter.currency_id;
+      const haField = document.querySelector('#meter-ha-entity');
+      if (haField) haField.value = meter.ha_entity_id || '';
+      document.querySelector('#meter-monthly-advance').value = meter.monthly_advance || '';
+      document.querySelector('#meter-billing-start').value = meter.billing_start || '';
+      document.querySelector('#meter-reminder-days').value = meter.reading_reminder_days || '';
+      toggleMeterTypeFields();
+
+      const deleteButton = document.querySelector('#delete-meter');
+      deleteButton.style.display = 'block';
+      deleteButton.setAttribute('onClick', `deleteMeter(event, ${meter.id})`);
+
+      document.getElementById('meter-form').classList.add('is-open');
+      document.querySelector('body').classList.add('no-scroll');
+    })
+    .catch(() => showErrorMessage(translate('unknown_error')));
+}
+
+function deleteMeter(event, id) {
+  event.stopPropagation();
+  if (!confirm(translate('confirm_delete_meter'))) return;
+  fetch('endpoints/consumption/delete_meter.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+    body: JSON.stringify({ id: id }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+        window.location.reload();
+      } else {
+        showErrorMessage(data.message || translate('unknown_error'));
+      }
+    })
+    .catch(() => showErrorMessage(translate('unknown_error')));
+}
+
+function archiveMeter(event, id, archived) {
+  event.stopPropagation();
+  fetch('endpoints/consumption/archive_meter.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+    body: JSON.stringify({ id: id, archived: archived }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+        window.location.reload();
+      } else {
+        showErrorMessage(data.message || translate('unknown_error'));
+      }
+    })
+    .catch(() => showErrorMessage(translate('unknown_error')));
+}
+
+/* ---------- readings ---------- */
+
+function deleteReading(event, id) {
+  event.stopPropagation();
+  fetch('endpoints/consumption/delete_reading.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+    body: JSON.stringify({ id: id }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+        window.location.reload();
+      } else {
+        showErrorMessage(data.message || translate('unknown_error'));
+      }
+    })
+    .catch(() => showErrorMessage(translate('unknown_error')));
+}
+
+function openEditReading(event, id) {
+  event.stopPropagation();
+  const reading = (window.meterReadingsData || {})[id];
+  if (!reading) return;
+
+  document.querySelector('#reading-edit-id').value = id;
+  document.querySelector('#reading-edit-date').value = reading.reading_date;
+  document.querySelector('#reading-edit-value').value = reading.reading_value;
+  document.querySelector('#reading-edit-meter-change').checked = reading.is_meter_change === 1;
+  document.querySelector('#reading-edit-note').value = reading.note || '';
+
+  document.getElementById('reading-edit-form').classList.add('is-open');
+  document.querySelector('body').classList.add('no-scroll');
+}
+
+function closeEditReadingForm() {
+  document.getElementById('reading-edit-form').classList.remove('is-open');
+  document.querySelector('body').classList.remove('no-scroll');
+}
+
+/* ---------- forecast period ---------- */
+
+function updateForecast(meterId, targetDate) {
+  fetch(`endpoints/consumption/get_chart_data.php?id=${meterId}&target_date=${targetDate}`)
+    .then((r) => r.json())
+    .then((data) => {
+      const container = document.getElementById('forecast-content-' + meterId);
+      if (!container) return;
+      if (data.error || data.forecast === null) {
+        container.innerHTML = `<span class="forecast-label">${translate('not_enough_data_forecast')}</span>`;
+        return;
+      }
+      const isPv = window.meterChartData[meterId]?.is_pv;
+      const nf = new Intl.NumberFormat(navigator.language, { maximumFractionDigits: 0 });
+      const unitDisplay = data.unit === 'm3' ? 'm³' : data.unit;
+      let html =
+        `<span class="forecast-units">+${nf.format(data.forecast.projected_units)} ${unitDisplay}</span>` +
+        `<span class="forecast-label">${translate('projected_consumption_period')}</span>`;
+      if (data.forecast_cost !== null) {
+        const cf = new Intl.NumberFormat(navigator.language, {
+          style: 'currency',
+          currency: window.mainCurrencyCode || 'EUR',
+        });
+        html +=
+          `<span class="forecast-cost ${isPv ? 'positive' : ''}">${cf.format(data.forecast_cost)}</span>` +
+          `<span class="forecast-label">${translate(isPv ? 'projected_earnings' : 'projected_cost')}</span>`;
+      }
+      container.innerHTML = html;
+    })
+    .catch(() => showErrorMessage(translate('unknown_error')));
+}
+
+/* ---------- CSV import ---------- */
+
+let csvImportMeterId = null;
+let csvRows = [];
+let csvDelimiter = ';';
+
+function openCsvImport(meterId) {
+  csvImportMeterId = meterId;
+  csvRows = [];
+  document.querySelector('#csv-file').value = '';
+  document.querySelector('#csv-mapping').classList.add('hide');
+  document.querySelector('#csv-preview-table').innerHTML = '';
+  document.querySelector('#csv-import-summary').textContent = '';
+  document.getElementById('csv-import-form').classList.add('is-open');
+  document.querySelector('body').classList.add('no-scroll');
+}
+
+function closeCsvImport() {
+  document.getElementById('csv-import-form').classList.remove('is-open');
+  document.querySelector('body').classList.remove('no-scroll');
+  csvImportMeterId = null;
+}
+
+function detectDelimiter(line) {
+  const candidates = [';', '\t', ','];
+  let best = ';';
+  let bestCount = 0;
+  candidates.forEach((d) => {
+    const count = line.split(d).length - 1;
+    if (count > bestCount) {
+      bestCount = count;
+      best = d;
+    }
+  });
+  return best;
+}
+
+function splitCsvLine(line, delimiter) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === delimiter && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseGermanDate(value) {
+  value = value.trim();
+  let match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+  match = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+  if (match) {
+    let year = match[3];
+    if (year.length === 2) year = (parseInt(year, 10) > 70 ? '19' : '20') + year;
+    return `${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+  }
+  return null;
+}
+
+function parseGermanNumber(value) {
+  value = value.trim().replace(/\s/g, '');
+  if (value === '') return null;
+  if (value.includes(',')) value = value.replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(value);
+  return isNaN(num) ? null : num;
+}
+
+function renderCsvPreview() {
+  const table = document.querySelector('#csv-preview-table');
+  const hasHeader = document.querySelector('#csv-has-header').checked;
+  table.innerHTML = '';
+  if (csvRows.length === 0) return;
+
+  const columnCount = csvRows[0].length;
+  const dataRows = hasHeader ? csvRows.slice(1) : csvRows;
+
+  const mappingRow = document.createElement('tr');
+  for (let c = 0; c < columnCount; c++) {
+    const td = document.createElement('td');
+    const select = document.createElement('select');
+    select.className = 'csv-column-mapping';
+    select.dataset.column = c;
+    [
+      { value: 'ignore', label: translate('csv_ignore_column') },
+      { value: 'date', label: translate('date') },
+      { value: 'value', label: translate('meter_reading') },
+    ].forEach((opt) => {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.textContent = opt.label;
+      select.appendChild(option);
+    });
+    const sample = dataRows[0] ? dataRows[0][c] || '' : '';
+    if (parseGermanDate(sample) !== null && !mappingRow.querySelector('select option[value="date"]:checked')) {
+      select.value = 'date';
+    } else if (parseGermanNumber(sample) !== null) {
+      select.value = 'value';
+    }
+    td.appendChild(select);
+    mappingRow.appendChild(td);
+  }
+  table.appendChild(mappingRow);
+
+  let dateSeen = false;
+  let valueSeen = false;
+  mappingRow.querySelectorAll('select').forEach((select) => {
+    if (select.value === 'date') {
+      if (dateSeen) select.value = 'ignore';
+      dateSeen = true;
+    } else if (select.value === 'value') {
+      if (valueSeen) select.value = 'ignore';
+      valueSeen = true;
+    }
+  });
+
+  dataRows.slice(0, 5).forEach((row) => {
+    const tr = document.createElement('tr');
+    for (let c = 0; c < columnCount; c++) {
+      const td = document.createElement('td');
+      td.textContent = row[c] || '';
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  });
+
+  document.querySelector('#csv-import-summary').textContent =
+    dataRows.length + ' ' + translate('csv_rows_found');
+}
+
+function submitCsvImport() {
+  const hasHeader = document.querySelector('#csv-has-header').checked;
+  const dataRows = hasHeader ? csvRows.slice(1) : csvRows;
+  let dateColumn = null;
+  let valueColumn = null;
+  document.querySelectorAll('.csv-column-mapping').forEach((select) => {
+    if (select.value === 'date') dateColumn = parseInt(select.dataset.column, 10);
+    else if (select.value === 'value') valueColumn = parseInt(select.dataset.column, 10);
+  });
+
+  if (dateColumn === null || valueColumn === null) {
+    showErrorMessage(translate('csv_select_columns'));
+    return;
+  }
+
+  const readings = [];
+  dataRows.forEach((row) => {
+    const date = parseGermanDate(row[dateColumn] || '');
+    const value = parseGermanNumber(row[valueColumn] || '');
+    if (date !== null && value !== null && value >= 0) {
+      readings.push({ date: date, value: value });
+    }
+  });
+
+  if (readings.length === 0) {
+    showErrorMessage(translate('csv_no_valid_rows'));
+    return;
+  }
+
+  document.querySelector('#csv-import-button').disabled = true;
+  fetch('endpoints/consumption/import_readings.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+    body: JSON.stringify({ meter_id: csvImportMeterId, readings: readings }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+        window.location.reload();
+      } else {
+        showErrorMessage(data.message || translate('unknown_error'));
+      }
+    })
+    .catch(() => showErrorMessage(translate('unknown_error')))
+    .finally(() => {
+      document.querySelector('#csv-import-button').disabled = false;
+    });
+}
+
+/* ---------- init ---------- */
+
+document.addEventListener('DOMContentLoaded', function () {
+  // Initialize chart ranges and render charts.
+  Object.keys(window.meterChartData || {}).forEach((meterId) => {
+    initChartRange(parseInt(meterId, 10));
+    renderMeterChart(parseInt(meterId, 10));
+  });
+
+  // Chart preset buttons.
+  document.querySelectorAll('.chart-preset-btn').forEach((btn) => {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setChartPreset(parseInt(this.dataset.meter, 10), this.dataset.preset);
+    });
+  });
+
+  // Chart date range inputs: re-render on change, clear active preset.
+  document.querySelectorAll('.chart-from, .chart-to').forEach((input) => {
+    input.addEventListener('change', function () {
+      const meterId = parseInt(this.dataset.meter, 10);
+      document.querySelectorAll(`.chart-preset-btn[data-meter="${meterId}"]`).forEach((btn) => {
+        btn.classList.remove('active');
+      });
+      renderMeterChart(meterId);
+    });
+  });
+
+  // Meter form submit.
+  document.querySelector('#meter-form-data')?.addEventListener('submit', function (event) {
+    event.preventDefault();
+    const submitButton = document.querySelector('#meter-save-button');
+    submitButton.disabled = true;
+    fetch(this.action, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': window.csrfToken },
+      body: new FormData(this),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          showSuccessMessage(data.message);
+          window.location.reload();
+        } else {
+          showErrorMessage(data.message || translate('unknown_error'));
+        }
+      })
+      .catch(() => showErrorMessage(translate('unknown_error')))
+      .finally(() => { submitButton.disabled = false; });
+  });
+
+  // Reading add forms.
+  document.querySelectorAll('.reading-form').forEach((form) => {
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      fetch('endpoints/consumption/add_reading.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+        body: JSON.stringify({
+          meter_id: parseInt(form.dataset.meter, 10),
+          reading_date: form.querySelector('.reading-date').value,
+          reading_value: parseFloat(form.querySelector('.reading-value').value),
+          is_meter_change: form.querySelector('.reading-meter-change').checked ? 1 : 0,
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) {
+            showSuccessMessage(data.message);
+            window.location.reload();
+          } else {
+            showErrorMessage(data.message || translate('unknown_error'));
+          }
+        })
+        .catch(() => showErrorMessage(translate('unknown_error')));
+    });
+  });
+
+  // Reading edit form submit.
+  document.querySelector('#reading-edit-form-data')?.addEventListener('submit', function (event) {
+    event.preventDefault();
+    const submitButton = document.querySelector('#reading-edit-save');
+    submitButton.disabled = true;
+    fetch('endpoints/consumption/update_reading.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+      body: JSON.stringify({
+        id: parseInt(document.querySelector('#reading-edit-id').value, 10),
+        reading_date: document.querySelector('#reading-edit-date').value,
+        reading_value: parseFloat(document.querySelector('#reading-edit-value').value),
+        is_meter_change: document.querySelector('#reading-edit-meter-change').checked ? 1 : 0,
+        note: document.querySelector('#reading-edit-note').value,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          showSuccessMessage(data.message);
+          window.location.reload();
+        } else {
+          showErrorMessage(data.message || translate('unknown_error'));
+        }
+      })
+      .catch(() => showErrorMessage(translate('unknown_error')))
+      .finally(() => { submitButton.disabled = false; });
+  });
+
+  // Forecast date inputs.
+  document.querySelectorAll('.forecast-date').forEach((input) => {
+    input.addEventListener('change', function () {
+      updateForecast(parseInt(this.dataset.meter, 10), this.value);
+    });
+  });
+
+  // CSV file input.
+  document.querySelector('#csv-file')?.addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '');
+      if (lines.length === 0) {
+        showErrorMessage(translate('csv_no_valid_rows'));
+        return;
+      }
+      csvDelimiter = detectDelimiter(lines[0]);
+      csvRows = lines.map((line) => splitCsvLine(line, csvDelimiter));
+      document.querySelector('#csv-mapping').classList.remove('hide');
+      renderCsvPreview();
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+});

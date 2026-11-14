@@ -1,0 +1,321 @@
+<?php
+require_once '../../includes/connect_endpoint.php';
+
+header('Content-Type: application/json; charset=utf-8');
+
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+  // Answer before the list helpers load: they query on behalf of a user.
+  http_response_code(401);
+  echo json_encode(['success' => false, 'message' => html_entity_decode(translate('session_expired', $i18n), ENT_QUOTES | ENT_HTML5, 'UTF-8')], JSON_INVALID_UTF8_SUBSTITUTE);
+  $db->close();
+  exit;
+}
+
+require_once '../../includes/currency_formatter.php';
+require_once '../../includes/getdbkeys.php';
+require_once '../../includes/logo_theme_variant.php';
+
+include_once '../../includes/list_subscriptions.php';
+require_once '../../includes/subscription_payers.php';
+require_once '../../includes/subscription_categories.php';
+
+require_once '../../includes/getsettings.php';
+
+$theme = "light";
+if (isset($settings['theme'])) {
+  $theme = $settings['theme'];
+}
+
+$colorTheme = "blue";
+if (isset($settings['color_theme'])) {
+  $colorTheme = $settings['color_theme'];
+}
+
+$formatter = new IntlDateFormatter(
+  'en', // Force English locale
+  IntlDateFormatter::SHORT,
+  IntlDateFormatter::NONE,
+  null,
+  null,
+  'MMM d, yyyy'
+);
+
+if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
+
+
+  $sort = "next_payment";
+  $sortOrder = $sort;
+  $order = "ASC";
+
+  $params = array();
+  $sql = "SELECT * FROM subscriptions WHERE user_id = :userId";
+
+  if (isset($_GET['categories']) && $_GET['categories'] != "") {
+    $allCategories = explode(',', $_GET['categories']);
+    $sql .= " AND " . categoryFilterCondition($allCategories, $params);
+  }
+
+  if (isset($_GET['folders']) && $_GET['folders'] != "") {
+    $allFolders = explode(',', $_GET['folders']);
+    $placeholders = array_map(function ($idx) {
+      return ":folders{$idx}";
+    }, array_keys($allFolders));
+
+    $sql .= " AND (" . implode(' OR ', array_map(function ($placeholder) {
+      return "folder_id = {$placeholder}";
+    }, $placeholders)) . ")";
+
+    foreach ($allFolders as $idx => $folder) {
+      $params[":folders{$idx}"] = $folder;
+    }
+  }
+
+  if (isset($_GET['payments']) && $_GET['payments'] !== "") {
+    $allPayments = explode(',', $_GET['payments']);
+    $placeholders = array_map(function ($idx) {
+      return ":payments{$idx}";
+    }, array_keys($allPayments));
+
+    $sql .= " AND (" . implode(' OR ', array_map(function ($placeholder) {
+      return "payment_method_id = {$placeholder}";
+    }, $placeholders)) . ")";
+
+    foreach ($allPayments as $idx => $payment) {
+      $params[":payments{$idx}"] = $payment;
+    }
+  }
+
+  if (isset($_GET['members']) && $_GET['members'] != "") {
+    $allMembers = explode(',', $_GET['members']);
+    $sql .= " AND " . payerFilterCondition($allMembers, $params);
+  }
+
+  if (isset($_GET['state']) && $_GET['state'] != "") {
+    $sql .= " AND inactive = :inactive";
+    $params[':inactive'] = $_GET['state'];
+  }
+
+  if (isset($_GET['renewalType']) && $_GET['renewalType'] != "") {
+    if ($_GET['renewalType'] === 'onetime') {
+      $sql .= " AND cycle = 5";
+    } else {
+      $sql .= " AND auto_renew = :auto_renew AND cycle != 5";
+      $params[':auto_renew'] = $_GET['renewalType'];
+    }
+  }
+
+  if (isset($_GET['notifications']) && $_GET['notifications'] !== "") {
+    $notifTypes = array_filter(explode(',', $_GET['notifications']), fn($t) => in_array($t, ['reminder', 'cancellation', 'none']));
+    $notifConditions = [];
+    foreach ($notifTypes as $type) {
+      if ($type === 'reminder') {
+        $notifConditions[] = "notify = 1";
+      } elseif ($type === 'cancellation') {
+        // One-time purchases are never treated as cancellable, matching the
+        // dashboard, statistics page and cancellation notification cron.
+        $notifConditions[] = "(cancellation_date IS NOT NULL AND cancellation_date != '' AND cycle != 5)";
+      } elseif ($type === 'none') {
+        $notifConditions[] = "(notify = 0 AND (cancellation_date IS NULL OR cancellation_date = '' OR cycle = 5))";
+      }
+    }
+    if (!empty($notifConditions)) {
+      $sql .= " AND (" . implode(' OR ', $notifConditions) . ")";
+    }
+  }
+
+  if (isset($_COOKIE['sortOrder']) && $_COOKIE['sortOrder'] != "") {
+    $sort = $_COOKIE['sortOrder'];
+  }
+
+  $sortOrder = $sort;
+  $allowedSortCriteria = ['name', 'id', 'next_payment', 'price', 'payer_user_id', 'category_id', 'payment_method_id', 'inactive', 'alphanumeric', 'renewal_type'];
+  $order = ($sort == "price" || $sort == "id") ? "DESC" : "ASC";
+
+  if ($sort == "alphanumeric") {
+    $sort = "name";
+  }
+
+  if (!in_array($sort, $allowedSortCriteria)) {
+    $sort = "next_payment";
+  }
+
+  if ($sort == "renewal_type") {
+    $sort = "auto_renew";
+  }
+
+  $orderByClauses = [];
+
+  if ($settings['disabledToBottom'] === 'true') {
+    if (in_array($sort, ["payer_user_id", "category_id", "payment_method_id"])) {
+      $orderByClauses[] = "$sort $order";
+      $orderByClauses[] = "inactive ASC";
+    } else {
+      $orderByClauses[] = "inactive ASC";
+      $orderByClauses[] = "$sort $order";
+    }
+  } else {
+    $orderByClauses[] = "$sort $order";
+    if ($sort != "inactive") {
+      $orderByClauses[] = "inactive ASC";
+    }
+  }
+
+  if ($sort != "next_payment") {
+    $orderByClauses[] = "next_payment ASC";
+  }
+
+  $sql .= " ORDER BY " . implode(", ", $orderByClauses);
+
+  $stmt = $db->prepare($sql);
+  $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+
+  foreach ($params as $key => $value) {
+    $stmt->bindValue($key, $value);
+  }
+
+  $result = $stmt->execute();
+  if ($result) {
+    $subscriptions = array();
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+      $subscriptions[] = $row;
+    }
+  }
+
+  $payersBySubscription = getPayersBySubscription($db, $subscriptions);
+  $categoriesBySubscription = getCategoriesBySubscription($db, $subscriptions);
+  $paidStatusFilter = isset($_GET['paidStatus']) && in_array($_GET['paidStatus'], ['paid', 'unpaid']) ? $_GET['paidStatus'] : '';
+
+  foreach ($subscriptions as $subscription) {
+    if ($subscription['inactive'] == 1 && isset($settings['hideDisabledSubscriptions']) && $settings['hideDisabledSubscriptions'] === 'true') {
+      continue;
+    }
+    $cycle = $subscription['cycle'];
+    $frequency = $subscription['frequency'];
+    $paidThisCycle = isPaidThisCycle($subscription['paid_at'] ?? null, $cycle, $frequency, $subscription['next_payment']);
+    if ($paidStatusFilter === 'paid' && !$paidThisCycle) {
+      continue;
+    }
+    if ($paidStatusFilter === 'unpaid' && $paidThisCycle) {
+      continue;
+    }
+    $id = $subscription['id'];
+    $print[$id]['id'] = $id;
+    $print[$id]['logo'] = $subscription['logo'] != "" ? "images/uploads/logos/" . $subscription['logo'] : "";
+    $print[$id]['logo_text_color'] = $subscription['logo_text_color'] ?? null;
+    $print[$id]['logo_variant'] = !empty($subscription['logo_variant']) ? "images/uploads/logos/" . $subscription['logo_variant'] : null;
+    $print[$id]['name'] = $subscription['name'] ?? "";
+    $print[$id]['billing_cycle'] = getBillingCycle($cycle, $frequency, $i18n);
+    $print[$id]['one_time'] = ($cycle == 5);
+    $paymentMethodId = $subscription['payment_method_id'];
+    $print[$id]['currency_code'] = $currencies[$subscription['currency_id']]['code'];
+    $currencyId = $subscription['currency_id'];
+    $next_payment_timestamp = strtotime($subscription['next_payment']);
+    $formatted_date = $formatter->format($next_payment_timestamp);
+    $print[$id]['next_payment'] = $formatted_date;
+    $print[$id]['auto_renew'] = $subscription['auto_renew'];
+    $paymentIcon = $payment_methods[$paymentMethodId ?? ""]['icon'] ?? "";
+    $paymentIconFolder = (strpos($paymentIcon, 'images/uploads/icons/') !== false) ? "" : "images/uploads/logos/";
+    $print[$id]['payment_method_icon'] = $paymentIcon === "" ? "" : $paymentIconFolder . $paymentIcon;
+    $print[$id]['payment_method_name'] = $payment_methods[$paymentMethodId ?? ""]['name'] ?? "";
+    $print[$id]['payment_method_id'] = $paymentMethodId;
+    $print[$id]['category_id'] = $subscription['category_id'];
+    $print[$id]['category_ids'] = $categoriesBySubscription[$id] ?? [];
+    $print[$id]['folder_id'] = $subscription['folder_id'] ?? null;
+    $print[$id]['payer_user_id'] = $subscription['payer_user_id'];
+    $print[$id]['payer_user_ids'] = $payersBySubscription[$id] ?? [];
+    $print[$id]['price'] = floatval($subscription['price']);
+    $print[$id]['sort_price'] = getSortPrice($subscription['price'], $subscription['currency_id'], $mainCurrencyId, $cycle, $frequency, $settings, $db);
+    $print[$id]['progress'] = getSubscriptionProgress($cycle, $frequency, $subscription['next_payment']);
+    $print[$id]['inactive'] = $subscription['inactive'];
+    $print[$id]['paid_this_cycle'] = $paidThisCycle;
+    $print[$id]['url'] = $subscription['url'] ?? "";
+    $print[$id]['notes'] = $subscription['notes'] ?? "";
+    $print[$id]['replacement_subscription_id'] = $subscription['replacement_subscription_id'];
+
+    if (isset($settings['convertCurrency']) && $settings['convertCurrency'] === 'true' && $currencyId != $mainCurrencyId) {
+      $print[$id]['price'] = getPriceConverted($print[$id]['price'], $currencyId, $db);
+      $print[$id]['currency_code'] = $currencies[$mainCurrencyId]['code'];
+    }
+    if (isset($settings['showMonthlyPrice']) && $settings['showMonthlyPrice'] === 'true') {
+      $print[$id]['price'] = getPricePerMonth($cycle, $frequency, $print[$id]['price']);
+    }
+    if (isset($settings['showOriginalPrice']) && $settings['showOriginalPrice'] === 'true') {
+      $print[$id]['original_price'] = floatval($subscription['price']);
+      $print[$id]['original_currency_code'] = $currencies[$subscription['currency_id']]['code'];
+    }
+  }
+
+  if ($sortOrder == "alphanumeric") {
+    usort($print, function ($a, $b) {
+      return strnatcmp(strtolower($a['name']), strtolower($b['name']));
+    });
+    if ($settings['disabledToBottom'] === 'true') {
+      usort($print, function ($a, $b) {
+        return $a['inactive'] - $b['inactive'];
+      });
+    }
+  }
+
+  if ($sortOrder == "category_id") {
+    usort($print, function ($a, $b) use ($categories) {
+      return ($categories[$a['category_id'] ?? ""]['order'] ?? PHP_INT_MAX) <=> ($categories[$b['category_id'] ?? ""]['order'] ?? PHP_INT_MAX);
+    });
+  }
+  
+  if ($sortOrder == "payment_method_id") {
+    usort($print, function ($a, $b) use ($payment_methods) {
+      return ($payment_methods[$a['payment_method_id'] ?? ""]['order'] ?? PHP_INT_MAX) <=> ($payment_methods[$b['payment_method_id'] ?? ""]['order'] ?? PHP_INT_MAX);
+    });
+  }
+
+  $iconDir = '../../images/siteicons/svg/';
+  $readIcon = function ($name) use ($iconDir) {
+    return trim(file_get_contents($iconDir . $name . '.php'));
+  };
+  $mobileNavigation = $settings['mobileNavigation'] === 'true';
+
+  $icons = [
+    'logo' => $readIcon('logo'),
+    'automatic' => $readIcon('automatic'),
+    'manual' => $readIcon('manual'),
+  ];
+  if ($mobileNavigation) {
+    foreach (['clone', 'delete', 'renew', 'edit', 'paid'] as $name) {
+      $icons[$name] = $readIcon('mobile-menu/' . $name);
+    }
+  }
+
+  $labels = [];
+  foreach (['payment_method', 'edit_subscription', 'edit', 'delete', 'clone', 'renew', 'cancel', 'mark_as_paid', 'mark_as_unpaid', 'paid'] as $key) {
+    $labels[$key] = htmlToText(translate($key, $i18n));
+  }
+
+  echo json_encode([
+    'success' => true,
+    'total' => count($subscriptions),
+    'mobile_navigation' => $mobileNavigation,
+    'subscriptions' => buildSubscriptionsPayload(
+      $print ?? [],
+      $sort,
+      $categories,
+      $folders,
+      $members,
+      $i18n,
+      $settings['disabledToBottom'],
+      $settings['showSubscriptionProgress'],
+      $currencies,
+      $lang
+    ),
+    'folders' => buildFolderStats($db, $userId, $folders ?? [], $mainCurrencyId, $currencies, $i18n),
+    'labels' => $labels,
+    'icons' => $icons,
+    'messages' => [
+      'no_matching_subscriptions' => htmlToText(translate('no_matching_subscriptions', $i18n)),
+      'clear_filters' => htmlToText(translate('clear_filters', $i18n)),
+      'empty_page' => htmlToText(translate('empty_page', $i18n)),
+    ],
+  ], JSON_INVALID_UTF8_SUBSTITUTE);
+}
+
+$db->close();
+?>

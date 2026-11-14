@@ -1,0 +1,439 @@
+<?php
+// Amortization calculations for the financing module.
+// Schedules are always computed on the fly so edits reflow instantly.
+
+/**
+ * Computes the full amortization schedule of an annuity loan.
+ * Supports an optional interest-only period at the start (tilgungsfreie Phase).
+ *
+ * $anchors: balances taken from a bank statement (['anchor_date', 'balance']).
+ *   Everything before the date is calculated as usual, after it the schedule
+ *   continues from the real balance, so calculation drift does not accumulate.
+ * $redeemOn: date on which the loan is paid off in one go (e.g. by the payout of
+ *   a Bausparvertrag); the remaining balance becomes a final "redemption" row.
+ */
+function computeLoanSchedule(array $loan, array $extraPayments = [], ?string $asOfDate = null, array $overrides = [], array $anchors = [], ?string $redeemOn = null): array
+{
+    $asOf = $asOfDate ?? date('Y-m-d');
+    $monthlyInterest = ((float) $loan['interest_rate']) / 100.0 / 12.0;
+    $balance = (float) $loan['principal'];
+    $rate = (float) $loan['monthly_rate'];
+    $termMonths = !empty($loan['term_months']) ? (int) $loan['term_months'] : null;
+    $interestOnlyMonths = (int) ($loan['interest_only_months'] ?? 0);
+
+    $result = [
+        'error' => null,
+        'rows' => [],
+        'payoff_date' => null,
+        'total_interest' => 0.0,
+        'total_extra' => 0.0,
+        'balance_as_of' => (float) $loan['principal'],
+        'paid_principal_as_of' => 0.0,
+        'paid_interest_as_of' => 0.0,
+        'months_total' => 0,
+        'anchors_applied' => [],
+        'redeemed_on' => null,
+    ];
+
+    if ($balance <= 0 || $rate <= 0) {
+        $result['error'] = 'invalid_loan_parameters';
+        return $result;
+    }
+
+    // Index overrides by period number.
+    $overrideMap = [];
+    foreach ($overrides as $ov) {
+        $overrideMap[(int)$ov['period_n']] = (float)$ov['payment_amount'];
+    }
+
+    // Group extra payments by the month (Y-m) they fall in.
+    $extrasByMonth = [];
+    foreach ($extraPayments as $extra) {
+        $key = substr($extra['payment_date'], 0, 7);
+        $extrasByMonth[$key] = ($extrasByMonth[$key] ?? 0.0) + (float) $extra['amount'];
+    }
+
+    usort($anchors, fn($a, $b) => strcmp($a['anchor_date'], $b['anchor_date']));
+    $anchorIdx = 0;
+    $pendingAnchorDiff = null;
+    // Adds a row and tags it when a statement balance was applied just before it.
+    $pushRow = function (array $row) use (&$result, &$pendingAnchorDiff) {
+        if ($pendingAnchorDiff !== null) {
+            $row['anchor_diff'] = $pendingAnchorDiff;
+            $pendingAnchorDiff = null;
+        }
+        $result['rows'][] = $row;
+    };
+
+    $startDay = (int) (new DateTime($loan['start_date']))->format('d');
+    $n = 0;
+
+    while ($balance > 0.005 && $n < 1200) {
+        $n++;
+        $payDate = new DateTime($loan['start_date']);
+        $payDate->modify('first day of this month');
+        $payDate->modify('+' . $n . ' months');
+        $payDate->setDate(
+            (int) $payDate->format('Y'),
+            (int) $payDate->format('m'),
+            min($startDay, (int) $payDate->format('t'))
+        );
+        $payDateStr = $payDate->format('Y-m-d');
+        $monthKey = substr($payDateStr, 0, 7);
+
+        // Statement balances that fall before this payment replace the calculated balance.
+        while ($anchorIdx < count($anchors) && $anchors[$anchorIdx]['anchor_date'] < $payDateStr) {
+            $bankBalance = max(0.0, round((float) $anchors[$anchorIdx]['balance'], 2));
+            $result['anchors_applied'][] = [
+                'id' => $anchors[$anchorIdx]['id'] ?? null,
+                'date' => $anchors[$anchorIdx]['anchor_date'],
+                'bank' => $bankBalance,
+                'calculated' => round($balance, 2),
+                'diff' => round($bankBalance - $balance, 2),
+            ];
+            $pendingAnchorDiff = round($bankBalance - $balance, 2);
+            $balance = $bankBalance;
+            if ($anchors[$anchorIdx]['anchor_date'] <= $asOf) {
+                $result['balance_as_of'] = $balance;
+            }
+            $anchorIdx++;
+        }
+        if ($balance <= 0.005) {
+            break;
+        }
+
+        // Paid off in one go before this payment would be due (e.g. Bausparvertrag payout).
+        if ($redeemOn !== null && $payDateStr > $redeemOn) {
+            $pushRow([
+                'n' => $n,
+                'date' => $redeemOn,
+                'payment' => round($balance, 2),
+                'interest' => 0.0,
+                'principal' => round($balance, 2),
+                'extra' => 0.0,
+                'balance' => 0.0,
+                'override' => false,
+                'redemption' => true,
+            ]);
+            $result['redeemed_on'] = $redeemOn;
+            if ($redeemOn <= $asOf) {
+                $result['balance_as_of'] = 0.0;
+            }
+            $balance = 0.0;
+            $result['payoff_date'] = $redeemOn;
+            break;
+        }
+
+        $interest = round($balance * $monthlyInterest, 2);
+        $isInterestOnly = ($n <= $interestOnlyMonths);
+        $overridePayment = $overrideMap[$n] ?? null;
+
+        if ($isInterestOnly) {
+            // Tilgungsfreie Phase: only interest is paid, balance stays unchanged.
+            $actualPayment = $overridePayment !== null ? $overridePayment : $interest;
+            // If overridden, treat the excess as principal reduction.
+            $principalOverride = max(0.0, round($actualPayment - $interest, 2));
+            if ($principalOverride > 0) {
+                $balance = round($balance - $principalOverride, 2);
+            }
+            $result['total_interest'] = round($result['total_interest'] + $interest, 2);
+            $pushRow([
+                'n' => $n,
+                'date' => $payDateStr,
+                'payment' => $actualPayment,
+                'interest' => $interest,
+                'principal' => $principalOverride,
+                'extra' => 0.0,
+                'balance' => max($balance, 0.0),
+                'interest_only' => $principalOverride === 0.0,
+                'override' => $overridePayment !== null,
+            ]);
+            if ($payDateStr <= $asOf) {
+                $result['balance_as_of'] = max($balance, 0.0);
+                $result['paid_interest_as_of'] = round($result['paid_interest_as_of'] + $interest, 2);
+                $result['paid_principal_as_of'] = round($result['paid_principal_as_of'] + $principalOverride, 2);
+            }
+            continue;
+        }
+
+        $effectiveRate = $overridePayment !== null ? $overridePayment : $rate;
+        $principalPart = round($effectiveRate - $interest, 2);
+
+        if ($principalPart <= 0) {
+            // A manually overridden rate may be lower than the interest (e.g. a
+            // reduced first instalment). In that case the uncovered interest is
+            // capitalised (the balance grows) instead of aborting the schedule.
+            // Only an unedited, structurally too-low rate is a real error.
+            if ($overridePayment === null) {
+                $result['error'] = 'rate_below_interest';
+                return $result;
+            }
+        }
+
+        $isLastTermMonth = ($termMonths !== null && ($n - $interestOnlyMonths) >= ($termMonths - $interestOnlyMonths));
+        if ($principalPart > $balance || $isLastTermMonth) {
+            $principalPart = min($principalPart, $balance);
+            if ($isLastTermMonth) {
+                $principalPart = $balance;
+            }
+        }
+
+        $extra = $extrasByMonth[$monthKey] ?? 0.0;
+        $extra = round(min($extra, max($balance - $principalPart, 0)), 2);
+
+        $balance = round($balance - $principalPart - $extra, 2);
+        $result['total_interest'] = round($result['total_interest'] + $interest, 2);
+        $result['total_extra'] = round($result['total_extra'] + $extra, 2);
+
+        $pushRow([
+            'n' => $n,
+            'date' => $payDateStr,
+            'payment' => round($interest + $principalPart, 2),
+            'interest' => $interest,
+            'principal' => $principalPart,
+            'extra' => $extra,
+            'balance' => max($balance, 0.0),
+            'override' => $overridePayment !== null,
+        ]);
+
+        if ($payDateStr <= $asOf) {
+            $result['balance_as_of'] = max($balance, 0.0);
+            $result['paid_principal_as_of'] = round($result['paid_principal_as_of'] + $principalPart + $extra, 2);
+            $result['paid_interest_as_of'] = round($result['paid_interest_as_of'] + $interest, 2);
+        }
+
+        if ($balance <= 0.005 || $isLastTermMonth) {
+            $result['payoff_date'] = $payDateStr;
+            break;
+        }
+    }
+
+    if ($result['payoff_date'] === null && count($result['rows']) > 0) {
+        $result['payoff_date'] = end($result['rows'])['date'];
+    }
+
+    // Paid principal follows from the current balance, so anchors and redemption stay consistent.
+    $result['paid_principal_as_of'] = max(0.0, round((float) $loan['principal'] - $result['balance_as_of'], 2));
+    $result['months_total'] = count($result['rows']);
+    return $result;
+}
+
+/** Statement balances, extra payments and overrides of a loan, plus the redemption date. */
+function loadLoanInputs(SQLite3 $db, int $userId, array $loan): array
+{
+    $fetch = function (string $table, string $order) use ($db, $userId, $loan): array {
+        $stmt = $db->prepare("SELECT * FROM $table WHERE loan_id = :loanId AND user_id = :userId ORDER BY $order ASC");
+        $stmt->bindValue(':loanId', $loan['id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+        $rows = [];
+        $result = $stmt->execute();
+        while ($result && $row = $result->fetchArray(SQLITE3_ASSOC)) {
+            $rows[] = $row;
+        }
+        return $rows;
+    };
+
+    $redeemOn = null;
+    if (!empty($loan['replaced_by_loan_id'])) {
+        $stmt = $db->prepare("SELECT * FROM loans WHERE id = :id AND user_id = :userId AND loan_type = 'bausparen'");
+        $stmt->bindValue(':id', $loan['replaced_by_loan_id'], SQLITE3_INTEGER);
+        $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+        $bausparLoan = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        if ($bausparLoan) {
+            $redeemOn = computeBausparSchedule($bausparLoan)['payout_date'] ?? null;
+        }
+    }
+
+    return [
+        'extras' => $fetch('loan_extra_payments', 'payment_date'),
+        'overrides' => $fetch('loan_schedule_overrides', 'period_n'),
+        'anchors' => $fetch('loan_balance_anchors', 'anchor_date'),
+        'redeem_on' => $redeemOn,
+    ];
+}
+
+/**
+ * Schedule of any loan type with everything the user has entered applied.
+ * $plan = true: the original plan without extra payments, overrides and statement balances.
+ */
+function loadLoanSchedule(SQLite3 $db, int $userId, array $loan, ?string $asOf = null, bool $plan = false): array
+{
+    if (($loan['loan_type'] ?? 'annuity') === 'bausparen') {
+        return computeBausparSchedule($loan, $asOf);
+    }
+    $in = loadLoanInputs($db, $userId, $loan);
+    return $plan
+        ? computeLoanSchedule($loan, [], $asOf, [], [], $in['redeem_on'])
+        : computeLoanSchedule($loan, $in['extras'], $asOf, $in['overrides'], $in['anchors'], $in['redeem_on']);
+}
+
+/**
+ * Computes the three-phase schedule for a Bausparvertrag.
+ *
+ * Phase 1 – Sparphase: Monthly deposits accumulate with Guthabenzins until
+ *   savings reach bausparen_min_savings_pct % of the Bausparsumme (principal).
+ * Phase 2 – Zuteilung: Savings liquidated, loan = principal - accumulated_savings.
+ * Phase 3 – Tilgungsphase: Annuity repayment of the loan portion at
+ *   bausparen_loan_rate with bausparen_loan_monthly monthly payment.
+ */
+function computeBausparSchedule(array $loan, ?string $asOfDate = null): array
+{
+    $asOf = $asOfDate ?? date('Y-m-d');
+
+    $bausparsumme   = (float) $loan['principal'];           // total target
+    $guthabenzins   = (float) $loan['interest_rate'] / 100 / 12; // monthly savings interest
+    $sparrate       = (float) $loan['monthly_rate'];        // monthly deposit
+    $minPct         = max(1.0, (float) ($loan['bausparen_min_savings_pct'] ?? 40));
+    $minSavings     = $bausparsumme * $minPct / 100;
+    $loanRateMonthly = (float) ($loan['bausparen_loan_rate'] ?? 0) / 100 / 12;
+    $loanMonthly    = (float) ($loan['bausparen_loan_monthly'] ?? 0);
+
+    $result = [
+        'error' => null,
+        'loan_type' => 'bausparen',
+        'savings_rows' => [],
+        'payout_date' => null,
+        'accumulated_savings' => 0.0,
+        'loan_amount' => 0.0,
+        'total_savings_interest' => 0.0,
+        'repayment_rows' => [],
+        'payoff_date' => null,
+        'total_loan_interest' => 0.0,
+        'phase' => 'savings',
+        'balance_as_of' => 0.0,
+        'paid_principal_as_of' => 0.0,
+        'paid_interest_as_of' => 0.0,
+        'months_total' => 0,
+    ];
+
+    if ($bausparsumme <= 0 || $sparrate <= 0) {
+        $result['error'] = 'invalid_loan_parameters';
+        return $result;
+    }
+
+    // ── Phase 1: Sparphase ────────────────────────────────────────────────
+    $startDay = (int) (new DateTime($loan['start_date']))->format('d');
+    $savings = 0.0;
+    $totalSavingsInterest = 0.0;
+    $n = 0;
+    $payoutDateStr = null;
+
+    while ($savings < $minSavings && $n < 1200) {
+        $n++;
+        $payDate = new DateTime($loan['start_date']);
+        $payDate->modify('first day of this month');
+        $payDate->modify('+' . $n . ' months');
+        $payDate->setDate(
+            (int) $payDate->format('Y'),
+            (int) $payDate->format('m'),
+            min($startDay, (int) $payDate->format('t'))
+        );
+        $payDateStr = $payDate->format('Y-m-d');
+
+        $interestEarned = round($savings * $guthabenzins, 2);
+        $savings = round($savings + $sparrate + $interestEarned, 2);
+        $totalSavingsInterest = round($totalSavingsInterest + $interestEarned, 2);
+
+        $result['savings_rows'][] = [
+            'n' => $n,
+            'date' => $payDateStr,
+            'deposit' => $sparrate,
+            'interest' => $interestEarned,
+            'balance' => $savings,
+        ];
+
+        if ($payDateStr <= $asOf) {
+            $result['balance_as_of'] = $savings;
+        }
+    }
+
+    $payoutDateStr = end($result['savings_rows'])['date'] ?? null;
+    $result['payout_date'] = $payoutDateStr;
+    $result['accumulated_savings'] = $savings;
+    $result['total_savings_interest'] = $totalSavingsInterest;
+
+    if ($payoutDateStr !== null && $asOf >= $payoutDateStr) {
+        $result['phase'] = 'repayment';
+    }
+
+    $loanAmount = max(0.0, round($bausparsumme - $savings, 2));
+    $result['loan_amount'] = $loanAmount;
+
+    if ($loanAmount <= 0.005) {
+        $result['payoff_date'] = $payoutDateStr;
+        $result['months_total'] = count($result['savings_rows']);
+        return $result;
+    }
+
+    // ── Phase 3: Tilgungsphase ────────────────────────────────────────────
+    if ($loanMonthly <= 0) {
+        $result['error'] = 'no_repayment_rate';
+        return $result;
+    }
+
+    $payoutDt = new DateTime($payoutDateStr);
+    $payoutStartDay = (int) $payoutDt->format('d');
+    $balance = $loanAmount;
+    $m = 0;
+    $totalLoanInterest = 0.0;
+
+    // Reset repayment as_of tracking
+    $result['paid_principal_as_of'] = 0.0;
+    $result['paid_interest_as_of'] = 0.0;
+
+    if ($result['phase'] === 'repayment') {
+        $result['balance_as_of'] = $loanAmount; // refined below
+    }
+
+    while ($balance > 0.005 && $m < 1200) {
+        $m++;
+        $payDate = new DateTime($payoutDateStr);
+        $payDate->modify('first day of this month');
+        $payDate->modify('+' . $m . ' months');
+        $payDate->setDate(
+            (int) $payDate->format('Y'),
+            (int) $payDate->format('m'),
+            min($payoutStartDay, (int) $payDate->format('t'))
+        );
+        $payDateStr2 = $payDate->format('Y-m-d');
+
+        $interest = round($balance * $loanRateMonthly, 2);
+        $principalPart = round(min($loanMonthly - $interest, $balance), 2);
+
+        if ($principalPart <= 0) {
+            $result['error'] = 'rate_below_interest';
+            return $result;
+        }
+
+        $balance = round($balance - $principalPart, 2);
+        $totalLoanInterest = round($totalLoanInterest + $interest, 2);
+
+        $result['repayment_rows'][] = [
+            'n' => $m,
+            'date' => $payDateStr2,
+            'payment' => round($interest + $principalPart, 2),
+            'interest' => $interest,
+            'principal' => $principalPart,
+            'balance' => max($balance, 0.0),
+        ];
+
+        if ($payDateStr2 <= $asOf) {
+            $result['balance_as_of'] = max($balance, 0.0);
+            $result['paid_principal_as_of'] = round($result['paid_principal_as_of'] + $principalPart, 2);
+            $result['paid_interest_as_of'] = round($result['paid_interest_as_of'] + $interest, 2);
+        }
+
+        if ($balance <= 0.005) {
+            $result['payoff_date'] = $payDateStr2;
+            break;
+        }
+    }
+
+    if ($result['payoff_date'] === null && count($result['repayment_rows']) > 0) {
+        $result['payoff_date'] = end($result['repayment_rows'])['date'];
+    }
+
+    $result['total_loan_interest'] = $totalLoanInterest;
+    $result['months_total'] = count($result['savings_rows']) + count($result['repayment_rows']);
+    return $result;
+}
