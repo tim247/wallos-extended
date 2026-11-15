@@ -280,4 +280,6 @@ let i18n = {
   tariff_new: "Neuer Tarif",
   tariff_saving: "Ersparnis",
   tariff_more: "Mehrkosten",
+  file_expires: "Läuft ab (Garantie)",
+  reading_value_missing: "Bitte einen Zählerstand eingeben.",
 }

@@ -450,6 +450,7 @@ function editCategory(categoryId) {
       action: 'edit',
       categoryId: categoryId,
       name: categoryName,
+      budget: document.querySelector(`div[data-categoryid="${categoryId}"] input[name="budget"]`)?.value ?? "",
     }),
   })
     .then(response => {

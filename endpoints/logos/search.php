@@ -1,4 +1,10 @@
 <?php
+// Logged-in users only: unauthenticated, this was an open proxy to the image search engines.
+require_once '../../includes/connect_endpoint.php';
+if (empty($userId)) {
+    http_response_code(401);
+    exit;
+}
 require_once '../../includes/ssrf_helper.php';
 
 if (isset($_GET['search'])) {

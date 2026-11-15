@@ -411,9 +411,9 @@ $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
 </section>
 
 <?php require 'includes/cancellation_modal.php'; ?>
-<script src="scripts/paperless.js?<?= $version ?>"></script>
-<script src="scripts/files.js?<?= $version ?>"></script>
-<script src="scripts/insurance.js?<?= $version ?>"></script>
+<script src="scripts/paperless.js?<?= $assetVersion ?>"></script>
+<script src="scripts/files.js?<?= $assetVersion ?>"></script>
+<script src="scripts/insurance.js?<?= $assetVersion ?>"></script>
 <?php
 $db->close();
 require_once 'includes/footer.php';

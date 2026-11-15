@@ -1111,6 +1111,45 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
     $canTranslateCategories = !empty($aiSettings['enabled']) && !empty($aiSettings['model']) && $lang != 'en';
     ?>
 
+    <?php
+    $viewerStmt = $db->prepare('SELECT id, username FROM user WHERE readonly_of = :userId ORDER BY username');
+    $viewerStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $viewerResult = $viewerStmt->execute();
+    $viewers = [];
+    while ($viewerRow = $viewerResult->fetchArray(SQLITE3_ASSOC)) {
+        $viewers[] = $viewerRow;
+    }
+    ?>
+    <section class="account-section">
+        <header>
+            <h2><?= translate('readonly_access', $i18n) ?></h2>
+        </header>
+        <p class="settings-notes"><i class="fa-solid fa-circle-info"></i> <?= translate('readonly_access_info', $i18n) ?></p>
+        <?php foreach ($viewers as $viewer): ?>
+            <div class="form-group-inline">
+                <input type="text" readonly value="<?= htmlspecialchars($viewer['username']) ?>">
+                <button class="image-button medium" onclick="readonlyAccount({action: 'delete', id: <?= (int) $viewer['id'] ?>})"
+                    title="<?= translate('delete', $i18n) ?>"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+        <?php endforeach; ?>
+        <div class="form-group-inline">
+            <input type="text" id="readonlyUsername" autocomplete="off" placeholder="<?= translate('username', $i18n) ?>">
+            <input type="password" id="readonlyPassword" autocomplete="new-password" placeholder="<?= translate('password', $i18n) ?> (min. 10)">
+            <input type="button" class="thin" value="<?= translate('add', $i18n) ?>"
+                onclick="readonlyAccount({username: document.getElementById('readonlyUsername').value, password: document.getElementById('readonlyPassword').value})">
+        </div>
+        <script>
+            function readonlyAccount(body) {
+                fetch('endpoints/settings/readonlyaccounts.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+                    body: JSON.stringify(body),
+                }).then(r => r.json()).then(data => data.success ? location.reload() : showErrorMessage(data.message))
+                    .catch(() => showErrorMessage(translate('unknown_error')));
+            }
+        </script>
+    </section>
+
     <section class="account-section">
         <header>
             <h2><?= translate('categories', $i18n) ?></h2>
@@ -1138,6 +1177,9 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
                             <div class=" drag-icon"><i class="fa-solid fa-grip-vertical"></i></div>
                             <input type="text" name="category" autocomplete="off" value="<?= htmlspecialchars($category['name']) ?>"
                                 placeholder="Category">
+                            <input type="number" name="budget" class="category-budget" min="0" step="1" autocomplete="off"
+                                value="<?= (float) ($category['budget'] ?? 0) ?: '' ?>"
+                                placeholder="<?= translate('budget', $i18n) ?>" title="<?= translate('category_budget_info', $i18n) ?>">
                             <button class="image-button medium" onClick="editCategory(<?= $category['id'] ?>)" name="save"
                                 title="<?= translate('save_category', $i18n) ?>">
                                 <i class="fa-solid fa-check"></i>
@@ -1911,7 +1953,7 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
     $paperlessSettings = $paperlessRow->execute()->fetchArray(SQLITE3_ASSOC) ?: ['url' => '', 'token' => '', 'enabled' => 0];
     ?>
     <?php
-    $haStmt = $db->prepare('SELECT url, token, enabled FROM homeassistant_settings WHERE user_id = :userId');
+    $haStmt = $db->prepare('SELECT * FROM homeassistant_settings WHERE user_id = :userId');
     $haStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
     $haSettings = $haStmt->execute()->fetchArray(SQLITE3_ASSOC) ?: ['url' => '', 'token' => '', 'enabled' => 0];
     ?>
@@ -1931,6 +1973,10 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
             <div class="form-group-inline">
                 <input type="password" id="ha_token" autocomplete="off"
                     placeholder="<?= translate($haSettings['token'] !== '' ? 'ha_token_saved' : 'ha_api_token', $i18n) ?>" />
+            </div>
+            <div class="form-group-inline">
+                <input type="text" id="ha_notify_service" autocomplete="off" placeholder="<?= translate('ha_notify_service', $i18n) ?>"
+                    value="<?= htmlspecialchars($haSettings['notify_service'] ?? '') ?>" title="<?= translate('ha_notify_service_info', $i18n) ?>" />
             </div>
             <div class="buttons">
                 <input type="button" class="secondary-button thin" value="<?= translate('test', $i18n) ?>" onClick="testHomeAssistantSettings()" />
@@ -2001,11 +2047,11 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
     // Authorization header's "k=" parameter are handed too.
     window.vapidPublicKey = "<?= htmlspecialchars($vapidPublicKey, ENT_QUOTES, 'UTF-8') ?>";
 </script>
-<script src="scripts/settings.js?<?= $version ?>"></script>
-<script src="scripts/paperless.js?<?= $version ?>"></script>
-<script src="scripts/homeassistant.js?<?= $version ?>"></script>
-<script src="scripts/theme.js?<?= $version ?>"></script>
-<script src="scripts/notifications.js?<?= $version ?>"></script>
+<script src="scripts/settings.js?<?= $assetVersion ?>"></script>
+<script src="scripts/paperless.js?<?= $assetVersion ?>"></script>
+<script src="scripts/homeassistant.js?<?= $assetVersion ?>"></script>
+<script src="scripts/theme.js?<?= $assetVersion ?>"></script>
+<script src="scripts/notifications.js?<?= $assetVersion ?>"></script>
 
 <?php
 require_once 'includes/footer.php';

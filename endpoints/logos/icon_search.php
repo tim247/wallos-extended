@@ -1,4 +1,10 @@
 <?php
+// Logged-in users only: unauthenticated, this was an open proxy to the image search engines.
+require_once '../../includes/connect_endpoint.php';
+if (empty($userId)) {
+    http_response_code(401);
+    exit;
+}
 /*
   Icon search backed by the selfh.st and Dashboard Icons (homarr-labs) collections.
   Both are GitHub-backed icon sets served over jsDelivr with a machine-readable index,

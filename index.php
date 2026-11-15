@@ -9,6 +9,7 @@ require_once 'includes/logo_theme_variant.php';
 require_once 'includes/html_text.php';
 require_once 'includes/upcoming_payments.php';
 require_once 'includes/upcoming_cancellations.php';
+require_once 'includes/household_costs.php';
 
 function formatPrice($price, $currencyCode, $currencies)
 {
@@ -356,6 +357,24 @@ foreach ($loanProgress as $loan) {
     }
 }
 
+// Deadlines & maintenance inside their reminder window (overdue ones too).
+require_once 'includes/life_admin.php';
+$reminderStmt = $db->prepare("SELECT * FROM reminders WHERE user_id = :userId AND due_date IS NOT NULL
+    AND due_date <= date('now', '+' || notify_days_before || ' days') ORDER BY due_date");
+$reminderStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$reminderResult = $reminderStmt->execute();
+while ($reminderResult && $reminder = $reminderResult->fetchArray(SQLITE3_ASSOC)) {
+    $upcomingEvents[] = [
+        'type' => 'reminder',
+        'icon' => REMINDER_CATEGORIES[$reminder['category']][1] ?? 'fa-calendar-check',
+        'name' => $reminder['name'] . ($reminder['holder'] !== '' ? ' · ' . $reminder['holder'] : ''),
+        'date' => $reminder['due_date'],
+        'detail' => translate('reminder_cat_' . $reminder['category'], $i18n),
+        'link' => 'reminders.php',
+        'class' => $reminder['due_date'] < $today ? 'warning' : '',
+    ];
+}
+
 // End of a fixed-interest period within the next 12 months.
 foreach ($loanProgress as $loan) {
     if (!empty($loan['fixed_interest_end']) && $loan['fixed_interest_end'] >= $today && $loan['fixed_interest_end'] <= date('Y-m-d', strtotime('+12 months'))) {
@@ -419,6 +438,45 @@ while ($result && $row = $result->fetchArray(SQLITE3_ASSOC)) {
     if ($row['name'] !== null) {
         $priceIncreases[] = $row;
     }
+}
+
+// First steps: shown until the basics are set up.
+$costItems = householdCostItems($db, $userId);
+$countFor = function (string $sql) use ($db, $userId): int {
+    $stmt = @$db->prepare($sql);
+    if (!$stmt) {
+        return 0;
+    }
+    $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    return (int) ($stmt->execute()->fetchArray()[0] ?? 0);
+};
+$notificationTables = ['email', 'discord', 'gotify', 'telegram', 'pushover', 'ntfy', 'webhook'];
+$notificationsOn = array_sum(array_map(fn($t) => $countFor("SELECT COUNT(*) FROM {$t}_notifications WHERE user_id = :userId AND enabled = 1"), $notificationTables)) > 0;
+$firstSteps = [
+    ['currency', 'settings.php', true],
+    ['household', 'settings.php', $countFor('SELECT COUNT(*) FROM household WHERE user_id = :userId') > 1],
+    ['notifications', 'settings.php', $notificationsOn],
+    ['first_entries', 'import.php', count($costItems) >= 3],
+];
+$showFirstSteps = count(array_filter(array_column($firstSteps, 2))) < count($firstSteps) && count($costItems) < 10;
+
+// Hints: system health (admin only), categories over budget and basic insurances that are missing.
+$householdHints = [];
+if ($isAdmin) {
+    require_once 'includes/system_health.php';
+    foreach (systemHealthIssues($db) as $issue) {
+        $householdHints[] = ['fa-triangle-exclamation', sprintf(translate($issue['key'], $i18n),
+            $issue['since'] ? date('d.m.Y', strtotime($issue['since'])) : '–'), 'admin.php'];
+    }
+}
+foreach (categoryBudgets($db, $userId, $costItems) as $cb) {
+    if ($cb['spent'] > $cb['budget']) {
+        $householdHints[] = ['fa-wallet', sprintf(translate('category_over_budget', $i18n), $cb['name'],
+            CurrencyFormatter::format($cb['spent'], $mainCurrencyCode), CurrencyFormatter::format($cb['budget'], $mainCurrencyCode)), 'settings.php'];
+    }
+}
+foreach (missingInsurances($db, $userId) as $type) {
+    $householdHints[] = ['fa-shield-halved', sprintf(translate('insurance_missing', $i18n), translate('insurance_type_' . $type, $i18n)), 'insurance.php'];
 }
 
 usort($upcomingEvents, fn($a, $b) => strcmp($a['date'], $b['date']));
@@ -488,11 +546,35 @@ if ($consumptionMonthly > 0) {
     ?>
     <h1><?= translate('hello', $i18n) ?> <?= htmlspecialchars($first_name) ?></h1>
 
+    <form class="dashboard-search" action="search.php" method="get" role="search"
+      data-empty="<?= htmlspecialchars(translate('search_no_results', $i18n)) ?>"
+      data-all="<?= htmlspecialchars(translate('search_show_all', $i18n)) ?>">
+      <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+      <input type="search" name="q" autocomplete="off" minlength="2" role="combobox" aria-expanded="false"
+        aria-controls="dashboard-search-results" aria-autocomplete="list"
+        aria-label="<?= translate('search', $i18n) ?>" placeholder="<?= translate('search_placeholder', $i18n) ?>">
+      <kbd class="dashboard-search-key" aria-hidden="true">/</kbd>
+      <div class="dashboard-search-results" id="dashboard-search-results" role="listbox" hidden></div>
+    </form>
+
     <div class="statistics dashboard-tiles">
         <div class="statistic highlight">
             <span><?= CurrencyFormatter::format($totalMonthlyBurden, $mainCurrencyCode) ?></span>
             <div class="title"><?= translate('total_monthly_burden', $i18n) ?></div>
         </div>
+        <?php
+        require_once 'includes/finances.php';
+        $dashIncome = array_sum(array_column(financeIncomes($db, $userId), 'monthly'));
+        if ($dashIncome > 0):
+            // Same basis as finances.php and the report (household_costs.php).
+            $dashLeft = $dashIncome - array_sum(array_column($costItems, 'monthly'))
+                - array_sum(array_column(financeExpenses($db, $userId), 'monthly')) - array_sum(array_column(financeGoals($db, $userId), 'monthly_needed'));
+            ?>
+            <a class="statistic <?= $dashLeft < 0 ? 'negative' : '' ?>" href="finances.php">
+                <span><?= CurrencyFormatter::format($dashLeft, $mainCurrencyCode) ?></span>
+                <div class="title"><i class="fa-solid fa-sack-dollar"></i> <?= translate('left_monthly', $i18n) ?></div>
+            </a>
+        <?php endif; ?>
         <a class="statistic" href="subscriptions.php">
             <span><?= CurrencyFormatter::format($subscriptionsMonthly, $mainCurrencyCode) ?></span>
             <div class="title"><i class="fa-solid fa-credit-card"></i> <?= translate('subscriptions', $i18n) ?>
@@ -601,6 +683,28 @@ if ($consumptionMonthly > 0) {
                 </ul>
             <?php endif; ?>
         </div>
+
+        <?php if ($showFirstSteps): ?>
+            <div class="dashboard-panel">
+                <h2><i class="fa-solid fa-flag-checkered"></i> <?= translate('first_steps', $i18n) ?></h2>
+                <ul class="savings-list">
+                    <?php foreach ($firstSteps as [$key, $link, $done]): ?>
+                        <li><a href="<?= $link ?>"><i class="fa-<?= $done ? 'solid fa-circle-check' : 'regular fa-circle' ?>"></i> <?= translate('first_step_' . $key, $i18n) ?></a></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($householdHints)): ?>
+            <div class="dashboard-panel">
+                <h2><i class="fa-solid fa-lightbulb"></i> <?= translate('household_hints', $i18n) ?></h2>
+                <ul class="savings-list">
+                    <?php foreach ($householdHints as [$icon, $text, $link]): ?>
+                        <li><a href="<?= $link ?>"><i class="fa-solid <?= $icon ?>"></i> <?= htmlspecialchars($text) ?></a></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
 
         <?php if (!empty($priceIncreases)): ?>
             <div class="dashboard-panel">
@@ -908,8 +1012,9 @@ if ($consumptionMonthly > 0) {
 
 </section>
 
+<script src="scripts/dashboard-search.js?<?= $assetVersion ?>"></script>
 <script src="scripts/libs/apexcharts.min.js"></script>
-<script src="scripts/apex-base.js?<?= $version ?>"></script>
+<script src="scripts/apex-base.js?<?= $assetVersion ?>"></script>
 <script type="text/javascript">
     window.dashboardData = {
         burdenSplit: <?= json_encode($burdenSplitDataPoints, JSON_NUMERIC_CHECK) ?>,
@@ -943,7 +1048,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 require_once 'includes/subscription_details_popup.php';
 ?>
 
-<script src="scripts/dashboard.js?<?= $version ?>"></script>
+<script src="scripts/dashboard.js?<?= $assetVersion ?>"></script>
 
 <?php
 require_once 'includes/footer.php';

@@ -34,7 +34,16 @@ function filesRefresh() {
         if (!confirm(translate("delete") + ": " + file.filename + "?")) return;
         filesPost("delete", { id: file.id }).then(filesRefresh);
       };
-      li.append(link, meta, del);
+      // Optional expiry (warranty): a reminder is sent 30 days before.
+      const expiry = document.createElement("input");
+      expiry.type = "date";
+      expiry.className = "files-expiry";
+      expiry.title = translate("file_expires");
+      expiry.value = file.expires_at || "";
+      expiry.onchange = () => filesPost("expiry", { id: file.id, expires_at: expiry.value }).then((data) => {
+        if (!data.success) showErrorMessage(data.message || translate("unknown_error"));
+      });
+      li.append(link, meta, expiry, del);
       list.append(li);
     });
   });

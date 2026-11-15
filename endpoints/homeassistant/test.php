@@ -18,7 +18,16 @@ if ($cfg['url'] === '' || $cfg['token'] === '' || !filter_var($cfg['url'], FILTE
 
 // GET /api/ answers {"message": "API running."} for a valid token.
 $result = homeAssistantGet($cfg, $userId, '/api/');
-echo json_encode(isset($result['error'])
-    ? ['success' => false, 'message' => translate('ha_error_' . $result['error'], $i18n)]
-    : ['success' => true, 'message' => translate('ha_connection_ok', $i18n)]);
+if (isset($result['error'])) {
+    die(json_encode(['success' => false, 'message' => translate('ha_error_' . $result['error'], $i18n)]));
+}
+// With a notify service entered: send a test message to the phone as well.
+$service = preg_replace('/^notify\./', '', strtolower(trim((string) ($data['notify_service'] ?? ''))));
+if ($service !== '') {
+    $error = homeAssistantNotify($cfg, $userId, $service, 'Wallos Extended', translate('ha_notify_test_message', $i18n));
+    die(json_encode($error === ''
+        ? ['success' => true, 'message' => translate('ha_notify_test_sent', $i18n)]
+        : ['success' => false, 'message' => translate('ha_error_' . $error, $i18n)]));
+}
+echo json_encode(['success' => true, 'message' => translate('ha_connection_ok', $i18n)]);
 $db->close();

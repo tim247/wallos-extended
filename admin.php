@@ -775,6 +775,17 @@ $loginDisabledAllowed = $userCount == 1 && $settings['registrations_open'] == 0;
         <div class="form-group-inline">
             <label for="backupKeep"><?= translate('auto_backup_keep', $i18n) ?></label>
             <input type="number" id="backupKeep" min="0" max="365" value="<?= (int) ($settings['backup_keep'] ?? 14) ?>" style="max-width: 90px">
+        </div>
+        <div class="form-group">
+            <label for="backupWebdavUrl"><?= translate('auto_backup_webdav', $i18n) ?></label>
+            <input type="url" id="backupWebdavUrl" placeholder="https://cloud.example.com/remote.php/dav/files/user/Backups"
+                value="<?= htmlspecialchars($settings['backup_webdav_url'] ?? '') ?>">
+        </div>
+        <div class="form-group-inline">
+            <input type="text" id="backupWebdavUser" autocomplete="off" placeholder="<?= translate('username', $i18n) ?>"
+                value="<?= htmlspecialchars($settings['backup_webdav_user'] ?? '') ?>">
+            <input type="password" id="backupWebdavPassword" autocomplete="new-password"
+                placeholder="<?= !empty($settings['backup_webdav_password']) ? '••••••••' : translate('password', $i18n) ?>">
             <input type="button" class="thin" value="<?= translate('save', $i18n) ?>" onClick="saveBackupSettings()">
         </div>
         <div class="settings-notes">
@@ -792,8 +803,45 @@ $loginDisabledAllowed = $userCount == 1 && $settings['registrations_open'] == 0;
         </div>
     </section>
 
+    <?php
+    // System status: is everything running? Cron jobs log to /var/log/cron (Docker and LXC).
+    $dbFile = __DIR__ . '/db/wallos.db';
+    $cronLogs = glob('/var/log/cron/*.log') ?: [];
+    $lastLine = function (string $file): string {
+        $lines = @file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        return mb_substr(trim((string) end($lines)), 0, 160);
+    };
+    ?>
+    <section class="account-section">
+        <header>
+            <h2><?= translate('system_status', $i18n) ?></h2>
+        </header>
+        <table class="bank-table">
+            <tr><td><?= translate('version', $i18n) ?></td><td><?= htmlspecialchars($extRelease ?: $version) ?>, PHP <?= PHP_VERSION ?>, SQLite <?= SQLite3::version()['versionString'] ?></td></tr>
+            <tr><td><?= translate('database', $i18n) ?></td><td><?= number_format(filesize($dbFile) / 1048576, 1, ',', '.') ?> MB</td></tr>
+            <tr><td><?= translate('disk_free', $i18n) ?></td><td><?= number_format((disk_free_space(__DIR__ . '/db') ?: 0) / 1073741824, 1, ',', '.') ?> GB</td></tr>
+            <tr class="<?= $autoBackups && filemtime($autoBackups[0]) > time() - 2 * 86400 ? '' : 'warning' ?>">
+                <td><?= translate('auto_backup_last', $i18n) ?></td>
+                <td><?= $autoBackups ? date('d.m.Y H:i', filemtime($autoBackups[0])) : '–' ?></td></tr>
+        </table>
+        <?php if ($cronLogs): ?>
+            <h3><?= translate('cron_jobs', $i18n) ?></h3>
+            <table class="bank-table">
+                <?php foreach ($cronLogs as $log): $age = time() - filemtime($log); ?>
+                    <tr class="<?= $age > 8 * 86400 ? 'warning' : '' ?>">
+                        <td><?= htmlspecialchars(basename($log, '.log')) ?></td>
+                        <td><?= date('d.m.Y H:i', filemtime($log)) ?></td>
+                        <td><small><?= htmlspecialchars($lastLine($log)) ?></small></td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+        <?php else: ?>
+            <p class="settings-notes"><i class="fa-solid fa-circle-info"></i> <?= translate('cron_logs_missing', $i18n) ?></p>
+        <?php endif; ?>
+    </section>
+
 </section>
-<script src="scripts/admin.js?<?= $version ?>"></script>
+<script src="scripts/admin.js?<?= $assetVersion ?>"></script>
 
 <?php
 require_once 'includes/footer.php';

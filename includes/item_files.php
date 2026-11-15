@@ -2,7 +2,7 @@
 // Documents uploaded directly to a contract, insurance or loan (no Paperless needed).
 // Stored under db/files/ (persistent volume, blocked by nginx) with a random name.
 
-const ITEM_FILE_TYPES = ['contract' => 'contracts', 'insurance' => 'insurances', 'loan' => 'loans'];
+const ITEM_FILE_TYPES = ['contract' => 'contracts', 'insurance' => 'insurances', 'loan' => 'loans', 'inventory' => 'inventory'];
 const ITEM_FILE_MAX_BYTES = 20 * 1024 * 1024;
 const ITEM_FILE_EXTENSIONS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'txt', 'doc', 'docx', 'xls', 'xlsx', 'odt', 'ods', 'eml', 'msg'];
 

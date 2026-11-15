@@ -72,6 +72,11 @@ server {
     index index.php;
     client_max_body_size 64M;
 
+    # No framing by other sites (clickjacking), no MIME sniffing, no full URLs (share tokens) to other sites.
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+
     location / {
         try_files \$uri \$uri/ /index.php?\$args;
     }

@@ -7,6 +7,12 @@ $data = json_decode(file_get_contents('php://input'), true) ?? [];
 $url = rtrim(trim($data['url'] ?? ''), '/');
 $token = trim($data['token'] ?? '');
 $enabled = !empty($data['enabled']) ? 1 : 0;
+// notify.<service> for reminders, e.g. mobile_app_pixel_7 (empty = no notifications).
+$notifyService = preg_replace('/^notify\./', '', strtolower(trim((string) ($data['notify_service'] ?? ''))));
+if ($notifyService !== '' && !preg_match('/^[a-z0-9_]+$/', $notifyService)) {
+    echo json_encode(['success' => false, 'message' => translate('ha_error_invalid_entity', $i18n)]);
+    exit;
+}
 
 // An empty token field keeps the stored one (it is never sent back to the browser).
 $stmt = $db->prepare("SELECT token FROM homeassistant_settings WHERE user_id = :userId");
@@ -33,7 +39,14 @@ $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
 $stmt->bindValue(':url', $url, SQLITE3_TEXT);
 $stmt->bindValue(':token', $token, SQLITE3_TEXT);
 $stmt->bindValue(':enabled', $enabled, SQLITE3_INTEGER);
-echo json_encode($stmt->execute()
+$saved = $stmt->execute();
+if ($saved) {
+    $serviceStmt = $db->prepare('UPDATE homeassistant_settings SET notify_service = :service WHERE user_id = :userId');
+    $serviceStmt->bindValue(':service', $notifyService, SQLITE3_TEXT);
+    $serviceStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $saved = $serviceStmt->execute();
+}
+echo json_encode($saved
     ? ['success' => true, 'message' => translate('ha_saved', $i18n)]
     : ['success' => false, 'message' => translate('error', $i18n)]);
 $db->close();

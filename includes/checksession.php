@@ -93,4 +93,31 @@ if (isset($_GET['code']) && isset($_GET['state'])) {
 }
 
 
+// Read-only account: read the owner's data, only on the allowed pages.
+require_once __DIR__ . '/readonly_account.php';
+$isReadOnlyAccount = false;
+if (!empty($userData['readonly_of'])) {
+    $ownerStmt = $db->prepare('SELECT * FROM user WHERE id = :id AND readonly_of IS NULL');
+    $ownerStmt->bindValue(':id', (int) $userData['readonly_of'], SQLITE3_INTEGER);
+    $ownerData = $ownerStmt->execute()->fetchArray(SQLITE3_ASSOC);
+    if (!$ownerData) {
+        header('Location: logout.php');
+        exit();
+    }
+    if (!readonlyAllows(readonlyCurrentScript())) {
+        header('Location: index.php');
+        exit();
+    }
+    $isReadOnlyAccount = true;
+    $readOnlyViewerName = $userData['username'];
+    $ownerData['avatar'] = $ownerData['avatar'] ?: '0';
+    $userData = $ownerData;
+    $userId = (int) $ownerData['id'];
+    $main_currency = $ownerData['main_currency'];
+} else {
+    // Inactivity guard: the owner is here today (a read-only login does not count).
+    require_once __DIR__ . '/deadman.php';
+    deadmanTouch($db, (int) $userId, $userData['last_seen'] ?? null);
+}
+
 ?>

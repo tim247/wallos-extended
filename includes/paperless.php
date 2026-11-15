@@ -74,7 +74,8 @@ function paperlessCheckUrl(string $url, int $userId)
  * GET request against the Paperless API with token authentication.
  * @return array{status:int, body:string, type:string, disposition:string, error:string}
  */
-function paperlessRequest(array $cfg, int $userId, string $path, array $query = [], string $authScheme = 'Token'): array
+/** $jsonBody: POST it as JSON instead of a GET (Home Assistant notify services). */
+function paperlessRequest(array $cfg, int $userId, string $path, array $query = [], string $authScheme = 'Token', ?array $jsonBody = null): array
 {
     $result = ['status' => 0, 'body' => '', 'type' => '', 'disposition' => '', 'error' => ''];
     $base = rtrim($cfg['url'], '/');
@@ -104,6 +105,11 @@ function paperlessRequest(array $cfg, int $userId, string $path, array $query = 
             return strlen($line);
         },
     ]);
+    if ($jsonBody !== null) {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($jsonBody));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: ' . $authScheme . ' ' . $cfg['token'], 'Accept: application/json', 'Content-Type: application/json']);
+    }
     $body = curl_exec($ch);
     if ($body === false) {
         $result['error'] = 'connection_failed';

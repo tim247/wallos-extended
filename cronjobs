@@ -13,3 +13,4 @@
 0 4 1 * * /usr/local/bin/php /var/www/html/endpoints/cronjobs/generaterecommendations.php monthly >> /var/log/cron/generaterecommendations.log 2>&1
 55 23 * * * /usr/local/bin/php /var/www/html/endpoints/cronjobs/importhomeassistant.php >> /var/log/cron/importhomeassistant.log 2>&1
 15 3 * * * /usr/local/bin/php /var/www/html/endpoints/cronjobs/autobackup.php >> /var/log/cron/autobackup.log 2>&1
+0 10 * * * /usr/local/bin/php /var/www/html/endpoints/cronjobs/deadmanswitch.php >> /var/log/cron/deadmanswitch.log 2>&1

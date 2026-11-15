@@ -224,6 +224,15 @@ if ($userId == 1) {
         'DELETE FROM paperless_settings WHERE user_id = :id',
         'DELETE FROM homeassistant_settings WHERE user_id = :id',
         'DELETE FROM letter_profiles WHERE user_id = :id',
+        'DELETE FROM audit_log WHERE user_id = :id', // last: the deletes above write to it
+        'DELETE FROM user WHERE readonly_of = :id', // read-only logins of this account
+        'DELETE FROM incomes WHERE user_id = :id',
+        'DELETE FROM savings_goals WHERE user_id = :id',
+        'DELETE FROM variable_expenses WHERE user_id = :id',
+        'DELETE FROM reminders WHERE user_id = :id',
+        'DELETE FROM inventory WHERE user_id = :id',
+        'DELETE FROM emergency_notes WHERE user_id = :id',
+        'DELETE FROM deadman_settings WHERE user_id = :id',
     ];
     foreach ($extensionDeletes as $sql) {
         $stmt = $db->prepare($sql);

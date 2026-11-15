@@ -121,6 +121,10 @@ function wallos_test_database()
             }
             copy(WALLOS_ROOT . '/endpoints/cronjobs/createdatabase.php', $sandbox . '/endpoints/cronjobs/createdatabase.php');
             copy(WALLOS_ROOT . '/includes/run_migrations.php', $sandbox . '/includes/run_migrations.php');
+            // Migrations may load helpers from includes/ (000058: cancellation_letter.php, which loads pdf_letter.php).
+            foreach (['cancellation_letter.php', 'pdf_letter.php'] as $helper) {
+                copy(WALLOS_ROOT . '/includes/' . $helper, $sandbox . '/includes/' . $helper);
+            }
         }
 
         $databaseFile = $sandbox . '/db/wallos.db';

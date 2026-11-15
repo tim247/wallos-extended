@@ -702,7 +702,12 @@ function saveBackupSettings() {
   fetch("endpoints/admin/savebackupsettings.php", {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-CSRF-Token": window.csrfToken },
-    body: JSON.stringify({ keep: document.getElementById("backupKeep").value }),
+    body: JSON.stringify({
+      keep: document.getElementById("backupKeep").value,
+      webdav_url: document.getElementById("backupWebdavUrl").value,
+      webdav_user: document.getElementById("backupWebdavUser").value,
+      webdav_password: document.getElementById("backupWebdavPassword").value,
+    }),
   })
     .then((response) => response.json())
     .then((data) => (data.success ? showSuccessMessage(data.message) : showErrorMessage(data.message)))

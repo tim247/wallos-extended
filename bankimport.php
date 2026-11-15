@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($bookings === []) {
       $error = translate('bank_import_unreadable', $i18n);
     } else {
-      $result = bankCompare($bookings, householdCostItems($db, $userId));
+      $result = bankCompare($bookings, array_values(array_filter(householdCostItems($db, $userId), fn($item) => empty($item['estimate']))));
       $result['count'] = count($bookings);
     }
   }

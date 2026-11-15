@@ -14,6 +14,7 @@ Eine Kurzfassung gibt es in der App selbst unter *Menü → Hilfe*.
 6. [Weitere Benachrichtigungen](#6-weitere-benachrichtigungen)
 7. [Sicherung und Wiederherstellung](#7-sicherung-und-wiederherstellung)
 8. [Automatische Aufgaben](#8-automatische-aufgaben)
+   - [Weitere Werkzeuge](#8a-weitere-werkzeuge) · [Haushalt & Vorsorge](#8b-haushalt--vorsorge)
 9. [Fehlersuche](#9-fehlersuche)
 
 ---
@@ -40,7 +41,7 @@ Eine Kurzfassung gibt es in der App selbst unter *Menü → Hilfe*.
 
 | Bereich | Wofür | Besonderheiten |
 |---|---|---|
-| **Dashboard** | Monatliche Gesamtbelastung, nächste Zahlungen und Fristen | Kacheln führen in den jeweiligen Bereich |
+| **Dashboard** | Monatliche Gesamtbelastung, nächste Zahlungen und Fristen | Suche ganz oben, Kacheln führen in den jeweiligen Bereich, Hinweise (Budget, fehlende Versicherungen, Systemstatus) |
 | **Abonnements** | Streaming, Software, Mitgliedschaften … | Preisverlauf, Archiv, mehrere Kategorien/Zahler, Massenaktionen, „bezahlt“ markieren |
 | **Verträge** | Strom, Internet, Handy, Fitnessstudio … | Mindestlaufzeit, Verlängerung, Kündigungsfrist, Kündigungsschreiben als PDF |
 | **Versicherungen** | Haftpflicht, Hausrat, Kfz … | wie Verträge, mit Versicherungsnummer |
@@ -51,6 +52,14 @@ Eine Kurzfassung gibt es in der App selbst unter *Menü → Hilfe*.
 | **Statistiken** | Auswertungen | Abschnitt „Haushalt“ über alle Bereiche |
 | **Kostenbericht** | alle laufenden Kosten auf einer Seite | Aufteilung nach Person, Preisänderungen, als PDF speichern |
 | **Kontoabgleich** | Kontoauszug (CSV) gegen erfasste Kosten | findet Preisänderungen und nicht erfasste Abbuchungen |
+| **Einnahmen & Rücklagen** | Budgetplanung: Einnahmen gegen alle Kosten | Budgetplan, Kontoverlauf, Ausblick, Aufteilung im Haushalt, Was-wäre-wenn |
+| **Jahresrückblick** | dein Jahr als Karten | gespart, gekündigt, günstiger geworden, teuerstes Hobby, freigeschaufelte Zeit |
+| **Fristen & Wartung** | Ausweise, Führerschein, Impfungen, TÜV, Heizung, Filter … | Erinnerung vorher, „Erledigt“ plant den nächsten Termin |
+| **Inventar** | was steht wo, was ist es wert | Neuwert und Zeitwert, Standorte, Kaufbelege, Warnung bei Unterversicherung |
+| **Notfall-Dossier** | alles für Angehörige im Notfall | drucken, verschlüsselt exportieren, Inaktivitäts-Wächter |
+
+Das Menü ist in Gruppen geordnet: *Übersicht*, *Laufende Kosten*, *Planung*, *Haushalt & Vorsorge*,
+*Erfassen & Werkzeuge* und *Konto*.
 
 ### Kündigungsschreiben
 
@@ -261,6 +270,16 @@ curl -s -H "Authorization: Bearer DEIN_TOKEN" \
 # erwartet: "state": "12345.67" und "unit_of_measurement": "kWh"
 ```
 
+### Erinnerungen als Home-Assistant-Benachrichtigung
+
+Unter *Einstellungen → Home Assistant* den **Benachrichtigungsdienst** eintragen, z. B.
+`mobile_app_pixel_7` für `notify.mobile_app_pixel_7`. Den Namen findest du in Home Assistant unter
+*Entwicklerwerkzeuge → Aktionen*, wenn du `notify.` eintippst. *Test* schickt eine Probenachricht.
+
+Danach kommen die Erinnerungen von Wallos Extended (Fristen, Kündigungen, Preiserhöhungen, Budgets,
+Wächter …) einmal täglich gebündelt als eine Nachricht. Ein eigener Benachrichtigungskanal unter
+*Benachrichtigungen* ist dafür nicht nötig.
+
 ### Kosten in Home Assistant anzeigen
 
 Umgekehrt kann Home Assistant die Kosten aus Wallos Extended abfragen – z. B. für eine Karte
@@ -418,7 +437,17 @@ Wallos Extended erinnert an
 - fällige Zahlungen von Abonnements,
 - Kündigungsfristen von Verträgen und Versicherungen (einmal pro Frist),
 - das Ende der Zinsbindung einer Finanzierung (12 Monate vorher),
-- überfällige Zählerablesungen (Intervall je Zähler einstellbar).
+- überfällige Zählerablesungen (Intervall je Zähler einstellbar),
+- Preiserhöhungen (einmal je Erhöhung),
+- Fristen & Wartungen (Ausweise, TÜV, Heizung … – Vorlauf je Eintrag einstellbar),
+- ablaufende Garantien und Belegfristen (30 Tage vorher),
+- überschrittene Kategorie-Budgets (höchstens einmal pro Kategorie und Monat),
+- den Inaktivitäts-Wächter (14, 7, 3, 2 und 1 Tag vor dem Versand an die Vertrauensperson),
+- den Jahresabschluss (erste Januarwoche),
+- für den Administrator: eine fehlende nächtliche Sicherung.
+
+Alle diese Erinnerungen außer den Abo-Zahlungen kommen auf Wunsch zusätzlich als
+**Home-Assistant-Benachrichtigung** aufs Handy, siehe Kapitel 4.
 
 ---
 
@@ -452,8 +481,23 @@ die Freigabe des Volumes) und bei *Wiederherstellen* auswählen.
 
 > [!TIP]
 > Die automatischen Sicherungen liegen auf demselben Datenträger wie die Datenbank. Sie schützen
-> vor Bedienfehlern und kaputten Updates, nicht vor einem defekten Datenträger – sichere den Ordner
-> `db` also zusätzlich auf ein anderes Gerät (NAS, Proxmox-Backup).
+> vor Bedienfehlern und kaputten Updates, nicht vor einem defekten Datenträger. Trag deshalb unter
+> *Automatische Sicherung* einen **WebDAV-Ordner** ein (Nextcloud z. B.
+> `https://cloud.example.com/remote.php/dav/files/BENUTZER/Backups`, am besten mit einem
+> App-Passwort): Jede nächtliche Sicherung wird dann zusätzlich dorthin kopiert. Eigene Dokumente
+> (`db/files`) gehen dabei nicht mit – die sichert *Sichern* (ZIP).
+
+### Systemstatus
+
+*Admin → Systemstatus* zeigt Version, Größe der Datenbank, freien Speicher, die letzte Sicherung
+und wann jede Hintergrundaufgabe zuletzt gelaufen ist (mit der letzten Log-Zeile). Rot markiert:
+keine Sicherung in den letzten zwei Tagen bzw. eine Aufgabe, die seit über einer Woche nicht lief.
+
+### Eigene Daten exportieren
+
+*Kostenbericht → ZIP* lädt alle eigenen Daten herunter: eine CSV pro Tabelle (Abos, Verträge,
+Versicherungen, Kredite, Zähler, Zählerstände, Preis-Historie, Änderungsprotokoll …) und die
+hochgeladenen Dokumente. *CSV* liefert nur die Kostenübersicht für Excel.
 
 ### Umstieg vom Original-Wallos
 
@@ -475,7 +519,160 @@ Diese Aufgaben laufen im Hintergrund (in Docker und im LXC-Container bereits ein
 | Benachrichtigungen und Kündigungserinnerungen | täglich |
 | Home-Assistant-Import | täglich 23:55 Uhr |
 | Automatische Sicherung der Datenbank | täglich 3:15 Uhr |
-| Nach neuen Versionen suchen | täglich |
+| Inaktivitäts-Wächter (Versand an die Vertrauensperson) | täglich 10:00 Uhr |
+| Nach neuen Versionen suchen | alle 6 Stunden |
+
+Ob alles läuft, zeigt *Admin → Systemstatus*. Fehlt die nächtliche Sicherung oder haben die
+Hintergrundaufgaben seit zwei Tagen nichts mehr geschrieben, erscheint auf dem Dashboard des
+Administrators ein Hinweis; die fehlende Sicherung wird zusätzlich gemeldet.
+
+---
+
+## 8a. Weitere Werkzeuge
+
+- **Suche** (oben auf dem Dashboard): durchsucht Namen, Anbieter, Vertrags- und Policennummern,
+  Notizen, Fristen, Inventar und Dateinamen der eigenen Dokumente. Die Treffer klappen beim Tippen
+  auf, gruppiert nach Bereich. `/` springt ins Suchfeld, ↑/↓ wählen, Enter öffnet, Esc schließt;
+  *Alle Treffer anzeigen* führt zur vollständigen Liste.
+- **Schnellerfassung** (Menü, fürs Handy): Zählerstand in drei Feldern eintragen oder einen Beleg
+  direkt mit der Kamera fotografieren und einem Vertrag, einer Versicherung oder einem Kredit
+  zuordnen.
+- **Prognose beim Zählerstand** (Verbrauch und Schnellerfassung): Aus dem bisherigen Verbrauch
+  steht der erwartete Stand grau im Feld. Leer lassen oder die ersten Ziffern tippen und speichern
+  übernimmt die Prognose; Tab oder → schreibt sie ins Feld. Wer etwas anderes tippt, speichert genau
+  das. Beim Haken *Zählerwechsel* gibt es keinen Vorschlag.
+- **CSV-Import** (Menü): Abos, Verträge und Versicherungen aus Excel übernehmen. Die Seite zeigt
+  die Spalten und bietet eine Vorlage. Fehlerhafte Zeilen werden übersprungen und angezeigt.
+- **Änderungsprotokoll** (Menü): wann wurde was angelegt, geändert (mit altem und neuem Wert)
+  oder gelöscht.
+- **Lese-Link** (unten im Kostenbericht): ein geheimer Link auf den Kostenbericht, ohne Anmeldung
+  und nur zum Lesen – z. B. für Partner oder Steuerberater. *Widerrufen* macht ihn sofort ungültig.
+- **Erste Schritte** (Dashboard): erscheint bei neuen Konten, bis Haushalt, Benachrichtigung und
+  die ersten Kosten eingerichtet sind.
+- **Einnahmen & Rücklagen** (Menü) – die Budgetplanung:
+  - **Einnahmen** wie Gehalt, Kindergeld oder Mieteinnahmen, mit Zahltag, Person und optionalem
+    Enddatum (z. B. wenn das Kindergeld endet).
+  - **Variable Ausgaben** als Monatsbudget für alles ohne festen Vertrag: Lebensmittel, Tanken,
+    Kleidung, Freizeit.
+  - **Sparziele** mit Zielbetrag und Zieldatum; die Seite rechnet aus, wie viel pro Monat nötig ist.
+  - **Budgetplan**: Einnahmen oben, darunter Versicherungen, Kredite, Verträge, Abos, Verbrauch,
+    variable Ausgaben und Rücklagen – jeweils mit Anteil am Einkommen – und was frei bleibt.
+  - **Kontoverlauf**: der Kontostand über den aktuellen Monat mit dem tiefsten Punkt. Einnahmen
+    kommen am Zahltag, Fixkosten an ihren Terminen, variable Ausgaben werden verteilt. Den
+    Kontostand am 1. eintragen, um zu sehen, ob es vor dem Gehalt eng wird.
+  - **Ausblick**: wann Einnahmen enden, Kredite abbezahlt sind oder befristete Verträge auslaufen
+    – und wie viel danach pro Monat frei ist.
+  - **Aufteilung im Haushalt**: wer verdient was, wer zahlt was, und der faire Anteil an allen
+    Kosten im Verhältnis der Einnahmen.
+  - **Was wäre wenn?**: Einnahmen, Kreditraten, Kosten oder Rücklagen probeweise ändern, ohne zu
+    speichern – z. B. für Teilzeit oder eine Umschuldung.
+
+  Sobald Einnahmen erfasst sind, zeigt das Dashboard die Kachel *frei verfügbar*.
+- **Jahresrückblick** (Menü → Planung): dein Jahr als Karten – wie viel du durch Kündigungen und
+  günstigere Preise pro Jahr sparst, was gekündigt wurde, was teurer wurde, dein teuerstes „Hobby“
+  (die Kategorie mit den höchsten Kosten) und die freigeschaufelte Zeit. Die Zeit ist eine Schätzung
+  mit offen angezeigten Annahmen (2 Std. je Kündigung, 5 Min. je automatischem Zählerstand, 30 Min.
+  je erledigter Frist). Im Januar zeigt die Seite das Vorjahr, ältere Jahre lassen sich auswählen.
+  Gezählt wird, was in Wallos erfasst ist – gekündigte Einträge also archivieren statt löschen.
+- **Belegfristen**: Bei jedem eigenen Dokument (Verträge, Versicherungen, Kredite) lässt sich ein
+  Ablaufdatum eintragen, z. B. das Ende der Garantie. 30 Tage vorher kommt eine Benachrichtigung.
+- **Jahresabschluss**: In der ersten Januarwoche kommt eine Benachrichtigung mit den laufenden
+  Kosten des Vorjahres, dem steuerlich absetzbaren Anteil und der Zahl der Preiserhöhungen.
+
+## 8b. Haushalt & Vorsorge
+
+### Fristen & Wartung
+
+Für alles, was wiederkehrt, aber nicht monatlich abgebucht wird. Zwei Bereiche:
+
+- **Ausweise & Dokumente**: Personalausweis, Reisepass, Führerschein, Impfungen, Gesundheitskarte.
+- **Wartung & Prüfungen**: TÜV/HU, Inspektion, Ölwechsel, Gasprüfung (z. B. Wohnwagen), Heizung,
+  Filterwechsel, Rauchmelder, Schornsteinfeger.
+
+Je Eintrag: für wen bzw. welches Fahrzeug, gültig bis / nächster Termin, Intervall in Monaten
+(wird bei der Kategorie vorgeschlagen) und wie viele Tage vorher erinnert wird. Überfällige
+Termine sind rot, bald fällige orange; fällige stehen auch auf dem Dashboard unter *Demnächst*.
+**Erledigt** merkt sich den Tag und plant den nächsten Termin ab heute.
+
+### Inventar
+
+Gegenstände mit Kategorie, **Standort** (z. B. Keller, Garage, Wohnwagen), Kaufdatum, Kaufpreis
+(= Neuwert), Nutzungsdauer und Seriennummer; Kaufbelege lassen sich direkt anhängen. Die Seite
+zeigt **Neuwert** und **Zeitwert** (lineare Abschreibung über die Nutzungsdauer), auch je Standort,
+mit Filter. Ist bei einer Hausratversicherung eine Versicherungssumme eingetragen und liegt der
+Neuwert darüber, warnt sie vor Unterversicherung.
+
+### Notfall-Dossier
+
+Alles, was Partner oder Angehörige im Notfall brauchen: Versicherungen, Verträge, Kredite, Abos,
+Konten, Zähler und Ausweise – mit Anbieter, Nummer, Adresse, Zahlung und Kündigungsfrist – plus
+deine **Notfall-Hinweise** (Ansprechpartner, wo Unterlagen liegen, was zuerst zu tun ist; keine
+Passwörter, lieber auf den Notfallzugang des Passwort-Managers verweisen).
+
+- **Drucken / PDF** für den Ordner.
+- **Verschlüsselt exportieren**: eine HTML-Datei, die sich offline in jedem Browser mit einem
+  Passwort öffnet (AES-256, Schlüssel per PBKDF2 mit 600.000 Runden). Die Verschlüsselung passiert
+  im Browser, das Passwort erreicht den Server nie. Das funktioniert nur über **HTTPS oder
+  localhost** – sonst *Drucken / PDF* verwenden. Das Passwort getrennt aufbewahren.
+
+### Inaktivitäts-Wächter
+
+Im Notfall-Dossier unter *Inaktivitäts-Wächter*: Meldest du dich eine bestimmte Zeit lang
+(30, 60, 90, 180 oder 365 Tage) nicht an, bekommt deine **Vertrauensperson** eine E-Mail mit einem
+persönlichen Link zum Notfall-Dossier und deiner Nachricht.
+
+1. Vorher erinnert Wallos Extended dich 14, 7, 3, 2 und 1 Tag vor Ablauf. Einmal anmelden genügt.
+2. Der Link öffnet das Dossier erst mit dem **Zugangscode** (mind. 8 Zeichen), den du der
+   Vertrauensperson **persönlich oder auf Papier** gibst – eine weitergeleitete E-Mail allein reicht
+   nicht. Nach 10 falschen Codes ist der Link gesperrt, nach 30 Tagen läuft er ab.
+3. Meldest du dich danach wieder an (z. B. nach einem langen Urlaub), wird der Link sofort ungültig.
+
+Voraussetzungen: *Admin → Server-URL* ist eingetragen und E-Mail-Versand ist eingerichtet (SMTP in
+der Verwaltung oder bei den E-Mail-Benachrichtigungen). Fehlt etwas, steht ein Hinweis im Wächter.
+Anmeldungen über einen Lese-Zugang zählen nicht als Lebenszeichen.
+
+### Lese-Zugang
+
+*Einstellungen → Lese-Zugang* legt eine eigene Anmeldung an (Benutzername und Passwort, mind. 10
+Zeichen) – für Partner, Familie oder Steuerberater. Wer sich damit anmeldet, sieht alle deiner
+Daten (Dashboard mit Suche, Bereiche, Kalender, Kostenbericht, Einnahmen, Jahresrückblick, Fristen,
+Inventar, Notfall-Dossier, Änderungsprotokoll), kann
+aber nichts anlegen, ändern oder löschen. Einstellungen, Profil, Verwaltung, Import und
+Schnellerfassung bleiben gesperrt, ebenso der API-Schlüssel. Oben steht *Nur lesen*.
+Löschen des Zugangs sperrt ihn sofort; wird dein Konto gelöscht, verschwinden auch seine
+Lese-Zugänge.
+
+> [!NOTE]
+> Der **Lese-Link** im Kostenbericht ist die einfachere Variante ohne Anmeldung: nur der Bericht,
+> für jeden mit dem Link. Der Lese-Zugang zeigt mehr, braucht aber ein Passwort.
+
+### API
+
+Mit dem API-Schlüssel aus *Profil* (Parameter `api_key` oder Header `X-API-Key`):
+
+| Endpunkt | Zweck |
+|---|---|
+| `GET api/summary/get_summary.php` | Summen für Home Assistant (siehe Kapitel 4) |
+| `GET api/finance/get_items.php?type=…` | Daten lesen: `contracts`, `insurances`, `loans`, `meters`, `readings` (optional `meter_id`), `price_history`, `audit_log`; `archived=1` zeigt auch Archiviertes |
+| `POST api/finance/add_reading.php` | Zählerstand eintragen: `meter_id`, `reading_value`, optional `reading_date` (JJJJ-MM-TT, Standard heute) und `note` |
+
+Beispiel für n8n oder ein Skript:
+
+```bash
+curl -X POST -H "X-API-Key: DEIN_SCHLUESSEL" -H "Content-Type: application/json" \
+  -d '{"meter_id": 1, "reading_value": 12345.6}' \
+  https://wallos.example.com/api/finance/add_reading.php
+```
+
+Die Abo-Endpunkte des Original-Wallos (`api/subscriptions/…`) gibt es weiterhin.
+
+### Ereignisse an andere Systeme
+
+Preiserhöhungen, Kündigungsfristen, Zinsbindungsende, fällige Zählerstände und überschrittene
+Kategorie-Budgets laufen über die Kündigungs-Benachrichtigungen – also auch über den
+**Webhook**-Kanal (*Einstellungen → Benachrichtigungen → Webhook*, Feld für Kündigungen ausfüllen).
+Damit lassen sich n8n, Node-RED oder Home Assistant automatisieren. Ein Budget meldet sich höchstens
+einmal pro Kategorie und Monat.
 
 ---
 

@@ -563,15 +563,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Reading add forms.
   document.querySelectorAll('.reading-form').forEach((form) => {
+    const valueInput = form.querySelector('.reading-value');
+    const dateInput = form.querySelector('.reading-date');
+    const changeInput = form.querySelector('.reading-meter-change');
+    const redraw = attachReadingForecast(valueInput, readingForecastFromData(form, dateInput, changeInput));
+    dateInput.addEventListener('change', redraw);
+    changeInput.addEventListener('change', redraw);
     form.addEventListener('submit', function (event) {
       event.preventDefault();
+      const readingValue = valueInput.readingValue();
+      if (Number.isNaN(readingValue)) {
+        showErrorMessage(translate('reading_value_missing'));
+        return;
+      }
       fetch('endpoints/consumption/add_reading.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
         body: JSON.stringify({
           meter_id: parseInt(form.dataset.meter, 10),
           reading_date: form.querySelector('.reading-date').value,
-          reading_value: parseFloat(form.querySelector('.reading-value').value),
+          reading_value: readingValue,
           is_meter_change: form.querySelector('.reading-meter-change').checked ? 1 : 0,
         }),
       })

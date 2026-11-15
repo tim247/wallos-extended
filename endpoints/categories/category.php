@@ -72,6 +72,13 @@ function handleEditCategory($db, $userId, $i18n)
         $stmt->bindParam(':categoryId', $categoryId, SQLITE3_INTEGER);
         $stmt->bindParam(':userId', $userId, SQLITE3_INTEGER);
         $result = $stmt->execute();
+        if ($result && isset($_POST['budget'])) {
+            $budgetStmt = $db->prepare('UPDATE categories SET budget = :budget WHERE id = :categoryId AND user_id = :userId');
+            $budgetStmt->bindValue(':budget', max(0, (float) $_POST['budget']), SQLITE3_FLOAT);
+            $budgetStmt->bindValue(':categoryId', $categoryId, SQLITE3_INTEGER);
+            $budgetStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+            $result = $budgetStmt->execute();
+        }
 
         if ($result) {
             $response = [

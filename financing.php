@@ -828,10 +828,10 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
 <?php endif; ?>
 
 <script src="scripts/libs/apexcharts.min.js"></script>
-<script src="scripts/apex-base.js?<?= $version ?>"></script>
-<script src="scripts/paperless.js?<?= $version ?>"></script>
-<script src="scripts/files.js?<?= $version ?>"></script>
-<script src="scripts/financing.js?<?= $version ?>"></script>
+<script src="scripts/apex-base.js?<?= $assetVersion ?>"></script>
+<script src="scripts/paperless.js?<?= $assetVersion ?>"></script>
+<script src="scripts/files.js?<?= $assetVersion ?>"></script>
+<script src="scripts/financing.js?<?= $assetVersion ?>"></script>
 <?php if ($detailLoan !== null && $detailLoan['schedule']['error'] === null):
   $loanTypeDetail2 = $detailLoan['loan_type'] ?? 'annuity';
   $isBausparenScript = ($loanTypeDetail2 === 'bausparen');

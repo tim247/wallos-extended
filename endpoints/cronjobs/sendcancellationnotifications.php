@@ -173,8 +173,14 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
         $webhookNotificationsEnabled = $row['enabled'] && $row['cancelation_payload'] != "";
     }
 
+    // Home Assistant notify service (Wallos Extended): one more channel for these reminders.
+    require_once __DIR__ . '/../../includes/homeassistant.php';
+    $haNotifyService = homeAssistantNotifyService($db, (int) $userId);
+    $haConfig = $haNotifyService ? homeAssistantConfig($db, (int) $userId) : null;
+
     $notificationsEnabled = $emailNotificationsEnabled || $gotifyNotificationsEnabled || $telegramNotificationsEnabled ||
-        $pushoverNotificationsEnabled || $discordNotificationsEnabled ||$ntfyNotificationsEnabled || $webhookNotificationsEnabled;
+        $pushoverNotificationsEnabled || $discordNotificationsEnabled ||$ntfyNotificationsEnabled || $webhookNotificationsEnabled
+        || $haConfig !== null;
 
     // If no notifications are enabled, no need to run
     if (!$notificationsEnabled) {
@@ -412,6 +418,192 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
         }
         if ($changeIds) {
             $db->exec('UPDATE price_history SET notified = 1 WHERE id IN (' . implode(',', $changeIds) . ')');
+        }
+
+        // Documents whose warranty / validity ends within 30 days, once per date.
+        $stmt = $db->prepare("SELECT f.id, f.filename, f.expires_at, COALESCE(c.name, ins.name, l.name) AS item_name
+            FROM item_files f
+            LEFT JOIN contracts c ON f.item_type = 'contract' AND c.id = f.item_id
+            LEFT JOIN insurances ins ON f.item_type = 'insurance' AND ins.id = f.item_id
+            LEFT JOIN loans l ON f.item_type = 'loan' AND l.id = f.item_id
+            WHERE f.user_id = :user_id AND f.expires_at IS NOT NULL AND f.expires_at BETWEEN :today AND :until
+              AND IFNULL(f.expiry_notified, '') != f.expires_at");
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':today', $todayString);
+        $stmt->bindValue(':until', date('Y-m-d', strtotime('+30 days')));
+        $resultFiles = $stmt->execute();
+        $expiredFiles = [];
+        while ($expiring = $resultFiles->fetchArray(SQLITE3_ASSOC)) {
+            $expiredFiles[] = $expiring;
+            $label = translate('file_expires_notification', $i18n);
+            $notify[$mainMemberId][$i] = [
+                'name' => $label . ': ' . $expiring['filename'] . ($expiring['item_name'] ? ' (' . $expiring['item_name'] . ')' : '') . ' – ' . date('d.m.Y', strtotime($expiring['expires_at'])),
+                'price' => '',
+                'currency' => '',
+                'category' => $label,
+                'payer' => $mainMemberName,
+                'date' => $expiring['expires_at'],
+                'url' => '',
+                'notes' => '',
+            ];
+            $i++;
+        }
+        foreach ($expiredFiles as $expiring) {
+            $update = $db->prepare('UPDATE item_files SET expiry_notified = expires_at WHERE id = :id AND user_id = :user_id');
+            $update->bindValue(':id', $expiring['id'], SQLITE3_INTEGER);
+            $update->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $update->execute();
+        }
+
+        // Annual summary in the first week of January: running costs, tax-deductible part, price changes.
+        $summaryYear = (int) date('Y');
+        if (date('n') == 1 && date('j') <= 7 && (int) $db->querySingle('SELECT IFNULL(year_summary_sent, 0) FROM user WHERE id = ' . (int) $userId) < $summaryYear) {
+            require_once __DIR__ . '/../../includes/household_costs.php';
+            $GLOBALS['userId'] = $userId;
+            $yearItems = householdCostItems($db, (int) $userId);
+            $yearTotal = array_sum(array_column($yearItems, 'monthly')) * 12;
+            $yearTax = array_sum(array_column(array_filter($yearItems, fn($item) => !empty($item['tax'])), 'monthly')) * 12;
+            $yearChanges = (int) $db->querySingle("SELECT COUNT(*) FROM price_history WHERE user_id = " . (int) $userId
+                . " AND new_price > old_price AND changed_at >= '" . ($summaryYear - 1) . "-01-01' AND changed_at < '$summaryYear-01-01'");
+            $label = translate('year_summary', $i18n);
+            $notify[$mainMemberId][$i] = [
+                'name' => sprintf(translate('year_summary_text', $i18n), $summaryYear - 1, number_format($yearTotal, 2, ',', '.'),
+                    count($yearItems), number_format($yearTax, 2, ',', '.'), $yearChanges),
+                'price' => number_format($yearTotal, 2, ',', '.'),
+                'currency' => '',
+                'category' => $label,
+                'payer' => $mainMemberName,
+                'date' => $todayString,
+                'url' => '',
+                'notes' => '',
+            ];
+            $i++;
+            $db->exec('UPDATE user SET year_summary_sent = ' . $summaryYear . ' WHERE id = ' . (int) $userId);
+        }
+
+        // System health, to the administrator only: the nightly backup is missing.
+        // (A stopped cron cannot report itself; the admin's dashboard shows that case.)
+        if ((int) $userId === 1) {
+            require_once __DIR__ . '/../../includes/system_health.php';
+            foreach (systemHealthIssues($db) as $issue) {
+                $label = translate('system_status', $i18n);
+                $notify[$mainMemberId][$i] = [
+                    'name' => $label . ': ' . sprintf(translate($issue['key'], $i18n), $issue['since'] ? date('d.m.Y', strtotime($issue['since'])) : '–'),
+                    'price' => '',
+                    'currency' => '',
+                    'category' => $label,
+                    'payer' => $mainMemberName,
+                    'date' => $todayString,
+                    'url' => '',
+                    'notes' => '',
+                ];
+                $i++;
+            }
+        }
+
+        // Deadlines & maintenance (ID card, passport, TÜV, heating ...), once per due date.
+        require_once __DIR__ . '/../../includes/life_admin.php';
+        $stmt = $db->prepare("SELECT * FROM reminders WHERE user_id = :user_id AND due_date IS NOT NULL
+            AND due_date <= date(:today, '+' || notify_days_before || ' days') AND IFNULL(notified_for, '') != due_date");
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':today', $todayString);
+        $resultReminders = $stmt->execute();
+        $dueReminders = [];
+        while ($reminder = $resultReminders->fetchArray(SQLITE3_ASSOC)) {
+            $dueReminders[] = $reminder;
+        }
+        foreach ($dueReminders as $reminder) {
+            $label = translate('reminder_cat_' . $reminder['category'], $i18n);
+            $notify[$mainMemberId][$i] = [
+                'name' => $label . ': ' . $reminder['name'] . ($reminder['holder'] !== '' ? ' (' . $reminder['holder'] . ')' : '')
+                    . ' – ' . date('d.m.Y', strtotime($reminder['due_date'])),
+                'price' => '',
+                'currency' => '',
+                'category' => translate('reminders', $i18n),
+                'payer' => $mainMemberName,
+                'date' => $reminder['due_date'],
+                'url' => '',
+                'notes' => $reminder['notes'],
+            ];
+            $i++;
+            $update = $db->prepare('UPDATE reminders SET notified_for = due_date WHERE id = :id AND user_id = :user_id');
+            $update->bindValue(':id', $reminder['id'], SQLITE3_INTEGER);
+            $update->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $update->execute();
+        }
+
+        // Inactivity guard: remind the owner 14, 7, 3, 2 and 1 day(s) before the trusted person is contacted.
+        require_once __DIR__ . '/../../includes/deadman.php';
+        $deadman = deadmanSettings($db, (int) $userId);
+        $deadmanLeft = empty($deadman['triggered_at'])
+            ? deadmanDaysLeft($deadman, $db->querySingle('SELECT last_seen FROM user WHERE id = ' . (int) $userId), $todayString) : null;
+        if ($deadmanLeft !== null && in_array($deadmanLeft, DEADMAN_WARN_DAYS, true) && ($deadman['last_warning'] ?? '') !== $todayString) {
+            $label = translate('deadman', $i18n);
+            $notify[$mainMemberId][$i] = [
+                'name' => sprintf(translate('deadman_warning', $i18n), $deadmanLeft, $deadman['trusted_name'] ?: $deadman['trusted_email']),
+                'price' => '',
+                'currency' => '',
+                'category' => $label,
+                'payer' => $mainMemberName,
+                'date' => $todayString,
+                'url' => '',
+                'notes' => '',
+            ];
+            $i++;
+            $update = $db->prepare('UPDATE deadman_settings SET last_warning = :today WHERE user_id = :user_id');
+            $update->bindValue(':today', $todayString);
+            $update->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $update->execute();
+        }
+
+        // Categories over their monthly budget, once per category and month.
+        require_once __DIR__ . '/../../includes/household_costs.php';
+        $GLOBALS['userId'] = $userId;
+        $thisMonth = date('Y-m');
+        $budgetItems = householdCostItems($db, (int) $userId);
+        $stmt = $db->prepare("SELECT id, name, budget FROM categories WHERE user_id = :user_id AND budget > 0 AND IFNULL(budget_notified, '') != :month");
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':month', $thisMonth);
+        $resultBudgets = $stmt->execute();
+        while ($category = $resultBudgets->fetchArray(SQLITE3_ASSOC)) {
+            $spent = 0;
+            foreach ($budgetItems as $item) {
+                if (($item['category_id'] ?? 0) == $category['id']) {
+                    $spent += $item['monthly'];
+                }
+            }
+            if ($spent <= $category['budget']) {
+                continue;
+            }
+            $label = translate('budget', $i18n);
+            $notify[$mainMemberId][$i] = [
+                'name' => sprintf(translate('category_over_budget', $i18n), $category['name'], number_format($spent, 2, ',', '.'), number_format($category['budget'], 2, ',', '.')),
+                'price' => number_format($spent, 2, ',', '.'),
+                'currency' => '',
+                'category' => $label,
+                'payer' => $mainMemberName,
+                'date' => $todayString,
+                'url' => '',
+                'notes' => '',
+            ];
+            $i++;
+            $update = $db->prepare('UPDATE categories SET budget_notified = :month WHERE id = :id AND user_id = :user_id');
+            $update->bindValue(':month', $thisMonth);
+            $update->bindValue(':id', $category['id'], SQLITE3_INTEGER);
+            $update->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $update->execute();
+        }
+
+        // Home Assistant: everything in one message to the notify service.
+        if ($haConfig !== null && !empty($notify)) {
+            $haLines = [];
+            foreach ($notify as $entries) {
+                foreach ($entries as $entry) {
+                    $haLines[] = '• ' . $entry['name'];
+                }
+            }
+            $haError = homeAssistantNotify($haConfig, (int) $userId, $haNotifyService, 'Wallos Extended', implode("\n", $haLines));
+            echo $haError === '' ? "Home Assistant notification sent\n" : "Home Assistant notification failed: $haError\n";
         }
 
         // Email reaches every payer, the other channels the primary one only

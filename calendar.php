@@ -125,11 +125,13 @@ require_once 'includes/financing_calculations.php';
 $calFrom = $periodView ? $periodStart->format('Y-m-d') : sprintf('%04d-%02d-01', $calendarYear, $calendarMonth);
 $calMonthEnd = $periodView ? $periodEnd->format('Y-m-d') : date('Y-m-t', strtotime($calFrom));
 $calToday = date('Y-m-d');
-$extraEvents = []; // Y-m-d => list of ['name', 'link', 'icon']
+$extraEvents = []; // Y-m-d => list of ['name', 'link', 'icon', 'amount', 'currency_id']
+$dayTotals = []; // Y-m-d => sum of all debits that day in the main currency
 $addExtraEvent = function (string $date, string $name, string $link, string $icon, float $amount, $currencyId)
-    use (&$extraEvents, &$totalCostThisMonth, &$amountDueThisMonth, $calToday, $db, $userId) {
-    $extraEvents[$date][] = ['name' => $name, 'link' => $link, 'icon' => $icon];
+    use (&$extraEvents, &$dayTotals, &$totalCostThisMonth, &$amountDueThisMonth, $calToday, $db, $userId) {
+    $extraEvents[$date][] = ['name' => $name, 'link' => $link, 'icon' => $icon, 'amount' => $amount, 'currency_id' => $currencyId];
     $converted = getPriceConverted($amount, $currencyId, $db, $userId);
+    $dayTotals[$date] = ($dayTotals[$date] ?? 0) + $converted;
     $totalCostThisMonth += $converted;
     if ($date > $calToday) {
         $amountDueThisMonth += $converted;
@@ -163,6 +165,19 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     foreach (($calSchedule['rows'] ?? []) as $schedRow) {
         if ($schedRow['date'] >= $calFrom && $schedRow['date'] <= $calMonthEnd) {
             $addExtraEvent($schedRow['date'], $row['name'], 'financing.php?id=' . $row['id'], 'fa-landmark', floatval($schedRow['payment'] ?? 0), $row['currency_id']);
+        }
+    }
+}
+// Meter advance payments (Abschlag): monthly on the day of the billing start, else the 1st.
+$stmt = $db->prepare("SELECT * FROM meters WHERE user_id = :userId AND archived = 0 AND monthly_advance > 0");
+$stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$result = $stmt->execute();
+while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+    $day = !empty($row['billing_start']) ? (int) date('j', strtotime($row['billing_start'])) : 1;
+    for ($month = new DateTime(substr($calFrom, 0, 7) . '-01'); $month->format('Y-m-d') <= $calMonthEnd; $month->modify('+1 month')) {
+        $date = $month->format('Y-m-') . sprintf('%02d', min($day, (int) $month->format('t')));
+        if ($date >= $calFrom && $date <= $calMonthEnd) {
+            $addExtraEvent($date, $row['name'], 'consumption.php', 'fa-gauge', floatval($row['monthly_advance']), $row['currency_id']);
         }
     }
 }
@@ -286,7 +301,7 @@ if ($weekStartsSunday) {
         </div>
         <div class="form-group-inline">
             <input id="iCalendarUrl" type="text" value="" readonly>
-            <input type="hidden" id="apiKey" value="<?= $userData['api_key'] ?>">
+            <input type="hidden" id="apiKey" value="<?= empty($isReadOnlyAccount) ? htmlspecialchars((string) ($userData['api_key'] ?? '')) : '' ?>">
             <button onclick="copyToClipboard()" class="button tiny"> <?= translate('copy_to_clipboard', $i18n) ?> </button>
         </div>
     </div>
@@ -329,6 +344,7 @@ if ($weekStartsSunday) {
         $paymentsByDate[$occurrence->format('Y-m-d')][] = $subscription;
         $convertedPrice = getPriceConverted($subscription['price'], $subscription['currency_id'], $db, $userId);
         $totalCostThisMonth += $convertedPrice;
+        $dayTotals[$occurrence->format('Y-m-d')] = ($dayTotals[$occurrence->format('Y-m-d')] ?? 0) + $convertedPrice;
         $numberOfSubscriptionsToPayThisMonth++;
         if ($occurrence->getTimestamp() >= $today) {
           $amountDueThisMonth += $convertedPrice;
@@ -384,6 +400,9 @@ if ($weekStartsSunday) {
                 <?php } ?>
                 <?= $dayNumber ?>
               </span>
+              <?php if (($dayTotals[$dateKey] ?? 0) > 0 && count($paymentsByDate[$dateKey] ?? []) + count($extraEvents[$dateKey] ?? []) > 1) { ?>
+                <span class="calendar-day-total"><?= CurrencyFormatter::format($dayTotals[$dateKey], $code) ?></span>
+              <?php } ?>
               <?php if (!empty($paymentsByDate[$dateKey])) { ?>
                 <div class="calendar-cell-content">
                   <?php foreach ($paymentsByDate[$dateKey] as $payment) { ?>
@@ -407,6 +426,7 @@ if ($weekStartsSunday) {
                 <a class="calendar-event" href="<?= $extraEvent['link'] ?>" title="<?= htmlspecialchars($extraEvent['name']) ?>">
                   <span class="calendar-event-title"><i class="fa-solid <?= $extraEvent['icon'] ?>"></i>
                     <span class="calendar-event-name"><?= htmlspecialchars($extraEvent['name']) ?></span></span>
+                  <span class="calendar-event-price"><?= formatCalendarPrice($extraEvent['amount'], $extraEvent['currency_id'], $calendarCurrencies) ?></span>
                 </a>
               <?php } ?>
             </div>
@@ -464,7 +484,7 @@ if ($weekStartsSunday) {
 </section>
 
 <?php require_once 'includes/subscription_details_popup.php'; ?>
-<script src="scripts/calendar.js?<?= $version ?>"></script>
+<script src="scripts/calendar.js?<?= $assetVersion ?>"></script>
 <?php
 require_once 'includes/footer.php';
 ?>

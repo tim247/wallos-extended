@@ -34,4 +34,15 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
     $userId = $restoredUser !== false ? $restoredUser['id'] : 0;
 }
 
+// Read-only account: only the reading endpoints, with the owner's data.
+require_once __DIR__ . '/readonly_account.php';
+if (!empty($userId) && ($readonlyOwner = readonlyOwnerOf($db, (int) $userId)) !== null) {
+    if (!readonlyAllows(readonlyCurrentScript())) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        die(json_encode(['success' => false, 'message' => translate('readonly_denied', $i18n)]));
+    }
+    $userId = $readonlyOwner;
+}
+
 ?>

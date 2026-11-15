@@ -100,3 +100,32 @@ function homeAssistantImportReading(SQLite3 $db, int $userId, array $meter, arra
         ? ['status' => 'saved', 'value' => $sensor['value'], 'meter_change' => (bool) $isChange]
         : ['status' => 'error', 'error' => 'unexpected'];
 }
+
+/** Notify service of a user ("mobile_app_pixel_7" for notify.mobile_app_pixel_7), or null. */
+function homeAssistantNotifyService(SQLite3 $db, int $userId): ?string
+{
+    $stmt = @$db->prepare("SELECT notify_service FROM homeassistant_settings WHERE user_id = :userId AND enabled = 1");
+    if (!$stmt) {
+        return null; // before the migration
+    }
+    $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $service = (string) ($stmt->execute()->fetchArray(SQLITE3_ASSOC)['notify_service'] ?? '');
+    return preg_match('/^[a-z0-9_]+$/', $service) ? $service : null;
+}
+
+/** Sends a message through a Home Assistant notify service; returns '' or an error key suffix. */
+function homeAssistantNotify(array $cfg, int $userId, string $service, string $title, string $message): string
+{
+    if (!preg_match('/^[a-z0-9_]+$/', $service)) {
+        return 'invalid_entity';
+    }
+    $response = paperlessRequest($cfg, $userId, '/api/services/notify/' . $service, [], 'Bearer',
+        ['title' => mb_substr($title, 0, 200), 'message' => mb_substr($message, 0, 4000)]);
+    if ($response['error'] !== '') {
+        return $response['error'];
+    }
+    if ($response['status'] === 401 || $response['status'] === 403) {
+        return 'auth';
+    }
+    return $response['status'] >= 200 && $response['status'] < 300 ? '' : ($response['status'] === 400 || $response['status'] === 404 ? 'notify_not_found' : 'unexpected');
+}

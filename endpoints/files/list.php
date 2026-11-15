@@ -10,7 +10,7 @@ $itemId = (int) ($data['item_id'] ?? 0);
 if (!itemFileOwns($db, $userId, $type, $itemId)) {
     die(json_encode(['success' => false, 'message' => translate('error', $i18n)]));
 }
-$stmt = $db->prepare('SELECT id, filename, size, uploaded_at FROM item_files WHERE user_id = :userId AND item_type = :type AND item_id = :itemId ORDER BY uploaded_at DESC');
+$stmt = $db->prepare('SELECT id, filename, size, uploaded_at, expires_at FROM item_files WHERE user_id = :userId AND item_type = :type AND item_id = :itemId ORDER BY uploaded_at DESC');
 $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
 $stmt->bindValue(':type', $type);
 $stmt->bindValue(':itemId', $itemId, SQLITE3_INTEGER);

@@ -133,8 +133,8 @@ $chartData = [
 
 <?php if (count($items) > 0): ?>
   <script src="scripts/libs/apexcharts.min.js"></script>
-<script src="scripts/apex-base.js?<?= $version ?>"></script>
-  <script src="scripts/yearly.js?<?= $version ?>"></script>
+<script src="scripts/apex-base.js?<?= $assetVersion ?>"></script>
+  <script src="scripts/yearly.js?<?= $assetVersion ?>"></script>
   <script>
     initYearly(<?= json_encode($chartData, JSON_UNESCAPED_UNICODE) ?>);
   </script>

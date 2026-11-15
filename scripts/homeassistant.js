@@ -13,6 +13,7 @@ function homeAssistantSettingsBody() {
     url: document.querySelector("#ha_url").value.trim(),
     token: document.querySelector("#ha_token").value.trim(),
     enabled: document.querySelector("#ha_enabled").checked,
+    notify_service: document.querySelector("#ha_notify_service")?.value.trim() ?? "",
   };
 }
 

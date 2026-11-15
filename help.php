@@ -6,6 +6,8 @@ $sections = [
     ['Dashboard', 'index.php', [
         'Die Startseite zeigt die nächsten Zahlungen, die monatlichen Gesamtkosten aller Bereiche (Abos, Verträge, Versicherungen, Finanzierungen), die verbleibende Restschuld und anstehende Fristen.',
         'Ein Klick auf eine Kachel führt direkt in den jeweiligen Bereich.',
+        'Suche ganz oben: Treffer aus allen Bereichen klappen beim Tippen auf. „/“ springt ins Suchfeld, ↑/↓ wählen, Enter öffnet, Esc schließt.',
+        'Unter „Hinweise“ stehen überschrittene Budgets, möglicherweise fehlende Versicherungen und – für den Admin – Probleme mit Sicherung oder Hintergrundaufgaben.',
     ]],
     ['Abonnements', 'subscriptions.php', [
         'Mit „+“ legst du ein Abo an: Name, Preis, Währung, Zahlungsrhythmus (Tage, Wochen, Monate, Jahre oder einmalig), nächste Zahlung, Kategorie, Zahlungsmethode und Zahler.',
@@ -38,6 +40,7 @@ $sections = [
         'Ablese-Erinnerung: Auf Wunsch wirst du regelmäßig an das Ablesen erinnert.',
         'Home Assistant: Unter Einstellungen → Home Assistant Adresse und Token eintragen und einem Zähler eine Entität zuordnen. Die Stände (Strom, PV) werden täglich um 23:55 Uhr automatisch übernommen.',
         'Tarifvergleich: Unter „Zählerstand erfassen“ eines Zählers Arbeitspreis, Grundgebühr und Bonus eines neuen Angebots eintragen – die App rechnet mit deinem Jahresverbrauch aus, was du sparst oder mehr zahlst.',
+        'Prognose: Der erwartete Zählerstand steht grau im Feld. Leer lassen oder die ersten Ziffern tippen und speichern übernimmt ihn; Tab oder → schreibt ihn ins Feld.',
     ]],
     ['Kalender', 'calendar.php', [
         'Monatsansicht aller Zahlungen mit Betrag; Verträge, Versicherungen und Darlehensraten erscheinen mit eigenem Symbol. Ist ein eigener Abrechnungszeitraum eingestellt (z. B. von Gehalt zu Gehalt), zeigt der Kalender diesen Zeitraum statt des Kalendermonats.',
@@ -50,6 +53,27 @@ $sections = [
     ['Kostenbericht', 'report.php', [
         'Alle laufenden Kosten nach Bereich, die Aufteilung nach Person (Zahler) und die Preisänderungen der letzten 12 Monate auf einer Seite.',
         '„Drucken / PDF“ öffnet den Druckdialog; mit „Als PDF speichern“ entsteht ein PDF, z. B. für die Steuer oder die Haushaltsplanung.',
+    ]],
+    ['Einnahmen & Rücklagen', 'finances.php', [
+        'Budgetplanung: Einnahmen (Gehalt, Kindergeld …) mit Zahltag und optionalem Enddatum, variable Ausgaben als Monatsbudget und Sparziele mit Zieldatum.',
+        'Der Budgetplan stellt die Einnahmen allen Kosten gegenüber, mit Anteil am Einkommen. Der Kontoverlauf zeigt den tiefsten Kontostand im Monat, der Ausblick, wann Einnahmen enden oder Kredite abbezahlt sind.',
+        'Aufteilung im Haushalt nach Einkommen und „Was wäre wenn?“ zum Ausprobieren, ohne zu speichern.',
+    ]],
+    ['Jahresrückblick', 'wrapped.php', [
+        'Dein Jahr als Karten: gespart durch Kündigungen und günstigere Preise, gekündigte Verträge, Preiserhöhungen, das teuerste „Hobby“ (Kategorie) und eine Schätzung der freigeschaufelten Zeit.',
+        'Gekündigte Einträge archivieren statt löschen, dann zählt der Rückblick sie mit.',
+    ]],
+    ['Fristen & Wartung', 'reminders.php', [
+        'Ausweise, Reisepass, Führerschein, Impfungen sowie TÜV, Inspektion, Heizung, Filter, Gasprüfung … mit Termin, Intervall und Vorwarnzeit.',
+        '„Erledigt“ merkt sich den Tag und plant den nächsten Termin. Fällige Einträge stehen auf dem Dashboard und kommen als Benachrichtigung.',
+    ]],
+    ['Inventar', 'inventory.php', [
+        'Gegenstände mit Standort (Keller, Garage, Wohnwagen …), Kaufdatum, Neuwert, Nutzungsdauer, Seriennummer und Kaufbeleg.',
+        'Neuwert und Zeitwert, auch je Standort. Liegt der Neuwert über der Versicherungssumme der Hausratversicherung, gibt es eine Warnung.',
+    ]],
+    ['Notfall-Dossier', 'emergency.php', [
+        'Alle Versicherungen, Verträge, Kredite, Abos, Konten und Ausweise mit Nummern und Fristen plus eigene Notfall-Hinweise – zum Drucken oder als verschlüsselte Datei (Passwort, nur über HTTPS oder localhost).',
+        'Inaktivitäts-Wächter: Meldest du dich eine einstellbare Zeit lang nicht an, bekommt deine Vertrauensperson einen Link zum Dossier. Er öffnet sich nur mit dem Zugangscode, den du ihr persönlich gibst. Vorher wirst du mehrfach erinnert, eine Anmeldung macht den Link ungültig.',
     ]],
     ['Kontoabgleich', 'bankimport.php', [
         'Kontoauszug als CSV hochladen (Sparkasse, DKB, ING, comdirect, Volksbank, N26 …). Die Abbuchungen werden mit deinen Abos, Verträgen, Versicherungen und Raten verglichen.',
@@ -70,11 +94,17 @@ $sections = [
         'In Abos, Verträgen, Versicherungen und Finanzierungen kannst du dann Dokumente suchen und verknüpfen; passende Dokumente werden auch vorgeschlagen. Die Dateien bleiben in Paperless.',
         'Ohne Paperless: Bei Verträgen, Versicherungen und Finanzierungen lassen sich unter „Eigene Dokumente“ PDFs, Bilder und Office-Dateien (bis 20 MB) direkt hochladen. Sie liegen im Ordner db/files und sind in der Sicherung enthalten.',
     ]],
+    ['Werkzeuge', 'quick.php', [
+        'Schnellerfassung (fürs Handy): Zählerstand eintragen oder einen Beleg fotografieren und zuordnen.',
+        'CSV-Import für Abos, Verträge und Versicherungen, Änderungsprotokoll mit altem und neuem Wert, ZIP-Export aller Daten im Kostenbericht.',
+        'Lese-Zugang (Einstellungen) bzw. Lese-Link (Kostenbericht) für Partner oder Steuerberater – sehen alles, ändern nichts.',
+    ]],
     ['Einstellungen', 'settings.php', [
         'Haushalt (Zahler), Kategorien, Ordner, Zahlungsmethoden, Währungen, Benachrichtigungen, Anzeige, Design, KI-Empfehlungen sowie Paperless und Home Assistant.',
         'Budget: ein monatliches Budget oder ein eigener Abrechnungszeitraum (z. B. vom 25. bis 24.), der auf Wunsch auch Statistik und Kalender bestimmt.',
         'Benachrichtigungen: E-Mail, Push-Benachrichtigungen im Browser bzw. auf dem Handy sowie Dienste wie Telegram, ntfy, Gotify, Pushover, Discord oder Webhooks.',
-        'Die Standard-Kategorien werden in deiner Sprache angezeigt; eigene Kategorien legst du dort an.',
+        'Die Standard-Kategorien werden in deiner Sprache angezeigt; eigene Kategorien legst du dort an. Je Kategorie lässt sich ein Monatsbudget festlegen.',
+        'Home Assistant: Mit einem Benachrichtigungsdienst (z. B. mobile_app_pixel_7) kommen die Erinnerungen zusätzlich aufs Handy; „Test“ schickt eine Probenachricht.',
     ]],
     ['Profil', 'profile.php', [
         'Benutzername, E-Mail, Passwort, Avatar, Zwei-Faktor-Anmeldung (TOTP) und API-Schlüssel.',
@@ -82,10 +112,11 @@ $sections = [
     ['Administration (nur Admin)', 'admin.php', [
         'Benutzer verwalten, Registrierung erlauben, Anmeldung per OIDC (Single Sign-on), SMTP für E-Mails, Sicherheitseinstellungen, Benachrichtigungsdienste für alle Benutzer und die Kündigungsvorlage.',
         'Backup und Wiederherstellung: „Sichern“ lädt eine .zip mit Datenbank, Logos und Dokumenten. „Wiederherstellen“ nimmt eine .zip oder eine einzelne wallos.db – auch aus dem Original-Wallos (alle Versionen). Die bisherige Datenbank bleibt als before-restore-….db im Ordner db, alte Datenbanken werden automatisch aktualisiert.',
-        'Automatische Sicherung: Jede Nacht um 3:15 Uhr wird die Datenbank nach db/backups/ kopiert. Wie viele Sicherungen aufbewahrt werden, stellst du dort ein (0 = aus).',
+        'Automatische Sicherung: Jede Nacht um 3:15 Uhr wird die Datenbank nach db/backups/ kopiert. Wie viele Sicherungen aufbewahrt werden, stellst du dort ein (0 = aus). Optional zusätzlich auf einen WebDAV-Ordner (Nextcloud, NAS).',
+        'Systemstatus: Version, Datenbankgröße, freier Speicher, letzte Sicherung und letzter Lauf jeder Hintergrundaufgabe.',
     ]],
     ['Automatische Aufgaben', null, [
-        'Im Hintergrund laufen täglich: nächste Zahlungstermine aktualisieren, Wechselkurse holen, Benachrichtigungen und Kündigungserinnerungen senden, der Home-Assistant-Import und die automatische Sicherung. In Docker und im LXC-Container ist das bereits eingerichtet.',
+        'Im Hintergrund laufen täglich: nächste Zahlungstermine aktualisieren, Wechselkurse holen, Benachrichtigungen und Erinnerungen senden, der Home-Assistant-Import, die automatische Sicherung und der Inaktivitäts-Wächter. In Docker und im LXC-Container ist das bereits eingerichtet.',
     ]],
 ];
 ?>

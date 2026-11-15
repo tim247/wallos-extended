@@ -205,12 +205,16 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
             <?php endif; ?>
           </summary>
           <div class="meter-input-content">
-          <form class="reading-form inline-form" data-meter="<?= $meter['id'] ?>">
+          <form class="reading-form inline-form" data-meter="<?= $meter['id'] ?>"
+            data-last-value="<?= $lastReading !== null ? (float) $lastReading['reading_value'] : '' ?>"
+            data-last-date="<?= $lastReading !== null ? htmlspecialchars($lastReading['reading_date']) : '' ?>"
+            data-per-day="<?= $meter['forecast'] !== null ? (float) $meter['forecast']['per_day'] : '' ?>">
             <div class="date-wrapper">
               <input type="date" class="reading-date" value="<?= $today ?>" required>
             </div>
-            <input type="number" step="0.001" min="0" class="reading-value"
-              placeholder="<?= translate('meter_reading', $i18n) ?> (<?= $unitLabel ?>)" required>
+            <input type="text" inputmode="decimal" autocomplete="off" class="reading-value" pattern="[0-9]+([.,][0-9]+)?"
+              placeholder="<?= translate('meter_reading', $i18n) ?> (<?= $unitLabel ?>)" required
+              title="<?= translate('reading_forecast_hint', $i18n) ?>">
             <label class="meter-change-label" title="<?= translate('meter_change_hint', $i18n) ?>">
               <input type="checkbox" class="reading-meter-change">
               <?= translate('meter_change', $i18n) ?>
@@ -566,7 +570,7 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
 </section>
 
 <script src="scripts/libs/apexcharts.min.js"></script>
-<script src="scripts/apex-base.js?<?= $version ?>"></script>
+<script src="scripts/apex-base.js?<?= $assetVersion ?>"></script>
 <script type="text/javascript">
   window.mainCurrencyCode = "<?= $mainCurrencyCode ?>";
   window.meterChartData = <?php
@@ -583,8 +587,9 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
   ?>;
   window.meterReadingsData = <?= json_encode($readingsData) ?>;
 </script>
-<script src="scripts/homeassistant.js?<?= $version ?>"></script>
-<script src="scripts/consumption.js?<?= $version ?>"></script>
+<script src="scripts/homeassistant.js?<?= $assetVersion ?>"></script>
+<script src="scripts/reading-forecast.js?<?= $assetVersion ?>"></script>
+<script src="scripts/consumption.js?<?= $assetVersion ?>"></script>
 <?php
 $db->close();
 require_once 'includes/footer.php';

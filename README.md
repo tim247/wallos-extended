@@ -93,11 +93,37 @@ Selbst gehostet, ohne Cloud, ohne Tracking. Deine Daten bleiben auf deinem Serve
 - Kalender mit allen Zahlungen, **iCal-Feed** für Outlook/Google/Apple
 - Benachrichtigungen per E-Mail, Push, Telegram, ntfy, Gotify, Discord …
 - **Kontoabgleich**: Kontoauszug (CSV) gegen erfasste Kosten – findet Vergessenes
-- **Home Assistant**: Fixkosten und nächste Frist als Sensor
+- **Home Assistant**: Fixkosten und nächste Frist als Sensor, Erinnerungen aufs Handy
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 💶 Budget & Rückblick
+- **Einnahmen & Rücklagen**: Lohn, Kindergeld … gegen alle Kosten
+- Budgetplan mit Anteil am Einkommen, variable Ausgaben, Sparziele
+- **Kontoverlauf** im Monat, Ausblick (wann wird was frei?), Was-wäre-wenn
+- Aufteilung im Haushalt nach Einkommen
+- **Jahresrückblick** im Wrapped-Stil: gespart, gekündigt, freigeschaufelte Zeit
+
+</td>
+<td valign="top">
+
+### 🏠 Haushalt & Vorsorge
+- **Fristen & Wartung**: Ausweise, Führerschein, TÜV, Heizung, Filter …
+- **Inventar** mit Neu- und Zeitwert, Standorten und Kaufbelegen
+- **Notfall-Dossier** – drucken oder verschlüsselt exportieren
+- **Inaktivitäts-Wächter**: Vertrauensperson bekommt das Dossier, wenn du länger inaktiv bist
+- Lese-Zugang für Partner oder Steuerberater
 
 </td>
 </tr>
 </table>
+
+Außerdem: Suche direkt auf dem Dashboard, Schnellerfassung fürs Handy mit Zählerstand-Prognose,
+CSV-Import und -Export, Änderungsprotokoll, automatische und externe Sicherung (WebDAV),
+Systemstatus und eine REST-API.
 
 Dazu alles, was Wallos selbst mitbringt: Abonnements mit Logos, mehrere Währungen, Haushaltsmitglieder,
 Ordner, Massenaktionen, Budget, Mehrbenutzer, OIDC/SSO, Zwei-Faktor-Anmeldung, API und 29 Sprachen.
@@ -172,7 +198,7 @@ Jede Nacht sichert Wallos Extended die Datenbank zusätzlich selbst nach `db/bac
 
 ## 📖 Dokumentation
 
-- **[Handbuch](docs/HILFE.md)** – alle Bereiche, E-Mail, Home Assistant, Paperless-ngx, Fehlersuche
+- **[Handbuch](docs/HILFE.md)** – alle Bereiche, E-Mail, Home Assistant, Paperless-ngx, Budgetplanung, Haushalt & Vorsorge, Fehlersuche
 - [Umgebungsvariablen & OIDC](docs/UPSTREAM-README.md) – aus der Original-Dokumentation von Wallos
 - In der App: *Menü → Hilfe*
 

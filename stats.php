@@ -1066,7 +1066,7 @@ if ($showAnyGraph) {
   <?php
 }
 ?>
-<script src="scripts/stats.js?<?= $version ?>"></script>
+<script src="scripts/stats.js?<?= $assetVersion ?>"></script>
 <?php
 require_once 'includes/footer.php';
 ?>

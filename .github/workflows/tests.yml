@@ -1,0 +1,20 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      # PHP 8.3 with sqlite3, mbstring, intl, curl, zip and openssl ships with the runner image.
+      - name: PHP version
+        run: php -v && php -m | grep -E 'sqlite3|mbstring|intl|curl|zip|openssl'
+      - name: Run the test suite
+        run: php tests/run.php

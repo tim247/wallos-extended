@@ -63,4 +63,4 @@
       onClick="setCancellationStatus('confirmed')">
   </div>
 </section>
-<script src="scripts/cancellation.js?<?= $version ?>"></script>
+<script src="scripts/cancellation.js?<?= $assetVersion ?>"></script>

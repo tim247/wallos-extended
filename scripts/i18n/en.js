@@ -279,4 +279,6 @@ let i18n = {
   tariff_new: "New tariff",
   tariff_saving: "Saving",
   tariff_more: "Extra cost",
+  file_expires: "Expires (warranty)",
+  reading_value_missing: "Please enter a meter reading.",
 }

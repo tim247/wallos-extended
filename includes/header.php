@@ -96,18 +96,18 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
   <link rel="apple-touch-icon" sizes="152x152" href="images/icon/apple-touch-icon-152.png">
   <link rel="apple-touch-icon" sizes="180x180" href="images/icon/apple-touch-icon-180.png">
   <link rel="manifest" href="manifest.php" crossorigin="use-credentials">
-  <link rel="stylesheet" href="styles/theme.css?<?= $version ?>">
-  <link rel="stylesheet" href="styles/styles.css?<?= $version ?>">
-  <link rel="stylesheet" href="styles/dark-theme.css?<?= $version ?>" id="dark-theme" <?= $theme != "dark" ? "disabled" : "" ?>>
-  <link rel="stylesheet" href="styles/themes/red.css?<?= $version ?>" id="red-theme" <?= $colorTheme != "red" ? "disabled" : "" ?>>
-  <link rel="stylesheet" href="styles/themes/green.css?<?= $version ?>" id="green-theme" <?= $colorTheme != "green" ? "disabled" : "" ?>>
-  <link rel="stylesheet" href="styles/themes/yellow.css?<?= $version ?>" id="yellow-theme" <?= $colorTheme != "yellow" ? "disabled" : "" ?>>
-  <link rel="stylesheet" href="styles/themes/purple.css?<?= $version ?>" id="purple-theme" <?= $colorTheme != "purple" ? "disabled" : "" ?>>
+  <link rel="stylesheet" href="styles/theme.css?<?= $assetVersion ?>">
+  <link rel="stylesheet" href="styles/styles.css?<?= $assetVersion ?>">
+  <link rel="stylesheet" href="styles/dark-theme.css?<?= $assetVersion ?>" id="dark-theme" <?= $theme != "dark" ? "disabled" : "" ?>>
+  <link rel="stylesheet" href="styles/themes/red.css?<?= $assetVersion ?>" id="red-theme" <?= $colorTheme != "red" ? "disabled" : "" ?>>
+  <link rel="stylesheet" href="styles/themes/green.css?<?= $assetVersion ?>" id="green-theme" <?= $colorTheme != "green" ? "disabled" : "" ?>>
+  <link rel="stylesheet" href="styles/themes/yellow.css?<?= $assetVersion ?>" id="yellow-theme" <?= $colorTheme != "yellow" ? "disabled" : "" ?>>
+  <link rel="stylesheet" href="styles/themes/purple.css?<?= $assetVersion ?>" id="purple-theme" <?= $colorTheme != "purple" ? "disabled" : "" ?>>
   <link rel="stylesheet" href="styles/barlow.css">
   <link rel="stylesheet" href="styles/font-awesome.min.css">
   <link rel="stylesheet" href="styles/brands.css">
-  <script type="text/javascript" src="scripts/all.js?<?= $version ?>"></script>
-  <script type="text/javascript" src="scripts/common.js?<?= $version ?>"></script>
+  <script type="text/javascript" src="scripts/all.js?<?= $assetVersion ?>"></script>
+  <script type="text/javascript" src="scripts/common.js?<?= $assetVersion ?>"></script>
   <script type="text/javascript">
     window.theme = <?= json_encode($theme, JSON_HEX_TAG | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_APOS) ?>;
     window.update_theme_settings = "<?= $updateThemeSettings ?>";
@@ -153,9 +153,9 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
     <?php
   }
   ?>
-  <script type="text/javascript" src="scripts/i18n/<?= $lang ?>.js?<?= $version ?>"></script>
-  <script type="text/javascript" src="scripts/i18n/getlang.js?<?= $version ?>"></script>
-  <script type="text/javascript" src="scripts/password-toggle.js?<?= $version ?>"></script>
+  <script type="text/javascript" src="scripts/i18n/<?= $lang ?>.js?<?= $assetVersion ?>"></script>
+  <script type="text/javascript" src="scripts/i18n/getlang.js?<?= $assetVersion ?>"></script>
+  <script type="text/javascript" src="scripts/password-toggle.js?<?= $assetVersion ?>"></script>
   <script>
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       if (!sessionStorage.getItem('sw_prefetched')) {
@@ -182,69 +182,68 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
             <img src="<?= htmlspecialchars($userData['avatar'], ENT_QUOTES, 'UTF-8') ?>" alt="me" id="avatar">
             <span id="user" class="mobileNavigationHideOnMobile"><?= $userData['username'] ?></span>
           </button>
-          <div class="dropdown-content">
-            <a href="." class="mobileNavigationHideOnMobile">
-              <?php include "images/siteicons/svg/mobile-menu/home.php"; ?>
-              <?= translate('dashboard', $i18n) ?></a>
-            <a href="subscriptions.php" class="mobileNavigationHideOnMobile">
-              <?php include "images/siteicons/svg/mobile-menu/subscriptions.php"; ?>
-              <?= translate('subscriptions', $i18n) ?></a>
-            <a href="contracts.php">
-              <?php include "images/siteicons/svg/mobile-menu/contracts.php"; ?>
-              <?= translate('contracts', $i18n) ?></a>
-            <a href="insurance.php">
-              <?php include "images/siteicons/svg/mobile-menu/insurance.php"; ?>
-              <?= translate('insurances', $i18n) ?></a>
-            <a href="financing.php">
-              <?php include "images/siteicons/svg/mobile-menu/financing.php"; ?>
-              <?= translate('financing', $i18n) ?></a>
-            <a href="consumption.php">
-              <?php include "images/siteicons/svg/mobile-menu/consumption.php"; ?>
-              <?= translate('consumption', $i18n) ?></a>
-            <a href="calendar.php" class="mobileNavigationHideOnMobile">
-                <?php include "images/siteicons/svg/mobile-menu/calendar.php"; ?>
-                <?= translate('calendar', $i18n) ?></a>
-            <a href="yearly.php">
-              <?php include "images/siteicons/svg/mobile-menu/calendar.php"; ?>
-              <?= translate('yearly_overview', $i18n) ?></a>
-            <a href="report.php">
-              <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
-              <?= translate('cost_report', $i18n) ?></a>
-            <a href="bankimport.php">
-              <?php include "images/siteicons/svg/mobile-menu/financing.php"; ?>
-              <?= translate('bank_import', $i18n) ?></a>
-            <a href="stats.php" class="mobileNavigationHideOnMobile">
-              <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
-              <?= translate('stats', $i18n) ?></a>
-            <a href="settings.php" class="mobileNavigationHideOnMobile">
-              <?php include "images/siteicons/svg/mobile-menu/settings.php"; ?>
-              <?= translate('settings', $i18n) ?></a>
-            <a href="profile.php">
-              <?php include "images/siteicons/svg/mobile-menu/profile.php"; ?>
-              <?= translate('profile', $i18n) ?></a>  
-            <?php if ($isAdmin): ?>
-              <a href="admin.php">
-                <?php include "images/siteicons/svg/mobile-menu/admin.php"; ?>
-                <?= translate('admin', $i18n) ?>
-              </a>
-            <?php endif; ?>
-            <a href="help.php">
-              <?php include "images/siteicons/svg/mobile-menu/about.php"; ?>
-              <?= translate('help', $i18n) ?>
-            </a>
-            <a href="about.php">
-              <?php include "images/siteicons/svg/mobile-menu/about.php"; ?>
-              <?= translate('about', $i18n) ?>
-            </a>
-            <?php
-            if ($settings['disableLogin'] == 0) {
-              ?>
-              <a href="logout.php">
-                <?php include "images/siteicons/svg/mobile-menu/logout.php"; ?>
-                <?= translate('logout', $i18n) ?></a>
-              <?php
-            }
-            ?>
+          <?php
+          // Menu in groups. Icon: an SVG from images/siteicons/svg/mobile-menu or a Font Awesome class.
+          // 'nav' = also in the bottom bar, hidden here on phones when that bar is on.
+          $menuGroups = [
+            'menu_overview' => [
+              ['.', 'svg:home', 'dashboard', true],
+              ['calendar.php', 'svg:calendar', 'calendar', true],
+              ['yearly.php', 'fa-calendar-days', 'yearly_overview'],
+              ['stats.php', 'svg:statistics', 'stats', true],
+            ],
+            'menu_costs' => [
+              ['subscriptions.php', 'svg:subscriptions', 'subscriptions', true],
+              ['contracts.php', 'svg:contracts', 'contracts'],
+              ['insurance.php', 'svg:insurance', 'insurances'],
+              ['financing.php', 'svg:financing', 'financing'],
+              ['consumption.php', 'svg:consumption', 'consumption'],
+            ],
+            'menu_planning' => [
+              ['finances.php', 'fa-sack-dollar', 'finances'],
+              ['report.php', 'fa-file-invoice', 'cost_report'],
+              ['wrapped.php', 'fa-gift', 'wrapped'],
+            ],
+            'menu_household' => [
+              ['reminders.php', 'fa-calendar-check', 'reminders'],
+              ['inventory.php', 'fa-boxes-stacked', 'inventory'],
+              ['emergency.php', 'fa-kit-medical', 'emergency'],
+            ],
+            'menu_tools' => [
+              ['quick.php', 'fa-bolt', 'quick_capture'],
+              ['bankimport.php', 'fa-building-columns', 'bank_import'],
+              ['import.php', 'fa-file-import', 'import_csv'],
+              ['history.php', 'fa-clock-rotate-left', 'change_log'],
+            ],
+            'menu_account' => array_filter([
+              ['settings.php', 'svg:settings', 'settings', true],
+              ['profile.php', 'svg:profile', 'profile'],
+              $isAdmin ? ['admin.php', 'svg:admin', 'admin'] : null,
+              ['help.php', 'fa-circle-question', 'help'],
+              ['about.php', 'svg:about', 'about'],
+              $settings['disableLogin'] == 0 ? ['logout.php', 'svg:logout', 'logout'] : null,
+            ]),
+          ];
+          $currentPage = basename($_SERVER['PHP_SELF']);
+          ?>
+          <div class="dropdown-content menu-grouped">
+            <?php foreach ($menuGroups as $groupKey => $items):
+              // A read-only account only sees what it may open.
+              $items = array_filter($items, fn($item) => empty($isReadOnlyAccount) || $item[0] === '.' || readonlyAllows($item[0]));
+              if (!$items) continue; ?>
+              <div class="menu-group">
+                <div class="menu-group-title"><?= translate($groupKey, $i18n) ?></div>
+                <?php foreach ($items as $item):
+                  [$href, $icon, $label] = $item;
+                  $classes = trim((!empty($item[3]) ? 'mobileNavigationHideOnMobile ' : '') . (($href === '.' ? 'index.php' : $href) === $currentPage ? 'active' : '')); ?>
+                  <a href="<?= $href ?>"<?= $classes ? ' class="' . $classes . '"' : '' ?>>
+                    <?php if (str_starts_with($icon, 'svg:')) {
+                      include 'images/siteicons/svg/mobile-menu/' . substr($icon, 4) . '.php';
+                    } else { ?><i class="fa-solid <?= $icon ?>"></i><?php } ?>
+                    <?= translate($label, $i18n) ?></a>
+                <?php endforeach; ?>
+              </div>
+            <?php endforeach; ?>
           </div>
         </div>
       </nav>
@@ -296,3 +295,6 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
   ?>
 
   <main>
+    <?php if (!empty($isReadOnlyAccount)): ?>
+      <div class="readonly-banner"><i class="fa-solid fa-eye"></i> <?= sprintf(translate('readonly_banner', $i18n), htmlspecialchars($readOnlyViewerName)) ?></div>
+    <?php endif; ?>
