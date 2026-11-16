@@ -56,7 +56,7 @@ function householdCostItems(SQLite3 $db, int $userId): array
     // Meters: the advance payment (Abschlag) when there is one, else the forecast cost like the
     // dashboard. Forecasts are flagged 'estimate': there is no fixed debit to find on a bank statement.
     require_once __DIR__ . '/consumption_calculations.php';
-    foreach ($rows("SELECT * FROM meters WHERE user_id = :userId AND archived = 0 AND meter_type != 'pv_feed_in'") as $row) {
+    foreach ($rows("SELECT * FROM meters WHERE user_id = :userId AND archived = 0 AND meter_type NOT IN ('pv_feed_in', 'pv_generation')") as $row) {
         if ((float) $row['monthly_advance'] > 0) {
             $amount = round(getPriceConverted((float) $row['monthly_advance'], $row['currency_id'], $db, $userId), 2);
             $items[] = ['type' => 'meter', 'id' => (int) $row['id'], 'name' => $row['name'], 'match' => $row['name'],

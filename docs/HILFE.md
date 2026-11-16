@@ -89,6 +89,37 @@ Grundgebühr und einen einmaligen Bonus des neuen Angebots ein – sofort steht 
 Tarif im Jahr kostet und wie viel du sparst oder mehr zahlst. Bei Gas mit Umrechnungsfaktor wird
 in kWh gerechnet.
 
+### Verbrauchs-Auswertungen
+
+Unter *Verbrauch* hat jeder Zähler den Bereich *Auswertungen*:
+
+- **Jahresvergleich pro Monat** – Januar 2024, 2025, 2026 … nebeneinander.
+- **Kosten pro Tag und Monat** – Arbeitspreis und Grundgebühr getrennt, mit dem Preis, der im
+  jeweiligen Monat galt.
+- **Haushaltsvergleich** – dein Jahresverbrauch neben typischen Werten (Strom nach Personen,
+  Wasser ca. 125 l pro Person und Tag, Heizung nach Wohnfläche). Personen und Wohnfläche oben
+  unter *Haushalt & Ort* eintragen.
+- **Witterungsbereinigt** (Gas und als *Heizstrom* markierte Zähler) – der Verbrauch wird mit den
+  Gradtagen deines Orts verrechnet. So wird ein milder Winter mit einem kalten vergleichbar, und
+  du siehst, ob Dämmung oder neue Fenster wirken. Die Tagestemperaturen kommen ohne Konto von
+  Open-Meteo; übertragen werden nur die Ortssuche und gerundete Koordinaten.
+- **Preise und Tarifwechsel** – änderst du den Preis im Zähler, wird der alte Preis automatisch
+  gesichert und gilt weiter für frühere Zeiträume. Frühere Preise lassen sich nachtragen.
+- **Abrechnung prüfen** – Zeitraum, Verbrauch und Betrag der Jahresabrechnung eintragen; Wallos
+  vergleicht mit deinen Ablesungen und Preisen (ab 3 % „prüfen“, ab 10 % „Abweichung“).
+
+Liegt der Verbrauch zuletzt deutlich über dem Üblichen (mindestens 40 % mehr als in denselben
+Wochen des Vorjahrs bzw. den 90 Tagen davor), erscheint am Zähler ein Hinweis, auf dem Dashboard
+ein Tipp und eine Benachrichtigung – typisch bei einem Wasserrohrbruch, laufenden Spülkasten
+oder defekten Gerät. Unter *Eingabe & Prognose* steht der **empfohlene Abschlag**, damit es keine
+Nachzahlung gibt.
+
+**Photovoltaik:** Lege zusätzlich zum Einspeisezähler einen Zähler *PV-Erzeugung* an (mit
+Anschaffungskosten und Inbetriebnahme). Oben erscheinen dann Eigenverbrauch,
+Eigenverbrauchsquote, Autarkiegrad und die **Amortisation** der Anlage.
+
+Die Reihenfolge der Zähler änderst du per Ziehen am Griff links neben dem Namen.
+
 ### Eigene Dokumente (ohne Paperless)
 
 Bei Verträgen, Versicherungen und Finanzierungen gibt es im Bearbeiten-Dialog den Abschnitt

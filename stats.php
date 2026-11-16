@@ -84,7 +84,7 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
 $hfConsumptionMonthly = 0.0;
 $hfPvEarningsMonthly = 0.0;
 $hfMeterCount = 0;
-$stmt = $db->prepare("SELECT * FROM meters WHERE user_id = :userId AND archived = 0");
+$stmt = $db->prepare("SELECT * FROM meters WHERE user_id = :userId AND archived = 0 AND meter_type != 'pv_generation'");
 $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
 $res = $stmt->execute();
 while ($row = $res->fetchArray(SQLITE3_ASSOC)) {

@@ -11,10 +11,12 @@ $deleteStmt->bindParam(':meterId', $meterId, SQLITE3_INTEGER);
 $deleteStmt->bindParam(':userId', $userId, SQLITE3_INTEGER);
 
 if ($deleteStmt->execute()) {
-    $stmt = $db->prepare("DELETE FROM meter_readings WHERE meter_id = :meterId AND user_id = :userId");
-    $stmt->bindParam(':meterId', $meterId, SQLITE3_INTEGER);
-    $stmt->bindParam(':userId', $userId, SQLITE3_INTEGER);
-    $stmt->execute();
+    foreach (['meter_readings', 'meter_tariffs', 'meter_bills'] as $table) {
+        $stmt = $db->prepare("DELETE FROM $table WHERE meter_id = :meterId AND user_id = :userId");
+        $stmt->bindParam(':meterId', $meterId, SQLITE3_INTEGER);
+        $stmt->bindParam(':userId', $userId, SQLITE3_INTEGER);
+        $stmt->execute();
+    }
 
     echo json_encode([
         "success" => true,

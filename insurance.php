@@ -102,6 +102,16 @@ unset($insurance);
 $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
 ?>
 
+<?php
+$filterGroups = [];
+foreach ($insurances as $filterInsurance) {
+  $filterType = $filterInsurance['insurance_type'];
+  $filterGroups[$filterType] = isset($insuranceTypes[$filterType]) ? translate($insuranceTypes[$filterType], $i18n) : $filterType;
+}
+asort($filterGroups);
+$filterGroupTitle = translate('insurance_type', $i18n);
+$archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
+?>
 <section class="contain">
   <header class="<?= $headerClass ?>" id="main-actions">
     <button class="button" onClick="addInsurance()">
@@ -115,11 +125,7 @@ $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
           <span class="module-total-value"><?= CurrencyFormatter::format($totalMonthly, $mainCurrencyCode) ?></span>
         <?php endif; ?>
       </div>
-      <a href="insurance.php<?= $showArchived ? '' : '?state=archived' ?>" class="button secondary-button"
-        title="<?= translate($showArchived ? 'show_active' : 'show_archive', $i18n) ?>">
-        <i class="fa-solid <?= $showArchived ? 'fa-list' : 'fa-box-archive' ?>"></i>
-        <span class="hideOnMobile"><?= translate($showArchived ? 'show_active' : 'show_archive', $i18n) ?></span>
-      </a>
+      <?php include 'includes/module_filter_bar.php'; ?>
     </div>
   </header>
 
@@ -127,15 +133,6 @@ $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
     <h2 class="archive-title"><i class="fa-solid fa-box-archive"></i> <?= translate('archive', $i18n) ?></h2>
   <?php endif; ?>
 
-  <?php
-  $filterGroups = [];
-  foreach ($insurances as $filterInsurance) {
-    $filterType = $filterInsurance['insurance_type'];
-    $filterGroups[$filterType] = isset($insuranceTypes[$filterType]) ? translate($insuranceTypes[$filterType], $i18n) : $filterType;
-  }
-  asort($filterGroups);
-  include 'includes/module_filter_bar.php';
-  ?>
   <div class="module-cards" id="insurances">
     <?php foreach ($insurances as $insurance):
       $deadline = $insurance['deadline_info'];
@@ -151,6 +148,8 @@ $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
       $typeIcon = $insuranceTypeIcons[$insurance['insurance_type']] ?? 'fa-file-shield';
       ?>
       <div class="module-card <?= $insurance['archived'] ? 'archived' : '' ?>" data-id="<?= $insurance['id'] ?>"
+        data-name="<?= $insurance['name'] ?>" data-price="<?= round((float) $insurance['monthly_price'], 2) ?>"
+        data-deadline="<?= $insurance['deadline_info']['deadline'] ?? '' ?>" data-member-name="<?= $members[$insurance['payer_user_id']]['name'] ?? '' ?>"
         data-member="<?= (int) $insurance['payer_user_id'] ?>" data-group="<?= htmlspecialchars($insurance['insurance_type']) ?>">
         <div class="module-card-main" onClick="openEditInsurance(event, <?= $insurance['id'] ?>)">
           <div class="module-card-icon"><i class="fa-solid <?= $typeIcon ?>"></i></div>

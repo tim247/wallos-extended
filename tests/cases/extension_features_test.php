@@ -297,3 +297,85 @@ wallos_test('a tilgungsfreies Darlehen without repayment rate runs until the Bau
     assert_same(0.0, $last['balance'], 'endfällig: repaid at term end');
     assert_same(60, count($end['rows']), 'after exactly the term');
 });
+
+wallos_test('meters keep their order when sort_order is introduced', function () {
+    $db = wallos_test_open_database();
+    $u = extension_insert($db, "INSERT INTO user (username, email, password, main_currency) VALUES ('m', 'm@example.com', 'x', 1)");
+    foreach ([['water', 'Wasser'], ['electricity', 'B-Strom'], ['electricity', 'A-Strom']] as [$type, $name]) {
+        $db->exec("INSERT INTO meters (user_id, name, meter_type) VALUES ($u, '$name', '$type')");
+    }
+    require WALLOS_ROOT . '/migrations/000075.php';
+    $names = [];
+    $r = $db->query("SELECT name FROM meters WHERE user_id = $u ORDER BY sort_order = 0, sort_order");
+    while ($row = $r->fetchArray(SQLITE3_ASSOC)) $names[] = $row['name'];
+    assert_same(['A-Strom', 'B-Strom', 'Wasser'], $names, 'type, then name - as before');
+});
+
+wallos_test('consumption costs use the price valid on each day', function () {
+    require_once WALLOS_ROOT . '/includes/consumption_insights.php';
+    $segments = [['from' => '2025-01-01', 'to' => '2025-03-02', 'delta' => 600, 'days' => 60, 'per_day' => 10]];
+    $meter = ['price_per_unit' => 0.40, 'base_fee_monthly' => 0, 'price_valid_from' => '2025-01-31'];
+    $tariffs = meterTariffList($meter, [['valid_from' => '2024-01-01', 'price_per_unit' => 0.30, 'base_fee_monthly' => 0]]);
+    $cost = costInWindow($segments, $tariffs, '2025-01-01', '2025-03-02', 1.0);
+    assert_same(600.0, $cost['units'], 'all units');
+    assert_same(210.0, $cost['work'], '30 days at 0.30 + 30 days at 0.40');
+    assert_same(0.3, tariffAt($tariffs, '2025-01-15')['price'], 'old price before the change');
+    assert_same(0.4, tariffAt($tariffs, '2025-02-01')['price'], 'new price after');
+});
+
+wallos_test('consumption insights: year comparison, outliers, benchmark, degree days, PV, bills', function () {
+    require_once WALLOS_ROOT . '/includes/consumption_insights.php';
+    $years = yearComparison(['2024-01' => 100.0, '2025-01' => 90.0, '2025-02' => 80.0]);
+    assert_same([2024, 2025], array_keys($years), 'one row per year');
+    assert_same(80.0, $years[2025][2], 'february 2025');
+    assert_same(null, $years[2024][2], 'no data stays empty');
+
+    $normal = [];
+    for ($d = 0; $d < 120; $d += 10) {
+        $normal[] = ['from' => date('Y-m-d', strtotime("2025-01-01 +$d days")), 'to' => date('Y-m-d', strtotime('2025-01-01 +' . ($d + 10) . ' days')), 'delta' => 50, 'days' => 10, 'per_day' => 5];
+    }
+    assert_same(null, detectOutlier($normal), 'steady use is no outlier');
+    $leak = $normal;
+    $leak[] = ['from' => '2025-05-01', 'to' => '2025-05-08', 'delta' => 70, 'days' => 7, 'per_day' => 10];
+    assert_same(2.0, detectOutlier($leak)['ratio'], 'double the usual use');
+
+    assert_same(3200.0, householdBenchmark(['meter_type' => 'electricity'], 3, 0), '3 persons electricity');
+    assert_same(91.2, householdBenchmark(['meter_type' => 'water'], 2, 0), '2 persons water m³');
+    assert_same(null, householdBenchmark(['meter_type' => 'gas', 'conversion_factor' => null], 2, 0), 'gas needs the living area');
+
+    $hdd = heatingDegreeDays(['2025-01-01' => 0.0, '2025-01-02' => 20.0, '2025-02-01' => 10.0]);
+    assert_same(['2025-01' => 15.0, '2025-02' => 5.0], $hdd, 'only days below 15 °C count');
+
+    $pv = pvBalance(5000, 3000, 2500);
+    assert_same(2000.0, $pv['self'], 'self-consumption');
+    assert_same(40.0, $pv['self_rate'], 'self-consumption rate');
+    assert_same(44.4, $pv['autarky'], 'autarky');
+    $amort = pvAmortization(10000, '2023-01-01', 2000, 0.35, 3000, 0.08, '2025-01-01');
+    assert_same(940.0, $amort['benefit'], '2000 × 0.35 + 3000 × 0.08');
+    assert_same(10.6, $amort['years'], 'payback in years');
+
+    $segments = [['from' => '2024-01-01', 'to' => '2025-01-01', 'delta' => 3660, 'days' => 366, 'per_day' => 10]];
+    $tariffs = meterTariffList(['price_per_unit' => 0.30, 'base_fee_monthly' => 0, 'price_valid_from' => null], []);
+    $ok = checkBill(['period_from' => '2024-01-01', 'period_to' => '2024-12-31', 'units' => 3660, 'amount' => 1098], $segments, $tariffs, 1.0, true);
+    assert_same('ok', $ok['status'], 'bill matches the readings');
+    $off = checkBill(['period_from' => '2024-01-01', 'period_to' => '2024-12-31', 'units' => 4300, 'amount' => 1290], $segments, $tariffs, 1.0, true);
+    assert_same('deviation', $off['status'], 'bill far above the readings');
+    $none = checkBill(['period_from' => '2023-01-01', 'period_to' => '2023-12-31', 'units' => 1, 'amount' => 1], $segments, $tariffs, 1.0, true);
+    assert_same('no_data', $none['status'], 'no readings for that period');
+});
+
+wallos_test('heating that rises every autumn is no outlier, a rise against last year is', function () {
+    require_once WALLOS_ROOT . '/includes/consumption_insights.php';
+    $segments = [];
+    $perDay = fn(int $month) => in_array($month, [11, 12, 1, 2], true) ? 8.0 : 2.0;
+    for ($d = strtotime('2024-08-01'); $d < strtotime('2025-11-10'); $d += 14 * 86400) {
+        $p = $perDay((int) date('n', $d));
+        $segments[] = ['from' => date('Y-m-d', $d), 'to' => date('Y-m-d', $d + 14 * 86400), 'delta' => $p * 14, 'days' => 14, 'per_day' => $p];
+    }
+    assert_same(null, detectOutlier($segments), 'november like last november');
+    $last = array_pop($segments);
+    $last['per_day'] *= 2;
+    $last['delta'] *= 2;
+    $segments[] = $last;
+    assert_true(detectOutlier($segments) !== null, 'twice last november is reported');
+});

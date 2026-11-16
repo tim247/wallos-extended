@@ -68,6 +68,16 @@ unset($contract);
 $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
 ?>
 
+<?php
+$filterGroups = [];
+foreach ($contracts as $filterContract) {
+  if (isset($categories[$filterContract['category_id']]) && $categories[$filterContract['category_id']]['name'] !== 'No category') {
+    $filterGroups[$filterContract['category_id']] = $categories[$filterContract['category_id']]['name'];
+  }
+}
+$filterGroupTitle = translate('category', $i18n);
+$archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
+?>
 <section class="contain">
   <header class="<?= $headerClass ?>" id="main-actions">
     <button class="button" onClick="addContract()">
@@ -81,11 +91,7 @@ $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
           <span class="module-total-value"><?= CurrencyFormatter::format($totalMonthly, $mainCurrencyCode) ?></span>
         <?php endif; ?>
       </div>
-      <a href="contracts.php<?= $showArchived ? '' : '?state=archived' ?>" class="button secondary-button"
-        title="<?= translate($showArchived ? 'show_active' : 'show_archive', $i18n) ?>">
-        <i class="fa-solid <?= $showArchived ? 'fa-list' : 'fa-box-archive' ?>"></i>
-        <span class="hideOnMobile"><?= translate($showArchived ? 'show_active' : 'show_archive', $i18n) ?></span>
-      </a>
+      <?php include 'includes/module_filter_bar.php'; ?>
     </div>
   </header>
 
@@ -93,15 +99,6 @@ $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
     <h2 class="archive-title"><i class="fa-solid fa-box-archive"></i> <?= translate('archive', $i18n) ?></h2>
   <?php endif; ?>
 
-  <?php
-  $filterGroups = [];
-  foreach ($contracts as $filterContract) {
-    if (isset($categories[$filterContract['category_id']]) && $categories[$filterContract['category_id']]['name'] !== 'No category') {
-      $filterGroups[$filterContract['category_id']] = $categories[$filterContract['category_id']]['name'];
-    }
-  }
-  include 'includes/module_filter_bar.php';
-  ?>
   <div class="module-cards" id="contracts">
     <?php foreach ($contracts as $contract):
       $deadline = $contract['deadline_info'];
@@ -116,6 +113,8 @@ $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
       }
       ?>
       <div class="module-card <?= $contract['archived'] ? 'archived' : '' ?>" data-id="<?= $contract['id'] ?>"
+        data-name="<?= $contract['name'] ?>" data-price="<?= round((float) $contract['monthly_price'], 2) ?>"
+        data-deadline="<?= $contract['deadline_info']['deadline'] ?? '' ?>" data-member-name="<?= $members[$contract['payer_user_id']]['name'] ?? '' ?>"
         data-member="<?= (int) $contract['payer_user_id'] ?>" data-group="<?= (int) $contract['category_id'] ?>">
         <div class="module-card-main" onClick="openEditContract(event, <?= $contract['id'] ?>)">
           <div class="module-card-info">

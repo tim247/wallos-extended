@@ -5,7 +5,8 @@ require_once 'includes/ssrf_helper.php';
 require_once 'includes/instance_config.php';
 
 if ($isAdmin != 1) {
-    header('Location: index.php');
+    // The header is already sent at this point, so header('Location') only produced a warning.
+    echo '<meta http-equiv="refresh" content="0;url=index.php"><script>location.replace("index.php")</script>';
     exit;
 }
 

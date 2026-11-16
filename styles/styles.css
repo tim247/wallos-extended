@@ -246,8 +246,19 @@ header .logo .logo-image svg {
     min-width: 0;
     border-radius: 0px 0px 12px 12px;
     border-top: none;
-    max-height: calc(100vh - 70px);
+    max-height: calc(100vh - 90px);
+    /* dvh = the visible area: 100vh on phones includes the part behind the address bar,
+       which left the end of the menu (logout) unreachable. */
+    max-height: calc(100dvh - var(--header-height, 80px));
+    box-sizing: border-box;
+    padding-bottom: env(safe-area-inset-bottom);
     overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* The bottom navigation covers the last items otherwise. */
+  .mobile-navigation .dropdown-content {
+    max-height: calc(100dvh - var(--header-height, 80px) - var(--mobile-nav-height, 72px));
   }
 }
 
@@ -6451,8 +6462,10 @@ body.details-open {
 }
 
 @media (max-width: 768px) {
+  /* No multi-column container on phones: with a limited height the columns overflow
+     sideways into an invisible second column instead of scrolling. */
   .dropdown-content.menu-grouped {
-    column-count: 1;
+    columns: auto;
   }
 
   .menu-group {
@@ -6817,71 +6830,270 @@ dialog label > input[type="date"],
   cursor: pointer;
 }
 
-.module-filter {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.module-filter .search {
-  position: relative;
-}
-
-.module-filter .search>input[type="text"] {
-  padding-right: 40px;
-}
-
-.module-filter .search-icon {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--main-color);
-  pointer-events: none;
-}
-
-.module-filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.module-filter-chips>i {
-  width: 18px;
-  text-align: center;
-  color: var(--main-color);
-}
-
-.module-filter-chip {
-  min-height: 32px;
-  padding: 4px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border-color, #ccc);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.module-filter-chip[aria-pressed="true"] {
-  background: var(--main-color);
-  border-color: var(--main-color);
-  color: #fff;
-}
-
-.module-filter-chip:focus-visible {
-  outline: 2px solid var(--main-color);
-  outline-offset: 2px;
-}
-
 .module-filter-empty {
-  margin: 0;
+  margin: 12px 0 0;
   opacity: 0.7;
+}
+
+.module-cards.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.filtermenu-content .filter-title {
+  cursor: default;
+}
+
+#module-filter-button.active {
+  color: #fff;
+  background-color: var(--main-color);
 }
 
 .module-card[hidden] {
   display: none;
+}
+
+.ghost-wrap .unit-suffix,
+.unit-input .unit-suffix {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.9em;
+  pointer-events: none;
+}
+
+.ghost-wrap:has(.unit-suffix:not(:empty)) > input,
+.unit-input > input {
+  padding-right: 52px;
+}
+
+.unit-input {
+  position: relative;
+  display: block;
+}
+
+.unit-input > input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.meter-drag {
+  cursor: grab;
+  color: var(--text-muted);
+  padding: 4px 2px;
+  touch-action: none;
+}
+
+.meter-drag:hover {
+  color: var(--main-color);
+}
+
+.meter-panel-title .meter-drag i {
+  color: inherit;
+  font-size: 16px;
+}
+
+#meter-list .sortable-ghost {
+  opacity: 0.4;
+}
+
+/* Consumption insights */
+.meter-insights {
+  margin-top: 16px;
+  border: 1px solid var(--box-border-color);
+  border-radius: 10px;
+  background-color: var(--box-background-color);
+}
+
+.meter-insights > summary {
+  cursor: pointer;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: var(--main-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.meter-insights-content {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.insight-block h4 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.insight-block p {
+  margin: 6px 0;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.insight-form {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.insight-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  flex: 1 1 130px;
+  min-width: 0;
+}
+
+.insight-form label.grow {
+  flex-basis: 200px;
+}
+
+.insight-form input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 44px;
+  min-height: 44px;
+}
+
+.deadline-badge.ok {
+  background-color: rgba(46, 158, 68, 0.15);
+  color: #2e9e44;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--main-color);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.benchmark-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background-color: rgba(128, 128, 128, 0.18);
+  margin: 8px 0 4px;
+}
+
+.benchmark-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background-color: var(--main-color);
+}
+
+.benchmark-bar.high > span {
+  background-color: var(--error-color);
+}
+
+.benchmark-bar.low > span {
+  background-color: #2e9e44;
+}
+
+.benchmark-bar > i {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 16px;
+  background-color: var(--text-color);
+  opacity: 0.6;
+}
+
+.pv-summary {
+  border: 1px solid var(--box-border-color);
+  border-radius: 12px;
+  background-color: var(--box-background-color);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.pv-summary h3 {
+  margin: 0 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.pv-summary h3 i {
+  color: #f0a04b;
+}
+
+.pv-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.pv-summary-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pv-summary-grid strong {
+  font-size: 20px;
+}
+
+.pv-summary-grid span {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.pv-amortization {
+  margin-top: 14px;
+}
+
+.pv-amortization-bar {
+  height: 10px;
+  border-radius: 5px;
+  background-color: rgba(128, 128, 128, 0.18);
+  overflow: hidden;
+}
+
+.pv-amortization-bar > span {
+  display: block;
+  height: 100%;
+  background-color: #2e9e44;
+}
+
+@media (max-width: 768px) {
+  .meter-insights-content {
+    padding: 0 10px 12px;
+  }
+
+  .insight-form label {
+    flex-basis: 45%;
+  }
+}
+
+/* Contracts / insurances toolbar on phones: total on its own line, buttons below, no view switch. */
+@media (max-width: 768px) {
+  .main-actions .top-actions:has(#module-view-toggle) {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .top-actions:has(#module-view-toggle) .module-total {
+    flex-basis: 100%;
+  }
+
+  #module-view-toggle {
+    display: none;
+  }
 }

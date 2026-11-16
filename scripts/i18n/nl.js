@@ -276,4 +276,10 @@ let i18n = {
   yearly_due: "Te betalen",
   yearly_reserve_balance: "Reservesaldo",
   reading_value_missing: "Voer een meterstand in.",
+  no_matching_entries: "No matching entries",
+  year: "Year",
+  degree_days: "Degree days",
+  per_degree_day: "per degree day",
+  weather_adjusted_value: "Adjusted",
+  weather_adjusted_hint: "Adjusted = consumption scaled to an average winter. A falling value shows that savings like insulation work.",
 }

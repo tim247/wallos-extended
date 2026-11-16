@@ -384,6 +384,39 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
             $updateStmt->execute();
         }
 
+        // Unusually high consumption (leak, faulty appliance), each reading period reported once.
+        require_once __DIR__ . '/../../includes/consumption_insights.php';
+        $stmt = $db->prepare("SELECT * FROM meters WHERE user_id = :user_id AND archived = 0 AND meter_type NOT IN ('pv_feed_in', 'pv_generation')");
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $resultOutlierMeters = $stmt->execute();
+        $outlierMeters = [];
+        while ($meter = $resultOutlierMeters->fetchArray(SQLITE3_ASSOC)) {
+            $outlierMeters[] = $meter;
+        }
+        foreach ($outlierMeters as $meter) {
+            $outlier = detectOutlier(computeConsumptionSegments(loadMeterRows($db, 'meter_readings', (int) $meter['id'], $userId, 'reading_date'))['segments']);
+            if ($outlier === null || ($meter['outlier_notified'] ?? '') === $outlier['to']) {
+                continue;
+            }
+            $label = translate('outlier_notification', $i18n);
+            $notify[$mainMemberId][$i] = [
+                'name' => sprintf(translate('outlier_hint', $i18n), $meter['name'], round(($outlier['ratio'] - 1) * 100)),
+                'price' => number_format($outlier['per_day'], 2, ',', '.') . ' ' . translate('per_day', $i18n),
+                'currency' => '',
+                'category' => $label,
+                'payer' => $mainMemberName,
+                'date' => $outlier['to'],
+                'url' => '',
+                'notes' => '',
+            ];
+            $i++;
+            $update = $db->prepare('UPDATE meters SET outlier_notified = :to WHERE id = :id AND user_id = :user_id');
+            $update->bindValue(':to', $outlier['to']);
+            $update->bindValue(':id', $meter['id'], SQLITE3_INTEGER);
+            $update->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $update->execute();
+        }
+
         // Price increases recorded by the price_history triggers, each reported once.
         $stmt = $db->prepare("SELECT ph.id, ph.item_type, ph.old_price, ph.new_price, ph.changed_at,
                 COALESCE(s.name, c.name, ins.name) AS name, COALESCE(s.currency_id, c.currency_id, ins.currency_id) AS currency_id,

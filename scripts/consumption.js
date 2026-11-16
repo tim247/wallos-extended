@@ -143,9 +143,15 @@ function toggleMeterTypeFields() {
   const conversionGroup = document.querySelector('#meter-conversion-group');
   const baseFeeGroup = document.querySelector('#meter-base-fee-group');
   const priceLabel = document.querySelector('#meter-price-label');
+  const isPv = type === 'pv_feed_in' || type === 'pv_generation';
   conversionGroup.classList.toggle('hide', type !== 'gas');
-  baseFeeGroup.classList.toggle('hide', type === 'pv_feed_in');
-  document.querySelector('#meter-advance-group').classList.toggle('hide', type === 'pv_feed_in');
+  baseFeeGroup.classList.toggle('hide', isPv);
+  document.querySelector('#meter-advance-group').classList.toggle('hide', isPv);
+  document.querySelector('#meter-heating-group').classList.toggle('hide', type !== 'electricity');
+  document.querySelector('#meter-pv-group').classList.toggle('hide', type !== 'pv_generation');
+  // Generation has no price of its own: its value comes from the grid price it saves.
+  document.querySelector('#meter-price-per-unit').closest('.form-group').classList.toggle('hide', type === 'pv_generation');
+  document.querySelector('#meter-price-from-group').classList.toggle('hide', type === 'pv_generation');
   priceLabel.textContent =
     type === 'pv_feed_in' ? translate('feed_in_compensation') : translate('price_per_unit');
 }
@@ -197,6 +203,10 @@ function openEditMeter(event, id) {
       document.querySelector('#meter-monthly-advance').value = meter.monthly_advance || '';
       document.querySelector('#meter-billing-start').value = meter.billing_start || '';
       document.querySelector('#meter-reminder-days').value = meter.reading_reminder_days || '';
+      document.querySelector('#meter-is-heating').checked = Number(meter.is_heating) === 1;
+      document.querySelector('#meter-investment').value = Number(meter.investment_cost) || '';
+      document.querySelector('#meter-commissioning').value = meter.commissioning_date || '';
+      document.querySelector('#meter-price-valid-from').value = meter.price_valid_from && meter.price_valid_from !== '0000-01-01' ? meter.price_valid_from : '';
       toggleMeterTypeFields();
 
       const deleteButton = document.querySelector('#delete-meter');
@@ -277,6 +287,7 @@ function openEditReading(event, id) {
   document.querySelector('#reading-edit-id').value = id;
   document.querySelector('#reading-edit-date').value = reading.reading_date;
   document.querySelector('#reading-edit-value').value = reading.reading_value;
+  document.querySelector('#reading-edit-unit').textContent = reading.unit || '';
   document.querySelector('#reading-edit-meter-change').checked = reading.is_meter_change === 1;
   document.querySelector('#reading-edit-note').value = reading.note || '';
 
@@ -675,3 +686,156 @@ function compareTariff(input) {
     (diff >= 0 ? `<span class="positive">${translate("tariff_saving")}: ${fmt(diff)}</span>`
                : `<span class="negative">${translate("tariff_more")}: ${fmt(-diff)}</span>`);
 }
+
+// Drag and drop order of the meters (handle: grip icon in the panel header).
+document.addEventListener('DOMContentLoaded', () => {
+  const list = document.getElementById('meter-list');
+  if (!list || typeof Sortable === 'undefined' || !list.querySelector('.meter-drag')) return;
+  Sortable.create(list, {
+    handle: '.meter-drag',
+    draggable: '.meter-panel',
+    ghostClass: 'sortable-ghost',
+    delay: 300,
+    delayOnTouchOnly: true,
+    onEnd: () => {
+      const ids = [...list.querySelectorAll('.meter-panel')].map((panel) => Number(panel.dataset.id));
+      fetch('endpoints/consumption/sort_meters.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+        body: JSON.stringify({ ids }),
+      })
+        .then((r) => r.json())
+        .then((data) => data.success ? showSuccessMessage(data.message) : showErrorMessage(data.message || translate('unknown_error')))
+        .catch(() => showErrorMessage(translate('unknown_error')));
+    },
+  });
+});
+
+/* ---------- insights: year comparison, weather, tariffs, bills, household ---------- */
+
+function postConsumption(url, body) {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+    body: JSON.stringify(body),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.success) {
+        showSuccessMessage(data.message);
+        window.location.reload();
+      } else {
+        showErrorMessage(data.message || translate('unknown_error'));
+      }
+      return data;
+    })
+    .catch(() => showErrorMessage(translate('unknown_error')));
+}
+
+function renderYearChart(meterId) {
+  const data = window.meterChartData[meterId];
+  const id = 'yearChart-' + meterId;
+  if (!data || !data.years || !document.getElementById(id) || meterCharts[id]) return;
+  const months = [...Array(12)].map((_, i) => new Date(2000, i, 1).toLocaleString(navigator.language, { month: 'short' }));
+  const years = Object.keys(data.years).slice(-4); // the last four years stay readable
+  const exact = apexNumber(1);
+  meterCharts[id] = apexRender(id, (el, t) => {
+    const b = apexBase(el, 'bar', 280);
+    return {
+      ...b,
+      series: years.map((y) => ({ name: y, data: Object.values(data.years[y]) })),
+      colors: [t.main, ...APEX_PALETTE].slice(0, years.length).reverse(),
+      plotOptions: { bar: { borderRadius: 3, columnWidth: '75%' } },
+      xaxis: { ...b.xaxis, categories: months },
+      yaxis: { ...b.yaxis, min: 0, labels: { ...b.yaxis.labels, formatter: apexNumber(0) } },
+      tooltip: { ...b.tooltip, y: { formatter: (v) => (v === null ? '—' : exact(v) + ' ' + data.unit) } },
+      legend: { ...b.legend, position: 'top' },
+    };
+  });
+}
+
+function loadWeather(meterId) {
+  const box = document.getElementById('weather-' + meterId);
+  if (!box || box.dataset.loaded) return;
+  box.dataset.loaded = '1';
+  fetch(`endpoints/consumption/weather.php?id=${meterId}`)
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data.success) {
+        box.innerHTML = '';
+        const p = document.createElement('p');
+        p.className = 'forecast-label';
+        p.textContent = data.error || translate('unknown_error');
+        box.appendChild(p);
+        return;
+      }
+      const fmt = apexNumber(1);
+      const rows = Object.entries(data.years).map(([year, y]) => `
+        <tr><td>${year}${y.months < 12 ? ` <span class="forecast-label">(${y.months}/12)</span>` : ''}</td>
+          <td>${fmt(y.units)} ${data.unit}</td><td>${fmt(y.hdd)}</td>
+          <td>${y.per_hdd === null ? '—' : apexNumber(2)(y.per_hdd)}</td>
+          <td>${y.adjusted === null ? '—' : '<strong>' + fmt(y.adjusted) + ' ' + data.unit + '</strong>'}</td></tr>`).join('');
+      box.innerHTML = `
+        <div class="table-scroll"><table class="schedule-table">
+          <thead><tr><th>${translate('year')}</th><th>${translate('consumption')}</th><th>${translate('degree_days')}</th>
+            <th>${translate('per_degree_day')}</th><th>${translate('weather_adjusted_value')}</th></tr></thead>
+          <tbody>${rows}</tbody></table></div>
+        <p class="forecast-label weather-hint">${translate('weather_adjusted_hint')}</p>`;
+      box.querySelector('.weather-hint').append(` (${data.location}, Open-Meteo)`);
+    })
+    .catch(() => { box.textContent = translate('unknown_error'); });
+}
+
+function formValues(form) {
+  return Object.fromEntries(new FormData(form).entries());
+}
+
+function addTariff(event, meterId) {
+  event.preventDefault();
+  postConsumption('endpoints/consumption/tariff.php', { action: 'add', meter_id: meterId, ...formValues(event.target) });
+  return false;
+}
+
+function deleteTariff(id) {
+  if (!confirm(translate('confirm_delete'))) return;
+  postConsumption('endpoints/consumption/tariff.php', { action: 'delete', id });
+}
+
+function addBill(event, meterId) {
+  event.preventDefault();
+  postConsumption('endpoints/consumption/bill.php', { action: 'add', meter_id: meterId, ...formValues(event.target) });
+  return false;
+}
+
+function deleteBill(id) {
+  if (!confirm(translate('confirm_delete'))) return;
+  postConsumption('endpoints/consumption/bill.php', { action: 'delete', id });
+}
+
+function openConsumptionSettings() {
+  document.getElementById('consumption-settings-form').classList.add('is-open');
+  document.querySelector('body').classList.add('no-scroll');
+  document.getElementById('cs-persons').focus();
+}
+
+function closeConsumptionSettings() {
+  document.getElementById('consumption-settings-form').classList.remove('is-open');
+  document.querySelector('body').classList.remove('no-scroll');
+}
+
+function saveConsumptionSettings(event) {
+  event.preventDefault();
+  postConsumption('endpoints/consumption/save_settings.php', formValues(event.target));
+  return false;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.meter-insights').forEach((details) => {
+    details.addEventListener('toggle', () => {
+      if (!details.open) return;
+      const meterId = details.dataset.meter;
+      renderYearChart(meterId);
+      if (details.dataset.heating === '1') loadWeather(meterId);
+    });
+  });
+});

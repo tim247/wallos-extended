@@ -40,6 +40,11 @@ function attachReadingForecast(input, forecastFor) {
   rest.className = 'ghost-rest';
   ghost.append(typed, rest);
   wrap.appendChild(ghost);
+  // Unit (kWh, m³) stays visible next to the value and the forecast.
+  const unit = document.createElement('span');
+  unit.className = 'unit-suffix';
+  unit.setAttribute('aria-hidden', 'true');
+  wrap.appendChild(unit);
   const basePlaceholder = input.placeholder;
 
   const completion = () => {
@@ -59,6 +64,8 @@ function attachReadingForecast(input, forecastFor) {
     typed.textContent = input.value;
     rest.textContent = completion();
     ghost.hidden = rest.textContent === '';
+    unit.textContent = input.dataset.unit || '';
+    if (input.dataset.unit) input.setAttribute('aria-label', `${basePlaceholder} (${input.dataset.unit})`);
   };
 
   input.addEventListener('input', render);

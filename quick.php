@@ -13,7 +13,7 @@ $rows = function (string $sql) use ($db, $userId): array {
     return $out;
 };
 $meters = $rows("SELECT m.id, m.name, m.unit, (SELECT reading_value FROM meter_readings r WHERE r.meter_id = m.id ORDER BY reading_date DESC LIMIT 1) AS last
-    FROM meters m WHERE m.user_id = :userId AND m.archived = 0 AND m.meter_type != 'pv_feed_in' ORDER BY m.name");
+    FROM meters m WHERE m.user_id = :userId AND m.archived = 0 AND m.meter_type != 'pv_feed_in' ORDER BY m.sort_order = 0, m.sort_order, m.name");
 // Forecast per meter from the recent consumption (scripts/reading-forecast.js).
 require_once 'includes/consumption_calculations.php';
 foreach ($meters as &$meter) {
@@ -39,7 +39,7 @@ $targets = array_merge(
       <select name="meter_id" required>
         <?php foreach ($meters as $m): ?>
           <option value="<?= $m['id'] ?>" data-last-value="<?= $m['last'] ?? '' ?>" data-last-date="<?= htmlspecialchars($m['last_date']) ?>"
-            data-per-day="<?= $m['per_day'] ?>"><?= htmlspecialchars($m['name']) ?><?= $m['last'] !== null ? ' (' . translate('last_reading', $i18n) . ' ' . $m['last'] . ' ' . htmlspecialchars($m['unit']) . ')' : '' ?></option>
+            data-per-day="<?= $m['per_day'] ?>" data-unit="<?= htmlspecialchars((string) $m['unit']) ?>"><?= htmlspecialchars($m['name']) ?><?= $m['last'] !== null ? ' (' . translate('last_reading', $i18n) . ' ' . $m['last'] . ' ' . htmlspecialchars($m['unit']) . ')' : '' ?></option>
         <?php endforeach; ?>
       </select>
       <input type="text" name="reading_value" inputmode="decimal" autocomplete="off" pattern="[0-9]+([.,][0-9]+)?" required
@@ -81,7 +81,10 @@ $targets = array_merge(
   const readingForm = document.querySelector('form[onsubmit^="return quickReading"]');
   if (readingForm) {
     const selected = () => readingForm.meter_id.selectedOptions[0];
-    const forecast = () => readingForecastFromData(selected(), readingForm.reading_date)();
+    const forecast = () => {
+      readingForm.reading_value.dataset.unit = selected()?.dataset.unit || '';
+      return readingForecastFromData(selected(), readingForm.reading_date)();
+    };
     const redraw = attachReadingForecast(readingForm.reading_value, forecast);
     readingForm.meter_id.addEventListener('change', redraw);
     readingForm.reading_date.addEventListener('change', redraw);

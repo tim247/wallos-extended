@@ -4,6 +4,7 @@ require_once 'includes/header.php';
 require_once 'includes/getdbkeys.php';
 require_once 'includes/financing_calculations.php';
 require_once 'includes/consumption_calculations.php';
+require_once 'includes/consumption_insights.php';
 require_once 'includes/cancellation_helpers.php';
 require_once 'includes/logo_theme_variant.php';
 require_once 'includes/html_text.php';
@@ -260,9 +261,10 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 
 /* ---------- meters ---------- */
 $meterSnapshots = [];
+$meterOutliers = [];
 $pvMonthlyEarnings = 0.0;
 $consumptionMonthly = 0.0;
-$stmt = $db->prepare("SELECT * FROM meters WHERE user_id = :userId AND archived = 0 ORDER BY meter_type ASC, name COLLATE NOCASE ASC");
+$stmt = $db->prepare("SELECT * FROM meters WHERE user_id = :userId AND archived = 0 ORDER BY sort_order = 0, sort_order, meter_type ASC, name COLLATE NOCASE ASC");
 $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
 $result = $stmt->execute();
 $meterTypeMeta = [
@@ -270,6 +272,7 @@ $meterTypeMeta = [
     'water' => ['icon' => 'fa-droplet', 'unit' => 'm³'],
     'gas' => ['icon' => 'fa-fire', 'unit' => 'm³'],
     'pv_feed_in' => ['icon' => 'fa-solar-panel', 'unit' => 'kWh'],
+    'pv_generation' => ['icon' => 'fa-sun', 'unit' => 'kWh'],
 ];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $rStmt = $db->prepare("SELECT reading_date, reading_value, is_meter_change FROM meter_readings WHERE meter_id = :meterId AND user_id = :userId ORDER BY reading_date ASC");
@@ -281,6 +284,9 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         $readings[] = $r;
     }
     $computed = computeConsumptionSegments($readings);
+    if (!in_array($row['meter_type'], ['pv_feed_in', 'pv_generation'], true) && ($outlier = detectOutlier($computed['segments'])) !== null) {
+        $meterOutliers[] = [$row['name'], $outlier];
+    }
     $buckets = computeMonthlyBuckets($computed['segments']);
     // Keep only the last 6 months for the snapshot.
     $buckets = array_slice($buckets, -6, 6, true);
@@ -289,7 +295,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $isPv = $row['meter_type'] === 'pv_feed_in';
     if ($isPv && $forecast !== null && $forecast['per_day'] > 0) {
         $pvMonthlyEarnings += $forecast['per_day'] * 30.44 * floatval($row['price_per_unit']);
-    } elseif ($forecast !== null && $forecast['per_day'] > 0) {
+    } elseif ($forecast !== null && $forecast['per_day'] > 0 && $row['meter_type'] !== 'pv_generation') {
         // Same estimate as stats.php: forecast units per month * price + base fee.
         $conversion = ($row['meter_type'] === 'gas' && !empty($row['conversion_factor'])) ? floatval($row['conversion_factor']) : 1.0;
         $consumptionMonthly += getPriceConverted($forecast['per_day'] * 30.44 * $conversion * floatval($row['price_per_unit']) + floatval($row['base_fee_monthly']), $row['currency_id'], $db, $userId);
@@ -462,6 +468,9 @@ $showFirstSteps = count(array_filter(array_column($firstSteps, 2))) < count($fir
 
 // Hints: system health (admin only), categories over budget and basic insurances that are missing.
 $householdHints = [];
+foreach ($meterOutliers as [$outlierName, $outlier]) {
+    $householdHints[] = ['fa-triangle-exclamation', sprintf(translate('outlier_hint', $i18n), $outlierName, round(($outlier['ratio'] - 1) * 100)), 'consumption.php'];
+}
 if ($isAdmin) {
     require_once 'includes/system_health.php';
     foreach (systemHealthIssues($db) as $issue) {
