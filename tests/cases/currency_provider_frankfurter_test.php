@@ -484,6 +484,8 @@ wallos_test('a refresh that priced nothing leaves the last update date alone', f
 wallos_test('choosing the keyless provider keeps the key of the one before it', function () {
     $db = wallos_test_open_database();
     wallos_test_create_user($db, 1, 'alice');
+    // An account from before migration 000072 with a Fixer key (new accounts get a row from the trigger).
+    $db->exec('DELETE FROM fixer WHERE user_id = 1');
 
     $stmt = $db->prepare("INSERT INTO fixer (api_key, provider, user_id) VALUES ('kept-fixer-key', 0, 1)");
     $stmt->execute();
