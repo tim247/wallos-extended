@@ -75,10 +75,24 @@ migriert die Datenbank. Datenbank und hochgeladene Logos bleiben erhalten.
 | `update --force` | neueste Version neu installieren |
 | `update v5.11.1-ext.2` | bestimmte Version installieren |
 
-**Ältere Installationen** ohne den Befehl `update` richten ihn einmalig so ein:
+**`update: command not found`?** Dann das Skript direkt mit vollem Pfad starten:
 
 ```bash
-curl -fsSL https://github.com/tim247/wallos-extended/releases/latest/download/update.sh -o /usr/local/bin/update && chmod +x /usr/local/bin/update && update
+bash /usr/local/bin/update
+```
+
+Das passiert, wenn `/usr/local/bin` im Suchpfad der Shell fehlt oder sich die Shell ein früheres
+„nicht gefunden“ gemerkt hat (`hash -r` behebt Letzteres). Dauerhaft in den Suchpfad aufnehmen:
+
+```bash
+echo 'export PATH="/usr/local/sbin:/usr/local/bin:$PATH"' >> /root/.bashrc && source /root/.bashrc
+```
+
+**Ältere Installationen** ohne den Befehl `update` (vor `v5.11.1-ext.2`) richten ihn einmalig ein
+und starten ihn gleich:
+
+```bash
+curl -fsSL https://github.com/tim247/wallos-extended/releases/latest/download/update.sh -o /usr/local/bin/update && chmod 755 /usr/local/bin/update && bash /usr/local/bin/update
 ```
 
 ## Wo liegt was?

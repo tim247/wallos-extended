@@ -179,6 +179,17 @@ Wie bei den [community-scripts](https://community-scripts.org) führen Dialoge d
 **Standard** oder **Erweitert** (Container-ID, CPU, RAM, Speicher, feste IP, Datenübernahme).
 
 **Update:** im Container einfach `update` eingeben – sichert die Datenbank und installiert die neueste Version.
+Meldet die Shell `update: command not found`, das Skript direkt starten:
+
+```bash
+bash /usr/local/bin/update
+```
+
+Fehlt der Befehl ganz (Installationen vor `v5.11.1-ext.2`), einmalig einrichten und starten:
+
+```bash
+curl -fsSL https://github.com/tim247/wallos-extended/releases/latest/download/update.sh -o /usr/local/bin/update && chmod 755 /usr/local/bin/update && bash /usr/local/bin/update
+```
 
 Ohne Dialoge, z. B. für Automatisierung:
 
