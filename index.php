@@ -262,6 +262,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 /* ---------- meters ---------- */
 $meterSnapshots = [];
 $meterOutliers = [];
+$meterMonthCompare = [];
 $pvMonthlyEarnings = 0.0;
 $consumptionMonthly = 0.0;
 $stmt = $db->prepare("SELECT * FROM meters WHERE user_id = :userId AND archived = 0 ORDER BY sort_order = 0, sort_order, meter_type ASC, name COLLATE NOCASE ASC");
@@ -288,6 +289,10 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         $meterOutliers[] = [$row['name'], $outlier];
     }
     $buckets = computeMonthlyBuckets($computed['segments']);
+    if ($row['meter_type'] !== 'pv_generation' && ($compare = lastMonthComparison($computed['segments'], $buckets, date('Y-m-d'))) !== null) {
+        $meterMonthCompare[] = $compare + ['name' => $row['name'], 'icon' => $meterTypeMeta[$row['meter_type']]['icon'] ?? 'fa-gauge',
+            'unit' => $meterTypeMeta[$row['meter_type']]['unit'] ?? $row['unit'], 'is_pv' => $row['meter_type'] === 'pv_feed_in'];
+    }
     // Keep only the last 6 months for the snapshot.
     $buckets = array_slice($buckets, -6, 6, true);
     $forecast = computeForecast($computed['segments'], $endOfYear);
@@ -770,6 +775,32 @@ if ($consumptionMonthly > 0) {
                         </div>
                     </a>
                 <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($meterMonthCompare): ?>
+            <div class="dashboard-panel">
+                <h2><i class="fa-solid fa-gauge"></i> <?= sprintf(translate('consumption_last_month', $i18n), date('m/Y', strtotime($meterMonthCompare[0]['month'] . '-01'))) ?></h2>
+                <ul class="meter-compare-list">
+                    <?php foreach ($meterMonthCompare as $cmp):
+                        // More consumption is bad, more feed-in is good.
+                        $better = $cmp['change'] !== null && ($cmp['is_pv'] ? $cmp['change'] > 0 : $cmp['change'] < 0); ?>
+                        <li>
+                            <i class="fa-solid <?= $cmp['icon'] ?>" aria-hidden="true"></i>
+                            <span class="meter-compare-name"><?= $cmp['name'] ?></span>
+                            <strong><?= number_format($cmp['units'], 0, ',', '.') ?> <?= $cmp['unit'] ?></strong>
+                            <?php if ($cmp['change'] !== null): ?>
+                                <span class="meter-compare-change <?= $better ? 'positive' : (round($cmp['change']) == 0 ? '' : 'negative') ?>"
+                                    title="<?= translate('compared_to_last_year', $i18n) ?>">
+                                    <?php $rounded = (int) round($cmp['change']); ?><?= $rounded > 0 ? '+' : ($rounded < 0 ? '−' : '±') ?><?= abs($rounded) ?> %
+                                </span>
+                            <?php else: ?>
+                                <span class="meter-compare-change">—</span>
+                            <?php endif; ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+                <a class="dashboard-panel-link" href="consumption.php"><?= translate('show_details', $i18n) ?> <i class="fa-solid fa-arrow-right"></i></a>
             </div>
         <?php endif; ?>
 

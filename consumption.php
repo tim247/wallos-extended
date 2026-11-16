@@ -4,6 +4,7 @@ require_once 'includes/header.php';
 require_once 'includes/getdbkeys.php';
 require_once 'includes/consumption_calculations.php';
 require_once 'includes/consumption_insights.php';
+require_once 'includes/price_helpers.php';
 require_once 'includes/homeassistant.php';
 $haEnabled = homeAssistantConfig($db, $userId) !== null;
 
@@ -22,6 +23,16 @@ $mainCurrencyCode = $currencies[$mainCurrencyId]['code'] ?? 'EUR';
 $today = date('Y-m-d');
 $endOfYear = date('Y') . '-12-31';
 $consumptionSettings = loadConsumptionSettings($db, $userId);
+require_once 'includes/cancellation_helpers.php';
+$supplyContracts = [];
+$contractStmt = $db->prepare('SELECT * FROM contracts WHERE user_id = :userId AND archived = 0 ORDER BY name COLLATE NOCASE');
+$contractStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$contractResult = $contractStmt->execute();
+while ($contractRow = $contractResult->fetchArray(SQLITE3_ASSOC)) {
+  $contractRow['monthly'] = getPricePerMonth($contractRow['cycle'], $contractRow['frequency'], (float) $contractRow['price']);
+  $contractRow['deadline'] = $contractRow['cancellation_status'] ? null : (getNextCancellationDeadline($contractRow, date('Y-m-d'))['deadline'] ?? null);
+  $supplyContracts[$contractRow['id']] = $contractRow;
+}
 $benchPersons = (int) ($consumptionSettings['persons'] ?: ($consumptionSettings['persons_default'] ?? 0));
 
 $stmt = $db->prepare("SELECT * FROM meters WHERE user_id = :userId AND archived = :archived ORDER BY sort_order = 0, sort_order, meter_type ASC, name COLLATE NOCASE ASC");
@@ -94,6 +105,9 @@ foreach ($meters as &$meter) {
   }
 
   $meter['outlier'] = $isPvType ? null : detectOutlier($computed['segments']);
+  $meter['base_load'] = $meter['meter_type'] === 'electricity' ? estimateBaseLoad($computed['segments'], $today) : null;
+  $meter['switch_hints'] = $isPvType ? [] : tariffSwitchHints($meter, $today);
+  $meter['contract'] = $supplyContracts[$meter['contract_id'] ?? 0] ?? null;
   $meter['bills'] = [];
   foreach (loadMeterRows($db, 'meter_bills', (int) $meter['id'], $userId, 'period_from DESC') as $bill) {
     $bill['check'] = checkBill($bill, $computed['segments'], $tariffs, $conversion, !$isPvType);
@@ -131,6 +145,9 @@ foreach ($meters as &$meter) {
   // Advance payments (Abschlag) vs. projected cost of the current billing year.
   $meter['settlement'] = null;
   $advance = floatval($meter['monthly_advance'] ?? 0);
+  if ($advance <= 0 && $meter['contract'] !== null) {
+    $advance = round((float) $meter['contract']['monthly'], 2); // the payment of the linked supply contract
+  }
   if (!$isPvType) {
     $periodStart = !empty($meter['billing_start']) ? $meter['billing_start'] : date('Y') . '-01-01';
     // Roll the billing year forward until it contains today.
@@ -257,6 +274,19 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
           <h3><?= htmlspecialchars($meter['name']) ?></h3>
           <span class="meter-panel-type"><?= translate($typeInfo['label'], $i18n) ?>
             <?= $meter['meter_number'] ? '· ' . htmlspecialchars($meter['meter_number']) : '' ?></span>
+          <?php if ($meter['contract'] !== null): ?>
+            <a class="deadline-badge" href="contracts.php" title="<?= translate('meter_contract', $i18n) ?>">
+              <i class="fa-solid fa-file-signature"></i> <?= $meter['contract']['name'] ?><?= $meter['contract']['deadline'] ? ' · ' . translate('cancellable_until', $i18n) . ' ' . date('d.m.Y', strtotime($meter['contract']['deadline'])) : '' ?>
+            </a>
+          <?php endif; ?>
+          <?php foreach ($meter['switch_hints'] as $switchHint): ?>
+            <span class="deadline-badge warning">
+              <i class="fa-solid fa-right-left"></i>
+              <?= $switchHint['key'] === 'guarantee'
+                ? sprintf(translate('price_guarantee_ends', $i18n), date('d.m.Y', strtotime($switchHint['date'])))
+                : sprintf(translate('price_above_reference', $i18n), $switchHint['percent']) ?>
+            </span>
+          <?php endforeach; ?>
           <?php if ($meter['outlier'] !== null): ?>
             <span class="deadline-badge warning" title="<?= sprintf(translate('outlier_detail', $i18n), number_format($meter['outlier']['per_day'], 2, ',', '.'), number_format($meter['outlier']['usual'], 2, ',', '.'), $unitLabel) ?>">
               <i class="fa-solid fa-triangle-exclamation"></i> <?= sprintf(translate('outlier_badge', $i18n), round(($meter['outlier']['ratio'] - 1) * 100)) ?>
@@ -471,6 +501,19 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
                     </tbody>
                   </table>
                 </div>
+              </section>
+            <?php endif; ?>
+
+            <?php if ($meter['meter_type'] === 'electricity'): ?>
+              <section class="insight-block">
+                <h4><?= translate('base_load', $i18n) ?></h4>
+                <?php if ($meter['base_load'] !== null): $baseLoad = $meter['base_load'];
+                  $baseCost = $baseLoad['kwh_year'] * tariffAt($meter['tariffs'], $today)['price']; ?>
+                  <p><?= sprintf(translate('base_load_text', $i18n), number_format($baseLoad['watts'], 0, ',', '.'), number_format($baseLoad['kwh_year'], 0, ',', '.'), CurrencyFormatter::format($baseCost, $meterCode)) ?></p>
+                  <p class="forecast-label"><?= translate('base_load_hint', $i18n) ?></p>
+                <?php else: ?>
+                  <p class="forecast-label"><?= translate('base_load_needs_data', $i18n) ?></p>
+                <?php endif; ?>
               </section>
             <?php endif; ?>
 
@@ -736,6 +779,31 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
           <input type="date" id="meter-billing-start" name="billing_start" autocomplete="off">
         </div>
       </div>
+    </div>
+
+    <div class="form-group" id="meter-contract-group">
+      <label for="meter-contract"><?= translate('meter_contract', $i18n) ?></label>
+      <select id="meter-contract" name="contract_id">
+        <option value=""><?= translate('none', $i18n) ?></option>
+        <?php foreach ($supplyContracts as $supplyContract): ?>
+          <option value="<?= $supplyContract['id'] ?>"><?= $supplyContract['name'] ?><?= $supplyContract['provider'] ? ' · ' . $supplyContract['provider'] : '' ?></option>
+        <?php endforeach; ?>
+      </select>
+      <small class="loan-anchor-hint"><?= translate('meter_contract_hint', $i18n) ?></small>
+    </div>
+
+    <div class="form-group" id="meter-switch-group">
+      <div class="inline">
+        <div class="split50">
+          <label for="meter-guarantee"><?= translate('price_guarantee_until', $i18n) ?></label>
+          <input type="date" id="meter-guarantee" name="price_guarantee_until" autocomplete="off">
+        </div>
+        <div class="split50">
+          <label for="meter-reference-price"><?= translate('reference_price', $i18n) ?></label>
+          <input type="number" step="0.0001" min="0" id="meter-reference-price" name="reference_price" autocomplete="off" placeholder="0.28">
+        </div>
+      </div>
+      <small class="loan-anchor-hint"><?= translate('tariff_switch_hint', $i18n) ?></small>
     </div>
 
     <div class="form-group">

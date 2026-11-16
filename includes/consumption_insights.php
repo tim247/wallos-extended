@@ -105,24 +105,27 @@ function detectOutlier(array $segments, float $threshold = 1.4): ?array
     if ($last['days'] > 60 || $last['delta'] <= 0) {
         return null;
     }
-    $earlier = array_slice($segments, 0, -1);
-    $yearAgoFrom = date('Y-m-d', strtotime($last['from'] . ' -1 year'));
+    // At least the last 7 days: a reading two days after the previous one says too little.
+    $recentFrom = min($last['from'], date('Y-m-d', strtotime($last['to'] . ' -7 days')));
+    $recentDays = (strtotime($last['to']) - strtotime(max($recentFrom, $segments[0]['from']))) / 86400;
+    $recent = computeUnitsInWindow($segments, $recentFrom, $last['to']) / max(1, $recentDays);
+    $yearAgoFrom = date('Y-m-d', strtotime($recentFrom . ' -1 year'));
     $yearAgoTo = date('Y-m-d', strtotime($last['to'] . ' -1 year'));
     if ($segments[0]['from'] <= $yearAgoFrom) {
-        $usualUnits = computeUnitsInWindow($earlier, $yearAgoFrom, $yearAgoTo);
+        $usualUnits = computeUnitsInWindow($segments, $yearAgoFrom, $yearAgoTo);
         $usualDays = (strtotime($yearAgoTo) - strtotime($yearAgoFrom)) / 86400;
     } else {
-        $usualFrom = date('Y-m-d', strtotime($last['from'] . ' -90 days'));
-        $usualUnits = computeUnitsInWindow($earlier, $usualFrom, $last['from']);
-        $usualDays = (strtotime($last['from']) - strtotime(max($usualFrom, $segments[0]['from']))) / 86400;
+        $usualFrom = date('Y-m-d', strtotime($recentFrom . ' -90 days'));
+        $usualUnits = computeUnitsInWindow($segments, $usualFrom, $recentFrom);
+        $usualDays = (strtotime($recentFrom) - strtotime(max($usualFrom, $segments[0]['from']))) / 86400;
     }
     if ($usualDays < 7 || $usualUnits <= 0) {
         return null;
     }
     $usual = $usualUnits / $usualDays;
-    $ratio = $last['per_day'] / $usual;
+    $ratio = $recent / $usual;
     return $ratio >= $threshold
-        ? ['from' => $last['from'], 'to' => $last['to'], 'per_day' => round($last['per_day'], 3), 'usual' => round($usual, 3), 'ratio' => round($ratio, 2)]
+        ? ['from' => $recentFrom, 'to' => $last['to'], 'per_day' => round($recent, 3), 'usual' => round($usual, 3), 'ratio' => round($ratio, 2)]
         : null;
 }
 
@@ -263,6 +266,70 @@ function checkBill(array $bill, array $segments, array $tariffs, float $conversi
         'unit_diff' => $unitDiff !== null ? round($unitDiff, 1) : null,
         'cost_diff' => $costDiff !== null ? round($costDiff, 1) : null,
         'status' => $worst > 10 ? 'deviation' : ($worst > 3 ? 'check' : 'ok'),
+    ];
+}
+
+/**
+ * Base load of an electricity meter (standby, fridge, router): the lowest daily average of
+ * the short reading periods (up to 7 days) of the last year. Every period also contains the
+ * household's active use, so this is an upper bound - the closer the readings, the better.
+ *
+ * @return array{watts: int, kwh_year: float, periods: int}|null Null with fewer than 4 short periods.
+ */
+function estimateBaseLoad(array $segments, string $today): ?array
+{
+    $since = date('Y-m-d', strtotime($today . ' -365 days'));
+    $short = array_filter($segments, fn($s) => $s['days'] <= 7 && $s['to'] >= $since && $s['delta'] > 0);
+    if (count($short) < 4) {
+        return null;
+    }
+    $perDay = min(array_column($short, 'per_day'));
+    return ['watts' => (int) round($perDay * 1000 / 24), 'kwh_year' => round($perDay * 365, 0), 'periods' => count($short)];
+}
+
+/**
+ * Reasons to check a tariff switch: the price guarantee ends within 60 days, or the price
+ * is at least 5 % above the reference price of a good offer.
+ *
+ * @return array<int, array{key: string, date?: string, percent?: int}>
+ */
+function tariffSwitchHints(array $meter, string $today): array
+{
+    $hints = [];
+    $guarantee = $meter['price_guarantee_until'] ?? null;
+    if ($guarantee && $guarantee >= $today && $guarantee <= date('Y-m-d', strtotime($today . ' +60 days'))) {
+        $hints[] = ['key' => 'guarantee', 'date' => $guarantee];
+    }
+    $reference = (float) ($meter['reference_price'] ?? 0);
+    $price = (float) ($meter['price_per_unit'] ?? 0);
+    if ($reference > 0 && $price >= $reference * 1.05) {
+        $hints[] = ['key' => 'expensive', 'percent' => (int) round(($price / $reference - 1) * 100)];
+    }
+    return $hints;
+}
+
+/**
+ * Last complete month against the same month a year earlier (dashboard widget).
+ * The month counts as complete when a reading lies on or after its end.
+ *
+ * @return array{month: string, units: float, previous: float|null, change: float|null}|null
+ */
+function lastMonthComparison(array $segments, array $monthly, string $today): ?array
+{
+    if (!$segments) {
+        return null;
+    }
+    $month = date('Y-m', strtotime(substr($today, 0, 7) . '-01 -1 month'));
+    if (end($segments)['to'] < substr($today, 0, 7) . '-01' || !isset($monthly[$month])) {
+        return null;
+    }
+    $previousKey = date('Y-m', strtotime($month . '-01 -1 year'));
+    $previous = ($segments[0]['from'] <= $previousKey . '-01') ? ($monthly[$previousKey] ?? null) : null;
+    return [
+        'month' => $month,
+        'units' => $monthly[$month],
+        'previous' => $previous,
+        'change' => $previous ? round(($monthly[$month] / $previous - 1) * 100, 1) : null,
     ];
 }
 

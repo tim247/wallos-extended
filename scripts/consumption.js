@@ -149,6 +149,8 @@ function toggleMeterTypeFields() {
   document.querySelector('#meter-advance-group').classList.toggle('hide', isPv);
   document.querySelector('#meter-heating-group').classList.toggle('hide', type !== 'electricity');
   document.querySelector('#meter-pv-group').classList.toggle('hide', type !== 'pv_generation');
+  document.querySelector('#meter-switch-group').classList.toggle('hide', isPv);
+  document.querySelector('#meter-contract-group').classList.toggle('hide', type === 'pv_generation');
   // Generation has no price of its own: its value comes from the grid price it saves.
   document.querySelector('#meter-price-per-unit').closest('.form-group').classList.toggle('hide', type === 'pv_generation');
   document.querySelector('#meter-price-from-group').classList.toggle('hide', type === 'pv_generation');
@@ -204,6 +206,9 @@ function openEditMeter(event, id) {
       document.querySelector('#meter-billing-start').value = meter.billing_start || '';
       document.querySelector('#meter-reminder-days').value = meter.reading_reminder_days || '';
       document.querySelector('#meter-is-heating').checked = Number(meter.is_heating) === 1;
+      document.querySelector('#meter-contract').value = meter.contract_id || '';
+      document.querySelector('#meter-guarantee').value = meter.price_guarantee_until || '';
+      document.querySelector('#meter-reference-price').value = Number(meter.reference_price) || '';
       document.querySelector('#meter-investment').value = Number(meter.investment_cost) || '';
       document.querySelector('#meter-commissioning').value = meter.commissioning_date || '';
       document.querySelector('#meter-price-valid-from').value = meter.price_valid_from && meter.price_valid_from !== '0000-01-01' ? meter.price_valid_from : '';

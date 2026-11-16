@@ -1322,6 +1322,20 @@ $i18n = [
     'meter_is_heating' => 'Heizstrom (Wärmepumpe, Nachtspeicher)',
     'pv_investment_cost' => 'Anschaffungskosten',
     'pv_commissioning_date' => 'Inbetriebnahme',
+    'meter_contract' => 'Liefervertrag',
+    'meter_contract_hint' => 'Verknüpft den Zähler mit dem Vertrag: Kündigungsfrist am Zähler, und ohne eigenen Abschlag gilt die Vertragsrate als Abschlag.',
+    'price_guarantee_until' => 'Preisgarantie bis',
+    'reference_price' => 'Vergleichspreis pro Einheit',
+    'tariff_switch_hint' => 'Endet die Preisgarantie in 60 Tagen oder liegt Ihr Preis 5 % über einem guten Angebot, erinnert Wallos daran, einen Wechsel zu prüfen.',
+    'price_guarantee_ends' => 'Preisgarantie endet am %s',
+    'price_above_reference' => '%d %% über Vergleichspreis',
+    'tariff_switch_reminder' => 'Tarifwechsel prüfen',
+    'base_load' => 'Grundlast (Standby)',
+    'base_load_text' => 'Höchstens etwa %1$s W Dauerverbrauch – das sind %2$s kWh bzw. %3$s im Jahr.',
+    'base_load_hint' => 'Geschätzt aus den kürzesten Ablesezeiträumen; je öfter Sie ablesen (z. B. per Home Assistant), desto genauer. Typisch sind 50–150 W.',
+    'base_load_needs_data' => 'Für die Grundlast braucht es einige Ablesungen im Abstand von höchstens einer Woche.',
+    'consumption_last_month' => 'Verbrauch %s',
+    'compared_to_last_year' => 'im Vergleich zum Vorjahresmonat',
 ];
 
 

@@ -417,6 +417,36 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
             $update->execute();
         }
 
+        foreach ($outlierMeters as $meter) {
+            foreach (tariffSwitchHints($meter, $todayString) as $hint) {
+                $reason = $hint['key'] === 'guarantee' ? 'guarantee:' . $hint['date'] : 'expensive:' . $meter['price_per_unit'];
+                if (($meter['switch_notified'] ?? '') === $reason) {
+                    continue;
+                }
+                $label = translate('tariff_switch_reminder', $i18n);
+                $text = $hint['key'] === 'guarantee'
+                    ? sprintf(translate('price_guarantee_ends', $i18n), date('d.m.Y', strtotime($hint['date'])))
+                    : sprintf(translate('price_above_reference', $i18n), $hint['percent']);
+                $notify[$mainMemberId][$i] = [
+                    'name' => $label . ': ' . $meter['name'] . ' – ' . $text,
+                    'price' => number_format((float) $meter['price_per_unit'], 4, ',', '.'),
+                    'currency' => '',
+                    'category' => $label,
+                    'payer' => $mainMemberName,
+                    'date' => $hint['date'] ?? $todayString,
+                    'url' => '',
+                    'notes' => '',
+                ];
+                $i++;
+                $update = $db->prepare('UPDATE meters SET switch_notified = :reason WHERE id = :id AND user_id = :user_id');
+                $update->bindValue(':reason', $reason);
+                $update->bindValue(':id', $meter['id'], SQLITE3_INTEGER);
+                $update->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+                $update->execute();
+                break; // one reminder per meter and run
+            }
+        }
+
         // Price increases recorded by the price_history triggers, each reported once.
         $stmt = $db->prepare("SELECT ph.id, ph.item_type, ph.old_price, ph.new_price, ph.changed_at,
                 COALESCE(s.name, c.name, ins.name) AS name, COALESCE(s.currency_id, c.currency_id, ins.currency_id) AS currency_id,

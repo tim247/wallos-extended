@@ -379,3 +379,22 @@ wallos_test('heating that rises every autumn is no outlier, a rise against last 
     $segments[] = $last;
     assert_true(detectOutlier($segments) !== null, 'twice last november is reported');
 });
+
+wallos_test('base load, tariff switch hints and the last-month comparison', function () {
+    require_once WALLOS_ROOT . '/includes/consumption_insights.php';
+    $seg = fn($from, $days, $perDay) => ['from' => $from, 'to' => date('Y-m-d', strtotime("$from +$days days")), 'delta' => $perDay * $days, 'days' => $days, 'per_day' => $perDay];
+    $short = [$seg('2026-01-01', 3, 9.0), $seg('2026-01-04', 3, 7.2), $seg('2026-01-07', 3, 8.0), $seg('2026-01-10', 3, 10.0)];
+    assert_same(300, estimateBaseLoad($short, '2026-02-01')['watts'], '7.2 kWh a day = 300 W');
+    assert_same(null, estimateBaseLoad([$seg('2026-01-01', 30, 9.0)], '2026-02-01'), 'monthly readings say nothing about the base load');
+
+    $hints = tariffSwitchHints(['price_guarantee_until' => '2026-03-01', 'reference_price' => 0.30, 'price_per_unit' => 0.36], '2026-02-01');
+    assert_same(['guarantee', 'expensive'], array_column($hints, 'key'), 'both reasons');
+    assert_same(20, $hints[1]['percent'], '20 % above the good offer');
+    assert_same([], tariffSwitchHints(['price_guarantee_until' => '2027-01-01', 'reference_price' => 0.35, 'price_per_unit' => 0.36], '2026-02-01'), 'nothing to do');
+
+    $segments = [$seg('2024-12-01', 450, 10.0)];
+    $cmp = lastMonthComparison($segments, ['2025-01' => 310.0, '2026-01' => 279.0], '2026-02-15');
+    assert_same('2026-01', $cmp['month'], 'last complete month');
+    assert_same(-10.0, $cmp['change'], '10 % less than a year before');
+    assert_same(null, lastMonthComparison([$seg('2025-12-01', 40, 10.0)], ['2026-01' => 100.0], '2026-02-15'), 'no reading after the month ended');
+});

@@ -46,6 +46,13 @@ $contracts = [];
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
   $contracts[] = $row;
 }
+$linkedMeters = [];
+$linkedStmt = $db->prepare('SELECT contract_id, name FROM meters WHERE user_id = :userId AND contract_id IS NOT NULL AND archived = 0');
+$linkedStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$linkedResult = $linkedStmt->execute();
+while ($linkedRow = $linkedResult->fetchArray(SQLITE3_ASSOC)) {
+  $linkedMeters[$linkedRow['contract_id']][] = $linkedRow['name'];
+}
 
 $today = date('Y-m-d');
 $totalMonthly = 0.0;
@@ -122,6 +129,9 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
             <span class="module-card-subtitle">
               <?= $contract['provider'] ?>
               <?= wallos_member_tag($members, $contract['payer_user_id']) ?>
+              <?php foreach ($linkedMeters[$contract['id']] ?? [] as $linkedMeter): ?>
+                <a class="module-card-category" href="consumption.php" onclick="event.stopPropagation()"><i class="fa-solid fa-gauge"></i> <?= htmlspecialchars($linkedMeter) ?></a>
+              <?php endforeach; ?>
               <?php if (isset($categories[$contract['category_id']]) && $categories[$contract['category_id']]['name'] !== 'No category'): ?>
                 <span class="module-card-category"><?= $categories[$contract['category_id']]['name'] ?></span>
               <?php endif; ?>

@@ -120,6 +120,19 @@ Eigenverbrauchsquote, Autarkiegrad und die **Amortisation** der Anlage.
 
 Die Reihenfolge der Zähler änderst du per Ziehen am Griff links neben dem Namen.
 
+**Grundlast (Strom):** Aus den kürzesten Ablesezeiträumen schätzt Wallos den Dauerverbrauch
+(Standby, Kühlschrank, Router) und was er im Jahr kostet. Es ist eine Obergrenze – je öfter du
+abliest (z. B. per Home Assistant), desto genauer.
+
+**Liefervertrag und Tarifwechsel:** Im Zähler lässt sich der passende Vertrag aus *Verträge*
+auswählen. Dann steht die Kündigungsfrist am Zähler, und ohne eigenen Abschlag gilt die
+Vertragsrate als Abschlag. Mit *Preisgarantie bis* und einem *Vergleichspreis* (Preis eines guten
+Angebots) erinnert Wallos daran, einen Wechsel zu prüfen – 60 Tage vor Ende der Preisgarantie
+oder wenn dein Preis 5 % über dem Vergleichspreis liegt.
+
+**Dashboard:** Das Feld *Verbrauch* zeigt den letzten vollständigen Monat jedes Zählers mit der
+Veränderung zum Vorjahresmonat.
+
 ### Eigene Dokumente (ohne Paperless)
 
 Bei Verträgen, Versicherungen und Finanzierungen gibt es im Bearbeiten-Dialog den Abschnitt

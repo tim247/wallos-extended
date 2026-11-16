@@ -36,6 +36,17 @@ $haEntity = strtolower(trim((string) ($_POST['ha_entity_id'] ?? '')));
 $isHeating = ($meterType === 'electricity' && !empty($_POST['is_heating'])) ? 1 : 0;
 $investmentCost = $meterType === 'pv_generation' ? max(0.0, floatval(str_replace(',', '.', $_POST['investment_cost'] ?? '0'))) : 0.0;
 $commissioningDate = $meterType === 'pv_generation' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['commissioning_date'] ?? '') ? $_POST['commissioning_date'] : null;
+$contractId = intval($_POST['contract_id'] ?? 0) ?: null;
+if ($contractId !== null) {
+    $ownContract = $db->prepare('SELECT COUNT(*) FROM contracts WHERE id = :id AND user_id = :userId');
+    $ownContract->bindValue(':id', $contractId, SQLITE3_INTEGER);
+    $ownContract->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    if (!$ownContract->execute()->fetchArray()[0]) {
+        $contractId = null;
+    }
+}
+$priceGuarantee = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['price_guarantee_until'] ?? '') ? $_POST['price_guarantee_until'] : null;
+$referencePrice = max(0.0, floatval(str_replace(',', '.', $_POST['reference_price'] ?? '0')));
 $priceValidFrom = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['price_valid_from'] ?? '') ? $_POST['price_valid_from'] : null;
 if (!preg_match('/^[a-z0-9_]+\.[a-z0-9_]+$/', $haEntity)) {
     $haEntity = '';
@@ -46,12 +57,14 @@ if (!$isEdit) {
                 user_id, name, meter_type, meter_number, unit, price_per_unit,
                 base_fee_monthly, conversion_factor, currency_id,
                 monthly_advance, billing_start, reading_reminder_days, ha_entity_id,
-                is_heating, investment_cost, commissioning_date, price_valid_from
+                is_heating, investment_cost, commissioning_date, price_valid_from,
+                contract_id, price_guarantee_until, reference_price
             ) VALUES (
                 :userId, :name, :meterType, :meterNumber, :unit, :pricePerUnit,
                 :baseFeeMonthly, :conversionFactor, :currencyId,
                 :monthlyAdvance, :billingStart, :reminderDays, :haEntity,
-                :isHeating, :investmentCost, :commissioningDate, :priceValidFrom
+                :isHeating, :investmentCost, :commissioningDate, :priceValidFrom,
+                :contractId, :priceGuarantee, :referencePrice
             )";
 } else {
     $id = intval($_POST['id']);
@@ -90,7 +103,10 @@ if (!$isEdit) {
                 is_heating = :isHeating,
                 investment_cost = :investmentCost,
                 commissioning_date = :commissioningDate,
-                price_valid_from = :priceValidFrom
+                price_valid_from = :priceValidFrom,
+                contract_id = :contractId,
+                price_guarantee_until = :priceGuarantee,
+                reference_price = :referencePrice
             WHERE id = :id AND user_id = :userId";
 }
 
@@ -112,6 +128,9 @@ $stmt->bindValue(':isHeating', $isHeating, SQLITE3_INTEGER);
 $stmt->bindValue(':investmentCost', $investmentCost, SQLITE3_FLOAT);
 $stmt->bindValue(':commissioningDate', $commissioningDate, $commissioningDate === null ? SQLITE3_NULL : SQLITE3_TEXT);
 $stmt->bindValue(':priceValidFrom', $priceValidFrom, $priceValidFrom === null ? SQLITE3_NULL : SQLITE3_TEXT);
+$stmt->bindValue(':contractId', $contractId, $contractId === null ? SQLITE3_NULL : SQLITE3_INTEGER);
+$stmt->bindValue(':priceGuarantee', $priceGuarantee, $priceGuarantee === null ? SQLITE3_NULL : SQLITE3_TEXT);
+$stmt->bindValue(':referencePrice', $referencePrice, SQLITE3_FLOAT);
 if ($isEdit) {
     $stmt->bindParam(':id', $id, SQLITE3_INTEGER);
 }

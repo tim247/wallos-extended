@@ -1303,6 +1303,20 @@ $i18n = [
     'meter_is_heating' => 'Heating electricity (heat pump, storage heater)',
     'pv_investment_cost' => 'Purchase price',
     'pv_commissioning_date' => 'Commissioning',
+    'meter_contract' => 'Supply contract',
+    'meter_contract_hint' => 'Links the meter with the contract: notice period at the meter, and without an own advance the contract payment counts as advance.',
+    'price_guarantee_until' => 'Price guarantee until',
+    'reference_price' => 'Reference price per unit',
+    'tariff_switch_hint' => 'When the price guarantee ends within 60 days or your price is 5 % above a good offer, Wallos reminds you to check a switch.',
+    'price_guarantee_ends' => 'Price guarantee ends on %s',
+    'price_above_reference' => '%d %% above the reference price',
+    'tariff_switch_reminder' => 'Check a tariff switch',
+    'base_load' => 'Base load (standby)',
+    'base_load_text' => 'At most about %1$s W of constant draw - %2$s kWh or %3$s per year.',
+    'base_load_hint' => 'Estimated from the shortest reading periods; the more often you read (e.g. via Home Assistant), the more precise. 50-150 W is typical.',
+    'base_load_needs_data' => 'The base load needs a few readings at most a week apart.',
+    'consumption_last_month' => 'Consumption %s',
+    'compared_to_last_year' => 'compared to the same month last year',
 ];
 
 
