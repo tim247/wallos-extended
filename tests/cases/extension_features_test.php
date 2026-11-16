@@ -306,7 +306,7 @@ wallos_test('meters keep their order when sort_order is introduced', function ()
     }
     require WALLOS_ROOT . '/migrations/000075.php';
     $names = [];
-    $r = $db->query("SELECT name FROM meters WHERE user_id = $u ORDER BY sort_order = 0, sort_order");
+    $r = $db->query("SELECT name FROM meters WHERE user_id = $u ORDER BY sort_order = 0, sort_order, meter_type ASC, name COLLATE NOCASE ASC");
     while ($row = $r->fetchArray(SQLITE3_ASSOC)) $names[] = $row['name'];
     assert_same(['A-Strom', 'B-Strom', 'Wasser'], $names, 'type, then name - as before');
 });
