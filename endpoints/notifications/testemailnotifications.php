@@ -28,6 +28,13 @@ $data = wallos_fill_managed_form_fields($data, [
     'fromemail' => 'from_email',
 ], wallos_get_effective_admin_configuration($db)['managed_fields'], wallos_get_admin_settings($db));
 
+if (trim((string) ($data["smtpaddress"] ?? "")) === "") {
+    $server = wallos_email_server($db, ['from_email' => $data['fromemail'] ?? '']);
+    $data = array_merge($data, ['smtpaddress' => $server['smtp_address'], 'smtpport' => $server['smtp_port'],
+        'encryption' => $server['encryption'], 'smtpusername' => $server['smtp_username'],
+        'smtppassword' => $server['smtp_password'], 'fromemail' => $server['from_email']]);
+}
+
 if (
     !isset($data["smtpaddress"]) || $data["smtpaddress"] == "" ||
     !isset($data["smtpport"]) || $data["smtpport"] == ""

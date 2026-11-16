@@ -6767,3 +6767,121 @@ dialog label > input[type="date"],
   padding: 12px 16px;
   color: var(--text-muted);
 }
+
+.about-extensions {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.about-extensions li {
+  display: flex;
+  gap: 10px;
+  padding: 5px 0;
+}
+
+.about-extensions i {
+  width: 18px;
+  margin-top: 3px;
+  text-align: center;
+  color: var(--main-color);
+  flex-shrink: 0;
+}
+
+.own-mail-server summary {
+  cursor: pointer;
+  margin: 6px 0 10px;
+  font-weight: 500;
+}
+
+.member-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  margin-left: 6px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--member-color, var(--main-color));
+  vertical-align: middle;
+}
+
+.account-members input.member-color {
+  width: 42px;
+  min-width: 42px;
+  padding: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.module-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.module-filter .search {
+  position: relative;
+}
+
+.module-filter .search>input[type="text"] {
+  padding-right: 40px;
+}
+
+.module-filter .search-icon {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--main-color);
+  pointer-events: none;
+}
+
+.module-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.module-filter-chips>i {
+  width: 18px;
+  text-align: center;
+  color: var(--main-color);
+}
+
+.module-filter-chip {
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, #ccc);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.module-filter-chip[aria-pressed="true"] {
+  background: var(--main-color);
+  border-color: var(--main-color);
+  color: #fff;
+}
+
+.module-filter-chip:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+}
+
+.module-filter-empty {
+  margin: 0;
+  opacity: 0.7;
+}
+
+.module-card[hidden] {
+  display: none;
+}

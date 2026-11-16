@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/member_tag.php';
+require_once __DIR__ . '/member_tag.php';
 
     $currencies = array();
     $query = "SELECT * FROM currencies WHERE user_id = :userId";

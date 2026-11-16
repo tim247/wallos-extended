@@ -281,6 +281,7 @@ function editMember(memberId) {
 
   const memberName = memberNameElement.value;
   const memberEmail = memberEmailElement ? memberEmailElement.value : "";
+  const memberColorElement = document.querySelector(`div[data-memberid="${memberId}"] input[name="color"]`);
 
   fetch("endpoints/household/household.php", {
     method: "POST",
@@ -293,6 +294,7 @@ function editMember(memberId) {
       memberId: memberId,
       name: memberName,
       email: memberEmail,
+      color: memberColorElement ? memberColorElement.value : "",
     }),
   })
     .then(response => {
@@ -1226,8 +1228,6 @@ function addFixerKeyButton() {
   const addButton = document.getElementById("addFixerKey");
   addButton.disabled = true;
 
-  const apiKeyInput = document.querySelector("#fixerKey");
-  const apiKey = apiKeyInput.value.trim();
   const provider = document.querySelector("#fixerProvider").value;
   const convertCurrencyCheckbox = document.querySelector("#convertcurrency");
 
@@ -1238,7 +1238,6 @@ function addFixerKeyButton() {
       'X-CSRF-Token': window.csrfToken,
     },
     body: new URLSearchParams({
-      api_key: apiKey,
       provider: provider,
     }),
   })

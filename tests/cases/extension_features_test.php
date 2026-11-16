@@ -210,3 +210,90 @@ wallos_test('signing in again withdraws a sent link, and only valid tokens open 
     assert_same(null, deadmanByToken($db, $token), 'link withdrawn after sign-in');
     assert_same(date('Y-m-d'), $db->querySingle("SELECT last_seen FROM user WHERE id = $user"), 'activity stored');
 });
+
+wallos_test('Wallos Extended versions compare in release order', function () {
+    require_once WALLOS_ROOT . '/includes/version.php';
+    assert_same(-1, extVersionCompare('v5.11.1-ext.5', 'v5.11.1-ext.6'), 'ext.5 < ext.6');
+    assert_same(-1, extVersionCompare('v5.11.1-ext.9', 'v5.11.1-ext.10'), 'numeric, not text order');
+    assert_same(-1, extVersionCompare('v5.11.1', 'v5.11.1-ext.1'), 'base < first extended release');
+    assert_same(-1, extVersionCompare('v5.11.1-ext.6', 'v5.12.0-ext.1'), 'new base wins');
+    assert_same(0, extVersionCompare('v5.11.1-ext.6', 'v5.11.1-ext.6'), 'same');
+    assert_same(1, extVersionCompare('v5.11.1-dev', 'v5.11.1-ext.6'), 'a development build shows no update for its base');
+    assert_same(0, extVersionCompare('garbage', 'v5.11.1-ext.6'), 'unknown format: no update shown');
+});
+
+wallos_test('email notifications fall back to the admin mail server', function () {
+    require_once WALLOS_ROOT . '/includes/instance_config.php';
+    $db = wallos_test_open_database();
+    $db->exec("UPDATE admin SET smtp_address = 'mail.example.com', smtp_port = 465, encryption = 'ssl', smtp_username = 'u', from_email = 'wallos@example.com'");
+    $server = wallos_email_server($db, ['smtp_address' => '', 'from_email' => '', 'other_emails' => 'a@example.com']);
+    assert_same('mail.example.com', $server['smtp_address'], 'admin server used');
+    assert_same('wallos@example.com', $server['from_email'], 'admin sender used');
+    assert_same('a@example.com', $server['other_emails'], 'recipients kept');
+    $own = wallos_email_server($db, ['smtp_address' => 'own.example.com', 'from_email' => 'me@example.com']);
+    assert_same('own.example.com', $own['smtp_address'], 'own server kept');
+});
+
+wallos_test('umlauts in user names survive registration and get repaired', function () {
+    foreach (['registration.php', 'endpoints/admin/adduser.php'] as $file) {
+        assert_true(strpos(file_get_contents(WALLOS_ROOT . "/$file"), 'htmlentities(') === false, "$file stores umlauts as text");
+    }
+    $db = wallos_test_open_database();
+    $id = extension_insert($db, "INSERT INTO user (username, firstname, email, password, main_currency) VALUES ('j&uuml;rgen', 'J&amp;uuml;rgen &amp;amp; Co', 'j@example.com', 'x', 1)");
+    require WALLOS_ROOT . '/migrations/000071.php';
+    $row = $db->querySingle("SELECT username, firstname FROM user WHERE id = $id", true);
+    assert_same('jürgen', $row['username'], 'entity decoded');
+    assert_same('Jürgen &amp; Co', $row['firstname'], 'double encoding repaired, & stays escaped once');
+});
+
+wallos_test('exchange rates move to frankfurter.dev, also for new accounts', function () {
+    $db = wallos_test_open_database();
+    $fixer = extension_insert($db, "INSERT INTO user (username, email, password, main_currency) VALUES ('f', 'f@example.com', 'x', 1)");
+    $db->exec("DELETE FROM fixer WHERE user_id = $fixer");
+    $db->exec("INSERT INTO fixer (api_key, provider, user_id) VALUES ('oldkey', 0, $fixer)");
+    $none = extension_insert($db, "INSERT INTO user (username, email, password, main_currency) VALUES ('n', 'n@example.com', 'x', 1)");
+    $db->exec("DELETE FROM fixer WHERE user_id = $none");
+    require WALLOS_ROOT . '/migrations/000072.php';
+    assert_same(2, $db->querySingle("SELECT provider FROM fixer WHERE user_id = $fixer"), 'Fixer user moved');
+    assert_same(2, $db->querySingle("SELECT provider FROM fixer WHERE user_id = $none"), 'user without provider gets one');
+    $new = extension_insert($db, "INSERT INTO user (username, email, password, main_currency) VALUES ('w', 'w@example.com', 'x', 1)");
+    assert_same(1, $db->querySingle("SELECT COUNT(*) FROM fixer WHERE user_id = $new AND provider = 2"), 'new account gets frankfurter');
+});
+
+wallos_test('household members show as coloured tags, readable on any colour', function () {
+    require_once WALLOS_ROOT . '/includes/member_tag.php';
+    $members = [1 => ['name' => 'Tim', 'color' => '#ffeb3b'], 2 => ['name' => 'Anna', 'color' => '#1e3a8a'], 3 => ['name' => 'Bob', 'color' => 'red;}']];
+    assert_true(str_contains(wallos_member_tag($members, 1), 'color: #1a1a1a'), 'dark text on yellow');
+    assert_true(str_contains(wallos_member_tag($members, 2), 'color: #fff'), 'white text on navy');
+    assert_true(!str_contains(wallos_member_tag($members, 3), 'style'), 'invalid colour ignored');
+    assert_same('', wallos_member_tag([1 => $members[1]], 1), 'no tag for a one-person household');
+    $db = wallos_test_open_database();
+    require WALLOS_ROOT . '/migrations/000073.php';
+    assert_same(1, $db->querySingle("SELECT COUNT(*) FROM pragma_table_info('household') WHERE name = 'color'"), 'colour column');
+});
+
+wallos_test('the Bausparvertrag closing fee starts the balance below zero', function () {
+    require_once WALLOS_ROOT . '/includes/financing_calculations.php';
+    $loan = ['principal' => 50000, 'interest_rate' => 0.1, 'monthly_rate' => 200, 'start_date' => '2026-01-15',
+        'bausparen_min_savings_pct' => 40, 'bausparen_loan_rate' => 2.5, 'bausparen_loan_monthly' => 300];
+    $without = computeBausparSchedule($loan, '2026-01-20');
+    $with = computeBausparSchedule($loan + ['bausparen_fee' => 800], '2026-01-20');
+    assert_same(-800.0, $with['balance_as_of'], 'balance starts at minus the fee');
+    assert_same(-800.0, $with['savings_rows'][0]['balance'], 'first chart point below zero');
+    assert_same(0.0, $with['savings_rows'][1]['interest'], 'no interest on a negative balance');
+    assert_true(count($with['savings_rows']) - 1 > count($without['savings_rows']), 'the fee delays the payout');
+});
+
+wallos_test('a tilgungsfreies Darlehen without repayment rate runs until the Bausparvertrag redeems it', function () {
+    require_once WALLOS_ROOT . '/includes/financing_calculations.php';
+    $loan = ['principal' => 100000, 'interest_rate' => 3, 'monthly_rate' => 0, 'start_date' => '2024-01-01',
+        'term_months' => null, 'interest_only_months' => 0, 'loan_type' => 'interest_only'];
+    $s = computeLoanSchedule($loan, [], '2024-06-01', [], [], '2032-05-01');
+    assert_same(null, $s['error'], 'no repayment rate needed');
+    assert_same('2032-05-01', $s['redeemed_on'], 'redeemed by the Bausparvertrag');
+    assert_same(250.0, $s['rows'][0]['payment'], 'interest only before');
+    $end = computeLoanSchedule(array_merge($loan, ['term_months' => 60]), [], '2024-06-01');
+    $last = end($end['rows']);
+    assert_same(0.0, $last['balance'], 'endfällig: repaid at term end');
+    assert_same(60, count($end['rows']), 'after exactly the term');
+});

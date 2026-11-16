@@ -120,7 +120,7 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
             : 100;
         } else {
           $paidPercent = $targetSavings > 0
-            ? min(100, round($schedule['balance_as_of'] / $targetSavings * 100, 1))
+            ? max(0, min(100, round($schedule['balance_as_of'] / $targetSavings * 100, 1)))
             : 0;
         }
       } else {
@@ -301,6 +301,12 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
             <span><?= CurrencyFormatter::format($detailLoan['principal'], $loanCode) ?></span>
             <div class="title"><?= translate('bausparen_target', $i18n) ?></div>
           </div>
+          <?php if ($schedule['fee'] > 0): ?>
+            <div class="statistic">
+              <span><?= CurrencyFormatter::format(-$schedule['fee'], $loanCode) ?></span>
+              <div class="title"><?= translate('bausparen_fee', $i18n) ?></div>
+            </div>
+          <?php endif; ?>
           <div class="statistic">
             <span><?= $schedule['payout_date'] ? date('m/Y', strtotime($schedule['payout_date'])) : '—' ?></span>
             <div class="title"><?= translate('bausparen_payout_date', $i18n) ?></div>
@@ -741,9 +747,18 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
         </div>
       </div>
       <div class="form-group">
-        <label for="loan-bausparen-loan-monthly"><?= translate('bausparen_loan_monthly', $i18n) ?></label>
-        <input type="number" step="0.01" min="0" id="loan-bausparen-loan-monthly"
-          name="bausparen_loan_monthly" autocomplete="off">
+        <div class="inline">
+          <div class="split50">
+            <label for="loan-bausparen-loan-monthly"><?= translate('bausparen_loan_monthly', $i18n) ?></label>
+            <input type="number" step="0.01" min="0" id="loan-bausparen-loan-monthly"
+              name="bausparen_loan_monthly" autocomplete="off">
+          </div>
+          <div class="split50">
+            <label for="loan-bausparen-fee"><?= translate('bausparen_fee', $i18n) ?></label>
+            <input type="number" step="0.01" min="0" id="loan-bausparen-fee"
+              name="bausparen_fee" autocomplete="off" placeholder="<?= translate('bausparen_fee_placeholder', $i18n) ?>">
+          </div>
+        </div>
       </div>
     </div>
 

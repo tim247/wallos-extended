@@ -13,13 +13,16 @@ if ($name === '') {
     exit();
 }
 
-$allowedTypes = ['liability', 'household', 'car', 'life', 'disability', 'legal', 'health', 'building', 'pet', 'travel', 'accident', 'other'];
+$allowedTypes = ['liability', 'household', 'car', 'life', 'pension', 'disability', 'legal', 'health', 'building', 'pet', 'travel', 'accident', 'other'];
 
 $insurer = validate($_POST['insurer'] ?? '');
 $policyNumber = validate($_POST['policy_number'] ?? '');
 $insuranceType = validate($_POST['insurance_type'] ?? 'other');
 if (!in_array($insuranceType, $allowedTypes)) {
-    $insuranceType = 'other';
+    $insuranceType = mb_substr($insuranceType, 0, 40);
+    if ($insuranceType === '' || $insuranceType === '__new') {
+        $insuranceType = 'other';
+    }
 }
 $price = floatval($_POST['price'] ?? 0);
 $currencyId = intval($_POST['currency_id'] ?? 1);

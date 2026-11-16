@@ -1110,6 +1110,8 @@ $i18n = [
     'health_backup_stale' => 'Manca il backup notturno (ultimo: %s). Controlla lo spazio su disco e i permessi di db/backups.',
     'health_cron_stale' => 'Le attività in background si sono fermate (ultimo segnale: %s). Promemoria, backup e tassi di cambio non vengono aggiornati: controlla il servizio cron o il container.',
     'search_show_all' => 'Mostra tutti i risultati',
+    'based_on_wallos' => 'basato su Wallos %s',
+    'insurance_type_pension' => 'Pensione',
 ];
 
 ?>

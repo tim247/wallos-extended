@@ -4,6 +4,7 @@ use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
 require_once 'validate.php';
+require_once __DIR__ . '/../../includes/instance_config.php';
 require_once __DIR__ . '/../../includes/connect_endpoint_crontabs.php';
 require_once __DIR__ . '/../../includes/ssrf_helper.php';
 require_once __DIR__ . '/../../includes/webhook_helper.php';
@@ -72,6 +73,7 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
     $result = $stmt->execute();
 
     if ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $row = wallos_email_server($db, $row);
         $emailNotificationsEnabled = $row['enabled'];
         $email['smtpAddress'] = $row["smtp_address"];
         $email['smtpPort'] = $row["smtp_port"];

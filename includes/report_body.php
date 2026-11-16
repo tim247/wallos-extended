@@ -87,7 +87,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 }
 foreach ($byInsuranceType as $type => $names) {
   if (count($names) > 1) {
-    $savings[] = ['fa-shield-halved', sprintf(translate('savings_duplicate_insurance', $i18n), translate('insurance_type_' . $type, $i18n), implode(', ', $names))];
+    $savings[] = ['fa-shield-halved', sprintf(translate('savings_duplicate_insurance', $i18n), (isset($i18n['insurance_type_' . $type]) ? translate('insurance_type_' . $type, $i18n) : $type), implode(', ', $names))];
   }
 }
 foreach (['contracts', 'insurances'] as $table) {

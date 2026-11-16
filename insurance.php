@@ -27,6 +27,7 @@ $insuranceTypes = [
   'household' => 'insurance_type_household',
   'car' => 'insurance_type_car',
   'life' => 'insurance_type_life',
+  'pension' => 'insurance_type_pension',
   'disability' => 'insurance_type_disability',
   'legal' => 'insurance_type_legal',
   'health' => 'insurance_type_health',
@@ -37,11 +38,23 @@ $insuranceTypes = [
   'other' => 'insurance_type_other',
 ];
 
+// Own types typed in while adding an insurance are stored as plain text.
+$customTypeStmt = $db->prepare('SELECT DISTINCT insurance_type FROM insurances WHERE user_id = :userId ORDER BY insurance_type');
+$customTypeStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$customTypeResult = $customTypeStmt->execute();
+$customInsuranceTypes = [];
+while ($customTypeRow = $customTypeResult->fetchArray(SQLITE3_ASSOC)) {
+  if (!isset($insuranceTypes[$customTypeRow['insurance_type']])) {
+    $customInsuranceTypes[] = $customTypeRow['insurance_type'];
+  }
+}
+
 $insuranceTypeIcons = [
   'liability' => 'fa-shield-halved',
   'household' => 'fa-couch',
   'car' => 'fa-car',
   'life' => 'fa-heart-pulse',
+  'pension' => 'fa-piggy-bank',
   'disability' => 'fa-user-shield',
   'legal' => 'fa-scale-balanced',
   'health' => 'fa-staff-snake',
@@ -114,6 +127,15 @@ $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
     <h2 class="archive-title"><i class="fa-solid fa-box-archive"></i> <?= translate('archive', $i18n) ?></h2>
   <?php endif; ?>
 
+  <?php
+  $filterGroups = [];
+  foreach ($insurances as $filterInsurance) {
+    $filterType = $filterInsurance['insurance_type'];
+    $filterGroups[$filterType] = isset($insuranceTypes[$filterType]) ? translate($insuranceTypes[$filterType], $i18n) : $filterType;
+  }
+  asort($filterGroups);
+  include 'includes/module_filter_bar.php';
+  ?>
   <div class="module-cards" id="insurances">
     <?php foreach ($insurances as $insurance):
       $deadline = $insurance['deadline_info'];
@@ -128,14 +150,16 @@ $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
       }
       $typeIcon = $insuranceTypeIcons[$insurance['insurance_type']] ?? 'fa-file-shield';
       ?>
-      <div class="module-card <?= $insurance['archived'] ? 'archived' : '' ?>" data-id="<?= $insurance['id'] ?>">
+      <div class="module-card <?= $insurance['archived'] ? 'archived' : '' ?>" data-id="<?= $insurance['id'] ?>"
+        data-member="<?= (int) $insurance['payer_user_id'] ?>" data-group="<?= htmlspecialchars($insurance['insurance_type']) ?>">
         <div class="module-card-main" onClick="openEditInsurance(event, <?= $insurance['id'] ?>)">
           <div class="module-card-icon"><i class="fa-solid <?= $typeIcon ?>"></i></div>
           <div class="module-card-info">
             <span class="module-card-title"><?= $insurance['name'] ?></span>
             <span class="module-card-subtitle">
               <?= $insurance['insurer'] ?>
-              <span class="module-card-category"><?= translate($insuranceTypes[$insurance['insurance_type']] ?? 'insurance_type_other', $i18n) ?></span>
+              <?= wallos_member_tag($members, $insurance['payer_user_id']) ?>
+              <span class="module-card-category"><?= isset($insuranceTypes[$insurance['insurance_type']]) ? translate($insuranceTypes[$insurance['insurance_type']], $i18n) : $insurance['insurance_type'] ?></span>
             </span>
             <?php if ($insurance['coverage_amount']): ?>
               <span class="module-card-detail">
@@ -242,6 +266,10 @@ $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
         <?php foreach ($insuranceTypes as $key => $labelKey): ?>
           <option value="<?= $key ?>"><?= translate($labelKey, $i18n) ?></option>
         <?php endforeach; ?>
+        <?php foreach ($customInsuranceTypes as $customType): ?>
+          <option value="<?= $customType ?>"><?= $customType ?></option>
+        <?php endforeach; ?>
+        <option value="__new" data-prompt="<?= htmlspecialchars(translate('insurance_type_new_prompt', $i18n)) ?>">+ <?= translate('insurance_type_new', $i18n) ?></option>
       </select>
     </div>
 
@@ -414,6 +442,7 @@ $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
 <script src="scripts/paperless.js?<?= $assetVersion ?>"></script>
 <script src="scripts/files.js?<?= $assetVersion ?>"></script>
 <script src="scripts/insurance.js?<?= $assetVersion ?>"></script>
+<script src="scripts/module-filter.js?<?= $assetVersion ?>"></script>
 <?php
 $db->close();
 require_once 'includes/footer.php';

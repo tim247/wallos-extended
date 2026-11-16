@@ -510,7 +510,7 @@ if ($consumptionMonthly > 0) {
         if ($isAdmin && $settings['update_notification']) {
             if (!is_null($settings['latest_version'])) {
                 $latestVersion = $settings['latest_version'];
-                if (version_compare($version, $latestVersion) == -1) {
+                if (extVersionCompare($installedVersion, $latestVersion) < 0) {
                     ?>
                     <div class="update-banner">
                         <div class="update-banner-icon">
@@ -519,13 +519,13 @@ if ($consumptionMonthly > 0) {
                         <div class="update-banner-text">
                             <strong><?= translate('new_version_available', $i18n) ?></strong>
                             <span>
-                                <?= translate('current_version', $i18n) ?>: <?= htmlspecialchars($version) ?>
+                                <?= translate('current_version', $i18n) ?>: <?= htmlspecialchars($installedVersion) ?>
                                 <i class="fa-solid fa-arrow-right"></i>
                                 <b><?= htmlspecialchars($latestVersion) ?></b>
                             </span>
                         </div>
                         <a class="update-banner-link"
-                            href="https://github.com/ellite/Wallos/releases/tag/<?= htmlspecialchars($latestVersion) ?>"
+                            href="https://github.com/<?= $extRepository ?>/releases/tag/<?= htmlspecialchars($latestVersion) ?>"
                             target="_blank" title="<?= translate('external_url', $i18n) ?>" rel="noreferrer">
                             <?= translate('release_notes', $i18n) ?>
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>

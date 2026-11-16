@@ -201,6 +201,8 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
                 foreach ($household as $index => $member) {
                     ?>
                     <div class="form-group-inline" data-memberid="<?= $member['id'] ?>">
+                        <input type="color" name="color" class="member-color" value="<?= preg_match('/^#[0-9a-f]{6}$/i', $member['color'] ?? '') ? $member['color'] : '#007bff' ?>"
+                            title="<?= translate('tag_color', $i18n) ?>" aria-label="<?= translate('tag_color', $i18n) ?>">
                         <input type="text" name="member" autocomplete="off" value="<?= htmlspecialchars($member['name']) ?>"
                             placeholder="Member">
                         <?php
@@ -605,6 +607,9 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
                         <input type="checkbox" id="emailenabled" name="emailenabled" <?= $notificationsEmail['enabled'] ? "checked" : "" ?>>
                         <label for="emailenabled" class="capitalize"><?= translate('enabled', $i18n) ?></label>
                     </div>
+                    <p class="settings-notes"><i class="fa-solid fa-circle-info"></i> <?= translate('email_uses_admin_server', $i18n) ?></p>
+                    <details class="own-mail-server" <?= $notificationsEmail['smtp_address'] !== '' ? 'open' : '' ?>>
+                    <summary><?= translate('own_mail_server', $i18n) ?></summary>
                     <div class="form-group-inline">
                         <input type="text" name="smtpaddress" id="smtpaddress" autocomplete="off"
                             placeholder="<?= translate('smtp_address', $i18n) ?>"
@@ -647,6 +652,7 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
                             placeholder="<?= translate('from_email', $i18n) ?>"
                             value="<?= htmlspecialchars($notificationsEmail['from_email']) ?>" />
                     </div>
+                    </details>
                     <label for="otheremails"><?= translate('send_to_other_emails', $i18n) ?></label>
                     <div class="form-group-inline">
                         <input type="text" name="otheremails" id="otheremails" autocomplete="off"
@@ -1382,8 +1388,8 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
                     <i class="fa-solid fa-circle-info"></i>
                     <?= translate('currency_info', $i18n) ?>
                     <span>
-                        fixer.io
-                        <a href="https://fixer.io/symbols" target="_blank" title="Currency codes">
+                        frankfurter.dev
+                        <a href="https://api.frankfurter.dev/v1/currencies" target="_blank" title="Currency codes" rel="noreferrer">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                         </a>
                     </span>
@@ -1414,19 +1420,13 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
 
     <section class="account-section">
         <header>
-            <h2>Fixer API Key</h2>
+            <h2><?= translate('exchange_rates_provider', $i18n) ?></h2>
         </header>
         <div class="account-fixer">
             <div class="form-group">
-                <input type="text" name="fixer-key" id="fixerKey" autocomplete="off" value="<?= htmlspecialchars($apiKey) ?>"
-                    placeholder="<?= translate('api_key', $i18n) ?>" <?= $demoMode ? 'disabled title="Not available on Demo Mode"' : '' ?>>
-            </div>
-            <div class="form-group">
                 <label for="fixerProvider"><?= translate('provider', $i18n) ?>:</label>
                 <select name="fixer-provider" id="fixerProvider">
-                    <option value="0" <?= $provider == 0 ? 'selected' : '' ?>>fixer.io</option>
-                    <option value="1" <?= $provider == 1 ? 'selected' : '' ?>>apilayer.com</option>
-                    <option value="2" <?= $provider == 2 ? 'selected' : '' ?>>frankfurter.dev</option>
+                    <option value="2" <?= $provider != 3 ? 'selected' : '' ?>>frankfurter.dev</option>
                     <option value="3" <?= $provider == 3 ? 'selected' : '' ?>>allratestoday.com</option>
                 </select>
             </div>
@@ -1434,47 +1434,12 @@ $upcomingPaymentsLimit = normalize_upcoming_payments_limit($settings['upcoming_p
                 <input type="submit" value="<?= translate('save', $i18n) ?>" id="addFixerKey"
                     onClick="addFixerKeyButton()" class="thin mobile-grow" />
             </div>
-            <div class="api-usage" id="fixerUsage" style="display: none;">
-                <div class="api-usage-label">
-                    <span><?= translate('monthly_requests_used', $i18n) ?></span>
-                    <span id="fixerUsageCount"></span>
-                </div>
-                <div class="api-usage-track">
-                    <span class="api-usage-fill" id="fixerUsageFill"></span>
-                </div>
-            </div>
             <div class="settings-notes">
-                <p><i class="fa-solid fa-circle-info"></i><?= translate('fixer_info', $i18n) ?></p>
-                <p><?= translate('get_key', $i18n) ?>:
-                    <span>
-                        https://fixer.io/
-                        <a href="https://fixer.io/#pricing_plan"
-                            title="<?= translate("get_free_fixer_api_key", $i18n) ?>" target="_blank">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        </a>
-                    </span>
-                </p>
+                <p><i class="fa-solid fa-circle-info"></i><?= translate('exchange_rates_provider_info', $i18n) ?></p>
                 <p>
-                    <?= translate("get_key_alternative", $i18n) ?>
-                    <span>
-                        https://apilayer.com
-                        <a href="https://apilayer.com/marketplace/fixer-api" title="Get free fixer api key"
-                            target="_blank">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        </a>
-                    </span>
-                </p>
-                <p>
-                    <?= translate("no_api_key_provider", $i18n) ?>
                     <span>
                         https://frankfurter.dev
-                        <a href="https://frankfurter.dev" title="Frankfurter" target="_blank">
-                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        </a>
-                    </span>
-                    <span>
-                        https://allratestoday.com
-                        <a href="https://allratestoday.com" title="AllRatesToday" target="_blank">
+                        <a href="https://frankfurter.dev" title="Frankfurter" target="_blank" rel="noreferrer">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                         </a>
                     </span>

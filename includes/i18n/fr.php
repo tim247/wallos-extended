@@ -1090,6 +1090,8 @@ $i18n = [
     'health_backup_stale' => 'La sauvegarde nocturne manque (dernière : %s). Vérifiez l\'espace disque et les droits de db/backups.',
     'health_cron_stale' => 'Les tâches en arrière-plan sont arrêtées (dernier signe de vie : %s). Rappels, sauvegardes et taux ne sont plus mis à jour – vérifiez le service cron ou le conteneur.',
     'search_show_all' => 'Afficher tous les résultats',
+    'based_on_wallos' => 'basé sur Wallos %s',
+    'insurance_type_pension' => 'Retraite',
 ];
 
 

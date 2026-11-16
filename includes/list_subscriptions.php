@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/member_tag.php';
 
 require_once 'i18n/getlang.php';
 require_once __DIR__ . '/currency_rates.php';
@@ -440,6 +441,7 @@ function printSubscriptions($subscriptions, $sort, $categories, $folders, $membe
                         ?>
                     </span>
                     <span class="name <?= $hasLogo ? 'hideOnMobile' : '' ?>"><?= htmlSafe($subscription['name']) ?></span>
+                    <?= wallos_member_tag($members, $subscription['payer_user_id']) ?>
                     <span class="cycle"
                         title="<?= $subscription['one_time'] ? $subscription['billing_cycle'] : ($subscription['auto_renew'] ? translate("automatically_renews", $i18n) : translate("manual_renewal", $i18n)) ?>">
                         <?php

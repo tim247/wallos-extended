@@ -93,6 +93,15 @@ $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
     <h2 class="archive-title"><i class="fa-solid fa-box-archive"></i> <?= translate('archive', $i18n) ?></h2>
   <?php endif; ?>
 
+  <?php
+  $filterGroups = [];
+  foreach ($contracts as $filterContract) {
+    if (isset($categories[$filterContract['category_id']]) && $categories[$filterContract['category_id']]['name'] !== 'No category') {
+      $filterGroups[$filterContract['category_id']] = $categories[$filterContract['category_id']]['name'];
+    }
+  }
+  include 'includes/module_filter_bar.php';
+  ?>
   <div class="module-cards" id="contracts">
     <?php foreach ($contracts as $contract):
       $deadline = $contract['deadline_info'];
@@ -106,12 +115,14 @@ $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
         }
       }
       ?>
-      <div class="module-card <?= $contract['archived'] ? 'archived' : '' ?>" data-id="<?= $contract['id'] ?>">
+      <div class="module-card <?= $contract['archived'] ? 'archived' : '' ?>" data-id="<?= $contract['id'] ?>"
+        data-member="<?= (int) $contract['payer_user_id'] ?>" data-group="<?= (int) $contract['category_id'] ?>">
         <div class="module-card-main" onClick="openEditContract(event, <?= $contract['id'] ?>)">
           <div class="module-card-info">
             <span class="module-card-title"><?= $contract['name'] ?></span>
             <span class="module-card-subtitle">
               <?= $contract['provider'] ?>
+              <?= wallos_member_tag($members, $contract['payer_user_id']) ?>
               <?php if (isset($categories[$contract['category_id']]) && $categories[$contract['category_id']]['name'] !== 'No category'): ?>
                 <span class="module-card-category"><?= $categories[$contract['category_id']]['name'] ?></span>
               <?php endif; ?>
@@ -379,6 +390,7 @@ $headerClass = count($contracts) > 0 ? "main-actions" : "main-actions hidden";
 <script src="scripts/paperless.js?<?= $assetVersion ?>"></script>
 <script src="scripts/files.js?<?= $assetVersion ?>"></script>
 <script src="scripts/contracts.js?<?= $assetVersion ?>"></script>
+<script src="scripts/module-filter.js?<?= $assetVersion ?>"></script>
 <?php
 $db->close();
 require_once 'includes/footer.php';

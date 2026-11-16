@@ -223,6 +223,7 @@ function fillLoanForm(loan) {
     document.querySelector("#loan-bausparen-min-pct").value          = loan.bausparen_min_savings_pct || 40;
     document.querySelector("#loan-bausparen-loan-rate").value        = loan.bausparen_loan_rate || "";
     document.querySelector("#loan-bausparen-loan-monthly").value     = loan.bausparen_loan_monthly || "";
+    document.querySelector("#loan-bausparen-fee").value              = loan.bausparen_fee || "";
   } else {
     document.querySelector("#loan-interest-rate").value  = loan.interest_rate || "";
     document.querySelector("#loan-monthly-rate").value   = loan.monthly_rate || "";

@@ -2,13 +2,16 @@
 require_once '../../includes/connect_endpoint.php';
 require_once '../../includes/validate_endpoint.php';
 require_once '../../includes/ssrf_helper.php';
+require_once '../../includes/instance_config.php';
 
 $postData = file_get_contents("php://input");
 $data = json_decode($postData, true);
+$ownServer = trim((string) ($data["smtpaddress"] ?? "")) !== "";
+$instanceServer = wallos_email_server($db, [])['smtp_address'] !== '';
 
 if (
-    !isset($data["smtpaddress"]) || $data["smtpaddress"] == "" ||
-    !isset($data["smtpport"]) || $data["smtpport"] == ""
+    (!$ownServer && !$instanceServer) ||
+    ($ownServer && (!isset($data["smtpport"]) || $data["smtpport"] == ""))
 ) {
     $response = [
         "success" => false,
@@ -28,7 +31,11 @@ if (
     $fromEmail = $data["fromemail"];
     $otherEmails = $data["otheremails"];
 
-    if (!validate_smtp_host($smtpAddress, (int) $smtpPort, $db)) {
+    if (!$ownServer) {
+        // ponytail: no own server - store blanks, the senders fall back to the admin server.
+        $smtpAddress = $smtpUsername = $smtpPassword = "";
+        $smtpPort = 587;
+    } elseif (!validate_smtp_host($smtpAddress, (int) $smtpPort, $db)) {
         die(json_encode([
             "success" => false,
             "message" => "Security Error: SMTP host must not target link-local or loopback addresses."

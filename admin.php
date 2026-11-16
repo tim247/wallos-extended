@@ -303,6 +303,7 @@ $loginDisabledAllowed = $userCount == 1 && $settings['registrations_open'] == 0;
             <h2><?= translate('smtp_settings', $i18n) ?></h2>
         </header>
         <div class="admin-form">
+            <p class="settings-notes"><i class="fa-solid fa-circle-info"></i> <?= translate('admin_smtp_shared', $i18n) ?></p>
             <div class="form-group-inline">
                 <input type="text" name="smtpaddress" id="smtpaddress" autocomplete="off"
                     placeholder="<?= translate('smtp_address', $i18n) ?>" value="<?= htmlspecialchars($settings['smtp_address']) ?>"
@@ -572,7 +573,7 @@ $loginDisabledAllowed = $userCount == 1 && $settings['registrations_open'] == 0;
     // Get latest version from admin table
     if (!is_null($settings['latest_version'])) {
         $latestVersion = $settings['latest_version'];
-        $hasUpdate = version_compare($version, $latestVersion) == -1;
+        $hasUpdate = extVersionCompare($installedVersion, $latestVersion) < 0;
     } else {
         $hasUpdate = false;
     }
@@ -653,8 +654,8 @@ $loginDisabledAllowed = $userCount == 1 && $settings['registrations_open'] == 0;
                         <p>
                             <?= translate('current_version', $i18n) ?>:
                             <span>
-                                <?= htmlspecialchars($version) ?>
-                                <a href="https://github.com/ellite/Wallos/releases/tag/<?= htmlspecialchars($version) ?>"
+                                <?= htmlspecialchars($installedVersion) ?>
+                                <a href="https://github.com/<?= $extRepository ?>/releases/tag/<?= htmlspecialchars($installedVersion) ?>"
                                     target="_blank" title="<?= translate('external_url', $i18n) ?>" rel="noreferrer">
                                     <i class="fa-solid fa-arrow-up-right-from-square"></i>
                                 </a>
@@ -664,7 +665,7 @@ $loginDisabledAllowed = $userCount == 1 && $settings['registrations_open'] == 0;
                             <?= translate('latest_version', $i18n) ?>:
                             <span class="updates-list-latest">
                                 <?= htmlspecialchars($latestVersion) ?>
-                                <a href="https://github.com/ellite/Wallos/releases/tag/<?= htmlspecialchars($latestVersion) ?>"
+                                <a href="https://github.com/<?= $extRepository ?>/releases/tag/<?= htmlspecialchars($latestVersion) ?>"
                                     target="_blank" title="<?= translate('external_url', $i18n) ?>" rel="noreferrer">
                                     <i class="fa-solid fa-arrow-up-right-from-square"></i>
                                 </a>

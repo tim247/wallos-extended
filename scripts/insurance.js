@@ -50,7 +50,7 @@ function fillInsuranceForm(insurance) {
   document.querySelector("#insurance-name").value = insurance.name;
   document.querySelector("#insurance-insurer").value = insurance.insurer;
   document.querySelector("#insurance-policy-number").value = insurance.policy_number;
-  document.querySelector("#insurance-type").value = insurance.insurance_type;
+  setInsuranceType(insurance.insurance_type);
   document.querySelector("#insurance-price").value = insurance.price;
   document.querySelector("#insurance-currency").value = insurance.currency_id;
   document.querySelector("#insurance-frequency").value = insurance.frequency;
@@ -173,4 +173,30 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
   }
+});
+
+function setInsuranceType(stored) {
+  const select = document.querySelector("#insurance-type");
+  // Stored text is HTML-escaped by the server; option values are the decoded text.
+  const value = new DOMParser().parseFromString(stored, "text/html").documentElement.textContent;
+  if (![...select.options].some((option) => option.value === value)) {
+    select.insertBefore(new Option(value, value), select.querySelector('option[value="__new"]'));
+  }
+  select.value = value;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const select = document.querySelector("#insurance-type");
+  if (!select) return;
+  let previous = select.value;
+  select.addEventListener("focus", () => { previous = select.value; });
+  select.addEventListener("change", () => {
+    if (select.value !== "__new") { previous = select.value; return; }
+    const name = (prompt(select.querySelector('option[value="__new"]').dataset.prompt) || "").trim().slice(0, 40);
+    if (!name) { select.value = previous; return; }
+    const existing = [...select.options].find((option) => option.text.toLowerCase() === name.toLowerCase());
+    if (existing) { select.value = existing.value; return; }
+    select.insertBefore(new Option(name, name), select.querySelector('option[value="__new"]'));
+    select.value = name;
+  });
 });

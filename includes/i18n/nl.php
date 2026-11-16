@@ -1089,6 +1089,8 @@ $i18n = [
     'health_backup_stale' => 'De nachtelijke back-up ontbreekt (laatste: %s). Controleer schijfruimte en rechten van db/backups.',
     'health_cron_stale' => 'De achtergrondtaken zijn gestopt (laatste teken van leven: %s). Herinneringen, back-ups en koersen worden niet bijgewerkt – controleer de cron-service of de container.',
     'search_show_all' => 'Alle resultaten tonen',
+    'based_on_wallos' => 'gebaseerd op Wallos %s',
+    'insurance_type_pension' => 'Pensioen',
 ];
 
 

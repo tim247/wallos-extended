@@ -42,6 +42,7 @@ $interestOnlyMonths     = intval($_POST['interest_only_months'] ?? 0);
 $bausparenLoanRate      = floatval(str_replace(',', '.', $_POST['bausparen_loan_rate'] ?? '0'));
 $bausparenLoanMonthly   = floatval(str_replace(',', '.', $_POST['bausparen_loan_monthly'] ?? '0'));
 $bausparenMinSavingsPct = floatval(str_replace(',', '.', $_POST['bausparen_min_savings_pct'] ?? '40'));
+$bausparenFee           = max(0.0, floatval(str_replace(',', '.', $_POST['bausparen_fee'] ?? '0')));
 
 // Type-specific validation
 if ($loanType === 'bausparen') {
@@ -58,8 +59,8 @@ if ($loanType === 'bausparen') {
         }
     }
 } else {
-    // Annuity and interest-only: monthly_rate required, must exceed interest (after IO period)
-    if ($monthlyRate <= 0) {
+    // Annuity: monthly_rate required and above the interest. Interest-only: optional (repaid in one sum or by a Bausparvertrag).
+    if ($monthlyRate <= 0 && $loanType !== 'interest_only') {
         echo json_encode(['success' => false, 'message' => translate('fill_all_fields', $i18n)]);
         exit();
     }
@@ -72,10 +73,10 @@ if ($loanType === 'bausparen') {
 
 $cols = "user_id, name, lender, principal, interest_rate, monthly_rate, start_date,
          term_months, fixed_interest_end, currency_id, notes, loan_type,
-         interest_only_months, bausparen_loan_rate, bausparen_loan_monthly, bausparen_min_savings_pct, replaced_by_loan_id";
+         interest_only_months, bausparen_loan_rate, bausparen_loan_monthly, bausparen_min_savings_pct, bausparen_fee, replaced_by_loan_id";
 $vals = ":userId, :name, :lender, :principal, :interestRate, :monthlyRate, :startDate,
          :termMonths, :fixedEnd, :currencyId, :notes, :loanType,
-         :interestOnlyMonths, :bausparenLoanRate, :bausparenLoanMonthly, :bausparenMinSavingsPct, :replacedBy";
+         :interestOnlyMonths, :bausparenLoanRate, :bausparenLoanMonthly, :bausparenMinSavingsPct, :bausparenFee, :replacedBy";
 
 if (!$isEdit) {
     $sql = "INSERT INTO loans ($cols) VALUES ($vals)";
@@ -91,6 +92,7 @@ if (!$isEdit) {
                 bausparen_loan_rate = :bausparenLoanRate,
                 bausparen_loan_monthly = :bausparenLoanMonthly,
                 bausparen_min_savings_pct = :bausparenMinSavingsPct,
+                bausparen_fee = :bausparenFee,
                 replaced_by_loan_id = :replacedBy
             WHERE id = :id AND user_id = :userId";
 }
@@ -116,6 +118,7 @@ $stmt->bindParam(':interestOnlyMonths', $interestOnlyMonths, SQLITE3_INTEGER);
 $stmt->bindParam(':bausparenLoanRate', $bausparenLoanRate, SQLITE3_FLOAT);
 $stmt->bindParam(':bausparenLoanMonthly', $bausparenLoanMonthly, SQLITE3_FLOAT);
 $stmt->bindParam(':bausparenMinSavingsPct', $bausparenMinSavingsPct, SQLITE3_FLOAT);
+$stmt->bindValue(':bausparenFee', $bausparenFee, SQLITE3_FLOAT);
 $stmt->bindValue(':replacedBy', $replacedBy, $replacedBy === null ? SQLITE3_NULL : SQLITE3_INTEGER);
 if ($isEdit) {
     $stmt->bindParam(':id', $id, SQLITE3_INTEGER);

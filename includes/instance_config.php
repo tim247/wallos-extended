@@ -412,3 +412,31 @@ function wallos_pushover_token($db, $userToken)
 
     return trim((string) ($settings['pushover_token'] ?? ''));
 }
+
+/**
+ * The mail server a user's notifications go out through.
+ *
+ * One server for the installation, configured on the admin page, is what a
+ * household wants. A user row with an SMTP address of its own keeps it; an
+ * empty address means the instance server (environment-managed values included).
+ *
+ * @param SQLite3 $db
+ * @param array   $row The user's email_notifications row (smtp_* columns).
+ * @return array The row with the smtp_* columns, encryption and from_email filled in.
+ */
+function wallos_email_server($db, array $row)
+{
+    if (trim((string) ($row['smtp_address'] ?? '')) !== '') {
+        return $row;
+    }
+
+    $settings = wallos_get_effective_admin_configuration($db)['settings'];
+    foreach (['smtp_address', 'smtp_port', 'encryption', 'smtp_username', 'smtp_password'] as $column) {
+        $row[$column] = $settings[$column] ?? '';
+    }
+    if (trim((string) ($row['from_email'] ?? '')) === '') {
+        $row['from_email'] = $settings['from_email'] ?? '';
+    }
+
+    return $row;
+}

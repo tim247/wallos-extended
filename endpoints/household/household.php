@@ -52,8 +52,10 @@ function handleEditMember($db, $userId, $i18n)
         $name = validate($_POST['name']);
         $email = $_POST['email'] ? $_POST['email'] : "";
         $email = validate($email);
-        $sql = "UPDATE household SET name = :name, email = :email WHERE id = :memberId AND user_id = :userId";
+        $color = preg_match('/^#[0-9a-f]{6}$/i', $_POST['color'] ?? '') ? $_POST['color'] : '';
+        $sql = "UPDATE household SET name = :name, email = :email, color = :color WHERE id = :memberId AND user_id = :userId";
         $stmt = $db->prepare($sql);
+        $stmt->bindValue(':color', $color, SQLITE3_TEXT);
         $stmt->bindParam(':name', $name, SQLITE3_TEXT);
         $stmt->bindParam(':email', $email, SQLITE3_TEXT);
         $stmt->bindParam(':memberId', $memberId, SQLITE3_INTEGER);

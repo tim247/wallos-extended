@@ -26,7 +26,7 @@ Eine Kurzfassung gibt es in der App selbst unter *Menü → Hilfe*.
    Benutzer wird automatisch **Administrator**.
 3. **Grundeinstellungen** unter *Einstellungen*:
    - **Haushalt**: alle Personen anlegen, die etwas bezahlen (für Aufteilung und Benachrichtigungen).
-   - **Währungen**: Hauptwährung prüfen; für Fremdwährungen einen Fixer-API-Key eintragen.
+   - **Währungen**: Hauptwährung prüfen; Wechselkurse kommen ohne Konto und API-Key von frankfurter.dev (EZB-Referenzkurse).
    - **Kategorien** und **Zahlungsmethoden** anpassen.
 4. **Server-Adresse** unter *Admin → Server-URL* eintragen (z. B. `https://wallos.example.com`),
    damit Links in E-Mails (Passwort zurücksetzen, E-Mail bestätigen) funktionieren.

@@ -20,6 +20,12 @@ function computeLoanSchedule(array $loan, array $extraPayments = [], ?string $as
     $rate = (float) $loan['monthly_rate'];
     $termMonths = !empty($loan['term_months']) ? (int) $loan['term_months'] : null;
     $interestOnlyMonths = (int) ($loan['interest_only_months'] ?? 0);
+    // A tilgungsfreies Darlehen without a set interest-only period is interest-only for its whole term
+    // (or until a Bausparvertrag redeems it) and repaid in one sum at the end - it needs no repayment rate.
+    $isInterestOnlyLoan = ($loan['loan_type'] ?? 'annuity') === 'interest_only';
+    if ($isInterestOnlyLoan && $interestOnlyMonths <= 0) {
+        $interestOnlyMonths = $termMonths ?? 1200;
+    }
 
     $result = [
         'error' => null,
@@ -35,7 +41,7 @@ function computeLoanSchedule(array $loan, array $extraPayments = [], ?string $as
         'redeemed_on' => null,
     ];
 
-    if ($balance <= 0 || $rate <= 0) {
+    if ($balance <= 0 || ($rate <= 0 && !$isInterestOnlyLoan)) {
         $result['error'] = 'invalid_loan_parameters';
         return $result;
     }
@@ -127,6 +133,20 @@ function computeLoanSchedule(array $loan, array $extraPayments = [], ?string $as
         $interest = round($balance * $monthlyInterest, 2);
         $isInterestOnly = ($n <= $interestOnlyMonths);
         $overridePayment = $overrideMap[$n] ?? null;
+
+        if ($isInterestOnly && $termMonths !== null && $n >= $termMonths) {
+            // Endfällig: the last month of the term repays the whole balance.
+            $result['total_interest'] = round($result['total_interest'] + $interest, 2);
+            $pushRow(['n' => $n, 'date' => $payDateStr, 'payment' => round($interest + $balance, 2), 'interest' => $interest,
+                'principal' => round($balance, 2), 'extra' => 0.0, 'balance' => 0.0, 'override' => false]);
+            if ($payDateStr <= $asOf) {
+                $result['balance_as_of'] = 0.0;
+                $result['paid_interest_as_of'] = round($result['paid_interest_as_of'] + $interest, 2);
+            }
+            $balance = 0.0;
+            $result['payoff_date'] = $payDateStr;
+            break;
+        }
 
         if ($isInterestOnly) {
             // Tilgungsfreie Phase: only interest is paid, balance stays unchanged.
@@ -287,11 +307,13 @@ function computeBausparSchedule(array $loan, ?string $asOfDate = null): array
     $minSavings     = $bausparsumme * $minPct / 100;
     $loanRateMonthly = (float) ($loan['bausparen_loan_rate'] ?? 0) / 100 / 12;
     $loanMonthly    = (float) ($loan['bausparen_loan_monthly'] ?? 0);
+    $fee            = max(0.0, (float) ($loan['bausparen_fee'] ?? 0)); // Abschlussgebühr
 
     $result = [
         'error' => null,
         'loan_type' => 'bausparen',
         'savings_rows' => [],
+        'fee' => $fee,
         'payout_date' => null,
         'accumulated_savings' => 0.0,
         'loan_amount' => 0.0,
@@ -313,10 +335,17 @@ function computeBausparSchedule(array $loan, ?string $asOfDate = null): array
 
     // ── Phase 1: Sparphase ────────────────────────────────────────────────
     $startDay = (int) (new DateTime($loan['start_date']))->format('d');
-    $savings = 0.0;
+    // The Abschlussgebühr is offset against the first deposits: the balance starts at minus the fee.
+    $savings = -$fee;
     $totalSavingsInterest = 0.0;
     $n = 0;
     $payoutDateStr = null;
+    if ($fee > 0) {
+        $result['savings_rows'][] = ['n' => 0, 'date' => $loan['start_date'], 'deposit' => 0.0, 'interest' => 0.0, 'balance' => $savings, 'fee' => $fee];
+        if ($loan['start_date'] <= $asOf) {
+            $result['balance_as_of'] = $savings;
+        }
+    }
 
     while ($savings < $minSavings && $n < 1200) {
         $n++;
@@ -330,7 +359,7 @@ function computeBausparSchedule(array $loan, ?string $asOfDate = null): array
         );
         $payDateStr = $payDate->format('Y-m-d');
 
-        $interestEarned = round($savings * $guthabenzins, 2);
+        $interestEarned = $savings > 0 ? round($savings * $guthabenzins, 2) : 0.0; // no interest on a negative balance
         $savings = round($savings + $sparrate + $interestEarned, 2);
         $totalSavingsInterest = round($totalSavingsInterest + $interestEarned, 2);
 
