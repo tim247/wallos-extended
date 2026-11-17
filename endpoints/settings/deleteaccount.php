@@ -218,6 +218,8 @@ if ($userIdToDelete == 1 || $userIdToDelete != $userId) {
         'DELETE FROM emergency_entries WHERE user_id = :id',
         'DELETE FROM loan_rate_changes WHERE user_id = :id',
         'DELETE FROM annual_review WHERE user_id = :id',
+        'DELETE FROM task_state WHERE user_id = :id',
+        'DELETE FROM notification_prefs WHERE user_id = :id',
         'DELETE FROM insurances WHERE user_id = :id',
         'DELETE FROM loan_extra_payments WHERE user_id = :id',
         'DELETE FROM loan_schedule_overrides WHERE user_id = :id',

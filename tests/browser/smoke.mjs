@@ -33,6 +33,8 @@ const overflowScan = () => {
     for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
       const o = getComputedStyle(a).overflowX;
       if (o === 'auto' || o === 'scroll') return;
+      // A container that cuts off what sticks out, and itself fits, hides it - nothing runs off the screen.
+      if ((o === 'hidden' || o === 'clip') && a.getBoundingClientRect().right <= width + 2) return;
     }
     bad.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]}`);
   });

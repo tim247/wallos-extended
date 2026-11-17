@@ -7588,3 +7588,10 @@ input.below-break-even {
   cursor: pointer;
   font-weight: 600;
 }
+
+/* Calendar on phones: an entry stays inside its day cell and cuts its text with "…". */
+.calendar .calendar-event,
+.calendar .calendar-event-title {
+  max-width: 100%;
+  box-sizing: border-box;
+}

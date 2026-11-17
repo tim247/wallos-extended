@@ -2,7 +2,10 @@
 // Cancellation package for relatives: one letter per contract, insurance and subscription
 // ("cancellation because of death, the death certificate is enclosed"), as a ZIP of PDFs.
 // Used by the owner (emergency.php) and by the trusted person with full access (emergency_access.php).
-require_once __DIR__ . '/cancellation_letter.php';
+// Loaded once even when another copy of the helper is already in (the test sandbox has its own).
+if (!function_exists('cancellationLetterPdf')) {
+    require_once __DIR__ . '/cancellation_letter.php';
+}
 
 /** Letter text; {{verstorben}} is the deceased, the rest are the usual letter placeholders. */
 function emergencyLetterTemplate(): array
