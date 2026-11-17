@@ -1704,6 +1704,8 @@ input {
 
 input[type="text"],
 input[type="search"],
+input[type="tel"],
+input[type="url"],
 input[type="email"],
 input[type="password"],
 input[type="date"],
@@ -1724,6 +1726,8 @@ select {
 
 input[type="text"]:focus,
 input[type="search"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus,
 input[type="date"]:focus,
@@ -1986,6 +1990,8 @@ button.disabled {
 
 input[type="text"]:disabled,
 input[type="password"]:disabled,
+input[type="tel"]:disabled,
+input[type="url"]:disabled,
 input[type="email"]:disabled {
   background-color: var(--input-disabled-background-color);
   border-color: var(--input-disabled-border-color);
@@ -7594,4 +7600,9 @@ input.below-break-even {
 .calendar .calendar-event-title {
   max-width: 100%;
   box-sizing: border-box;
+}
+
+/* Links keep their colour after a visit (no browser purple); classed links set their own. */
+:where(a:link, a:visited) {
+  color: var(--main-color);
 }
