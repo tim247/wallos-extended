@@ -136,7 +136,7 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
           $cardInfo[] = sprintf(translate('service_next', $i18n), date('d.m.Y', strtotime($cardDetails['next_service'])));
         }
         foreach (['bandwidth', 'data_volume'] as $infoKey) {
-          if (!empty($cardDetails[$infoKey])) $cardInfo[] = $cardDetails[$infoKey];
+          if (!empty($cardDetails[$infoKey])) $cardInfo[] = $cardDetails[$infoKey] . (is_numeric($cardDetails[$infoKey]) ? ' ' . CONTRACT_DETAIL_UNITS[$infoKey] : '');
         } ?>
       <div class="module-card <?= $contract['archived'] ? 'archived' : '' ?>" data-id="<?= $contract['id'] ?>"
         data-deadline-text="<?= $contract['deadline_info'] ? date('d.m.Y', strtotime($contract['deadline_info']['deadline'])) : '' ?>"
@@ -249,9 +249,10 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
     <?php foreach (CONTRACT_TYPES as $typeKey => [, , $typeFields]): if (!$typeFields) continue; ?>
       <div class="form-group-inline insurance-kfz contract-details hide" data-type="<?= $typeKey ?>">
         <?php foreach ($typeFields as $fieldKey => $fieldKind): ?>
+          <?php $fieldUnit = $fieldKind === 'money' ? $mainCurrencyCode : (CONTRACT_DETAIL_UNITS[$fieldKey] ?? ''); ?>
           <label><?= translate('contract_detail_' . $fieldKey, $i18n) ?>
-            <input type="<?= $fieldKind === 'date' ? 'date' : ($fieldKind === 'text' ? 'text' : 'number') ?>" name="detail_<?= $fieldKey ?>"
-              <?= $fieldKind === 'money' ? 'step="0.01" min="0"' : ($fieldKind === 'number' ? 'step="1" min="0"' : 'maxlength="100"') ?>>
+            <span class="input-unit" data-unit="<?= htmlspecialchars($fieldUnit) ?>"><input type="<?= $fieldKind === 'date' ? 'date' : ($fieldKind === 'text' ? 'text' : 'number') ?>" name="detail_<?= $fieldKey ?>"
+              <?= $fieldKind === 'money' ? 'step="0.01" min="0"' : ($fieldKind === 'number' ? 'step="any" min="0"' : 'maxlength="100"') ?>></span>
           </label>
         <?php endforeach; ?>
       </div>

@@ -84,6 +84,8 @@ function fillContractForm(contract) {
   const details = (() => { try { return JSON.parse(contract.details || "{}") || {}; } catch (e) { return {}; } })();
   document.querySelectorAll('[name^="detail_"]').forEach((input) => {
     const value = details[input.name.slice(7)];
+    // Older entries were free text ("250 Mbit"): a number field takes the number out of it.
+    if (input.type === "number" && value !== undefined) { const n = parseFloat(String(value).replace(",", ".")); input.value = isNaN(n) ? "" : n; return; }
     input.value = value === undefined ? "" : new DOMParser().parseFromString(String(value), "text/html").documentElement.textContent;
   });
   const panel = document.querySelector("#contract-switch-panel");

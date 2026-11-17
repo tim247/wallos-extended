@@ -6,8 +6,8 @@
 const CONTRACT_TYPES = [
     'electricity' => ['fa-bolt', true, []],
     'gas' => ['fa-fire', true, []],
-    'internet' => ['fa-wifi', true, ['bandwidth' => 'text']],
-    'mobile' => ['fa-mobile-screen', true, ['data_volume' => 'text', 'phone_number' => 'text']],
+    'internet' => ['fa-wifi', true, ['bandwidth' => 'number']],
+    'mobile' => ['fa-mobile-screen', true, ['data_volume' => 'number', 'phone_number' => 'text']],
     'fitness' => ['fa-dumbbell', true, []],
     'streaming' => ['fa-tv', true, []],
     'rent' => ['fa-house', false, ['cold_rent' => 'money', 'utilities' => 'money', 'deposit' => 'money', 'deposit_where' => 'text', 'utilities_result' => 'money']],
@@ -15,6 +15,9 @@ const CONTRACT_TYPES = [
     'service' => ['fa-screwdriver-wrench', false, ['next_service' => 'date', 'service_interval' => 'number']],
     'other' => ['fa-file-signature', false, []],
 ];
+
+/** Unit shown inside a detail field and after its value; money fields show the currency. */
+const CONTRACT_DETAIL_UNITS = ['bandwidth' => 'Mbit/s', 'data_volume' => 'GB', 'km_per_year' => 'km', 'km_current' => 'km'];
 
 /** Details of a contract row, only the fields of its type. */
 function contractDetails(array $contract): array
