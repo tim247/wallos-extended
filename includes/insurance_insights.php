@@ -100,7 +100,7 @@ function insuredMemberIds(array $insurance): array
 }
 
 /**
- * Basic cover per household member: health insurance and personal liability.
+ * Basic cover per household member: personal liability (health insurance is not checked).
  * A liability insurance without persons named counts for the whole household (family policy).
  * @return array<int, string[]> member id => missing insurance types
  */
@@ -123,9 +123,6 @@ function coverageGaps(array $memberIds, array $insurances): array
             }
             return false;
         };
-        if (!$has('health', false)) {
-            $missing[] = 'health';
-        }
         if (!$has('liability', true)) {
             $missing[] = 'liability';
         }

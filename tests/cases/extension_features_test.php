@@ -476,8 +476,8 @@ wallos_test('insurance insights: premiums paid, balance, development, gaps, remi
 
     $health = ['insurance_type' => 'health', 'insured_persons' => '1,2', 'payer_user_id' => 1];
     $liability = ['insurance_type' => 'liability', 'insured_persons' => '', 'payer_user_id' => 1];
-    assert_same([3 => ['health']], coverageGaps([1, 2, 3], [$health, $liability]), 'member 3 lacks health insurance, liability covers all');
-    assert_same([1 => ['liability'], 2 => ['health', 'liability']], coverageGaps([1, 2], [['insurance_type' => 'health', 'insured_persons' => '', 'payer_user_id' => 1]]), 'no liability at all');
+    assert_same([], coverageGaps([1, 2, 3], [$health, $liability]), 'liability covers all, a missing health insurance is not reported');
+    assert_same([1 => ['liability'], 2 => ['liability']], coverageGaps([1, 2], [['insurance_type' => 'health', 'insured_persons' => '', 'payer_user_id' => 1]]), 'no liability at all');
 
     assert_same(13700.0, householdUnderinsurance($ins + ['coverage_amount' => 50000], 98), '98 m² need 63,700 €');
     assert_same(null, householdUnderinsurance($ins + ['coverage_amount' => 70000], 98), 'enough');
