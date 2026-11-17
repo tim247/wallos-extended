@@ -40,7 +40,15 @@ $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
 $stmt->execute();
 
 $deadline = getNextCancellationDeadline($item, date('Y-m-d'));
-$pdf = cancellationLetterPdf(cancellationTemplate($db), [
+$template = cancellationTemplate($db);
+if (($item['cancel_mode'] ?? '') === 'switch_only') {
+    // Health insurance: the cancellation only takes effect with proof of the follow-up insurance.
+    $switchLine = translate('cancellation_switch_sentence', $i18n);
+    $template['body'] = str_contains($template['body'], 'Mit freundlichen Grüßen')
+        ? preg_replace('/Mit freundlichen Grüßen/', $switchLine . "\n\nMit freundlichen Grüßen", $template['body'], 1)
+        : $template['body'] . "\n\n" . $switchLine;
+}
+$pdf = cancellationLetterPdf($template, [
     'sender_name' => $senderName, 'sender_address' => $senderAddress,
     'provider' => $item['_provider'], 'recipient_address' => $recipientAddress,
     'item_name' => $item['name'], 'number' => $item['_number'], 'number_label' => $item['_number_label'],

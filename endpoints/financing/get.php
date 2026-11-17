@@ -41,11 +41,12 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
 
             $loanType = $row['loan_type'] ?? 'annuity';
             if ($loanType === 'bausparen') {
-                $row['schedule'] = computeBausparSchedule($row);
+                $row['schedule'] = computeBausparSchedule($row, null, bausparPayoutFromLoan($db, $userId, $row));
                 $row['schedule_plan'] = null;
             } else {
                 $in = loadLoanInputs($db, $userId, $row);
                 $row['anchors'] = $in['anchors'];
+                $row['rate_changes'] = $in['rate_changes'];
                 $row['schedule'] = computeLoanSchedule($row, $extraPayments, null, $overrides, $in['anchors'], $in['redeem_on']);
                 $row['schedule_plan'] = computeLoanSchedule($row, [], null, [], [], $in['redeem_on']);
             }

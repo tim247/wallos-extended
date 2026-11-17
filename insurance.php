@@ -2,6 +2,8 @@
 
 require_once 'includes/header.php';
 require_once 'includes/getdbkeys.php';
+require_once 'includes/pending_prices.php';
+applyPendingPrices($db, $userId);
 require_once 'includes/price_helpers.php';
 require_once 'includes/cancellation_helpers.php';
 
@@ -99,6 +101,97 @@ foreach ($insurances as &$insurance) {
 }
 unset($insurance);
 
+// Overview: basic cover per person, reviews due, household contents vs. living area, motor switching time.
+require_once 'includes/insurance_insights.php';
+require_once 'includes/consumption_insights.php';
+$overview = [];
+// Combined policies: names and monthly totals (policy + its building blocks).
+$policyNames = [];
+$policyParts = [];
+foreach ($insurances as $policyRow) {
+  $policyNames[$policyRow['id']] = $policyRow['name'];
+}
+foreach ($insurances as $policyRow) {
+  if (!empty($policyRow['parent_id']) && isset($policyNames[$policyRow['parent_id']])) {
+    $policyParts[$policyRow['parent_id']][] = $policyRow['id'];
+  }
+}
+foreach ($policyParts as $parentId => $partIds) {
+  $total = 0.0;
+  foreach ($insurances as $policyRow) {
+    if ($policyRow['id'] == $parentId || in_array($policyRow['id'], $partIds)) {
+      $total += $policyRow['monthly_price'];
+    }
+  }
+  $policyParts[$parentId]['_total'] = $total;
+}
+if (!$showArchived) {
+  // Provision: BU per earner, risk life insurance for the main earner.
+  $incomeByMember = [];
+  $incomeStmt = $db->prepare('SELECT * FROM incomes WHERE user_id = :userId');
+  $incomeStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+  $incomeResult = $incomeStmt->execute();
+  while ($incomeRow = $incomeResult->fetchArray(SQLITE3_ASSOC)) {
+    $earner = (int) ($incomeRow['payer_user_id'] ?: array_key_first($members));
+    $incomeByMember[$earner] = ($incomeByMember[$earner] ?? 0) + getPricePerMonth($incomeRow['cycle'], $incomeRow['frequency'], (float) $incomeRow['amount']);
+  }
+  foreach (provisionGaps($incomeByMember, $insurances, count($members)) as $gap) {
+    $overview[] = ['fa-briefcase-medical', sprintf(translate($gap['key'], $i18n), $members[$gap['member']]['name'] ?? '', isset($gap['value']) ? CurrencyFormatter::format($gap['value'], $mainCurrencyCode) : '')];
+  }
+  // Insurances without any document (no upload, no Paperless link).
+  $withDocs = [];
+  foreach (['item_files', 'item_documents'] as $docTable) {
+    $docStmt = @$db->prepare("SELECT DISTINCT item_id FROM $docTable WHERE user_id = :userId AND item_type = 'insurance'");
+    if ($docStmt) {
+      $docStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+      $docResult = $docStmt->execute();
+      while ($docRow = $docResult->fetchArray(SQLITE3_NUM)) {
+        $withDocs[(int) $docRow[0]] = true;
+      }
+    }
+  }
+  $withoutDocs = array_filter($insurances, fn($i) => !$i['cancellation_status'] && empty($i['parent_id']) && !isset($withDocs[(int) $i['id']]));
+  if ($withoutDocs) {
+    $overview[] = ['fa-file-circle-exclamation', sprintf(translate('insurance_no_documents', $i18n), implode(', ', array_column($withoutDocs, 'name')))];
+  }
+  // Health insurance with a premium increase: the moment a switch is possible.
+  require_once 'includes/pending_prices.php';
+  $increased = [];
+  foreach (announcedPriceIncreases($db, $userId) as $increase) {
+    $increased[$increase['name']] = true;
+  }
+  $recentStmt = $db->prepare("SELECT item_id FROM price_history WHERE user_id = :userId AND item_type = 'insurance' AND new_price > old_price AND changed_at >= date('now', '-60 days')");
+  $recentStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+  $recentResult = $recentStmt->execute();
+  $recentIds = [];
+  while ($recentRow = $recentResult->fetchArray(SQLITE3_NUM)) {
+    $recentIds[(int) $recentRow[0]] = true;
+  }
+  foreach ($insurances as $switchRow) {
+    if (($switchRow['cancel_mode'] ?? '') === 'switch_only' && (isset($increased[$switchRow['name']]) || isset($recentIds[(int) $switchRow['id']]))) {
+      $overview[] = ['fa-right-left', sprintf(translate('switch_possible', $i18n), $switchRow['name'])];
+    }
+  }
+  $active = array_filter($insurances, fn($i) => !$i['cancellation_status']);
+  foreach (coverageGaps(array_keys($members), $active) as $memberId => $missing) {
+    foreach ($missing as $type) {
+      $overview[] = ['fa-user-shield', sprintf(translate('coverage_gap', $i18n), $members[$memberId]['name'], translate('coverage_gap_' . $type, $i18n))];
+    }
+  }
+  $livingArea = (float) (loadConsumptionSettings($db, $userId)['living_area'] ?? 0);
+  foreach ($active as $insurance) {
+    if (($missingAmount = householdUnderinsurance($insurance, $livingArea)) !== null) {
+      $overview[] = ['fa-couch', sprintf(translate('household_underinsured', $i18n), $insurance['name'], CurrencyFormatter::format($missingAmount, $currencies[$insurance['currency_id']]['code'] ?? $mainCurrencyCode))];
+    }
+    if (insuranceReviewDue($insurance, $today)) {
+      $overview[] = ['fa-magnifying-glass', sprintf(translate('review_due', $i18n), $insurance['name'])];
+    }
+    if ($insurance['insurance_type'] === 'car' && substr($today, 5) >= '10-01' && substr($today, 5) <= '11-30' && ($insurance['cancel_mode'] ?? 'cancellable') === 'cancellable') {
+      $overview[] = ['fa-car', sprintf(translate('kfz_switch_time', $i18n), $insurance['name'])];
+    }
+  }
+}
+
 $headerClass = count($insurances) > 0 ? "main-actions" : "main-actions hidden";
 ?>
 
@@ -133,6 +226,16 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
     <h2 class="archive-title"><i class="fa-solid fa-box-archive"></i> <?= translate('archive', $i18n) ?></h2>
   <?php endif; ?>
 
+  <?php if ($overview): ?>
+    <section class="insurance-overview" aria-labelledby="insurance-overview-title">
+      <h3 id="insurance-overview-title"><i class="fa-solid fa-lightbulb"></i> <?= translate('insurance_overview', $i18n) ?></h3>
+      <ul>
+        <?php foreach ($overview as [$icon, $text]): ?>
+          <li><i class="fa-solid <?= $icon ?>" aria-hidden="true"></i> <?= $text ?></li>
+        <?php endforeach; ?>
+      </ul>
+    </section>
+  <?php endif; ?>
   <div class="module-cards" id="insurances">
     <?php foreach ($insurances as $insurance):
       $deadline = $insurance['deadline_info'];
@@ -176,6 +279,17 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
           <?php if (!empty($paperlessDocCounts[$insurance['id']])): ?>
             <span class="deadline-badge doc-badge" title="<?= translate('paperless_documents', $i18n) ?>"><i class="fa-solid fa-paperclip"></i> <?= $paperlessDocCounts[$insurance['id']] ?></span>
           <?php endif; ?>
+          <?php if (!empty($insurance['parent_id']) && isset($policyNames[$insurance['parent_id']])): ?>
+            <span class="deadline-badge"><i class="fa-solid fa-layer-group"></i> <?= sprintf(translate('policy_part_badge', $i18n), $policyNames[$insurance['parent_id']]) ?></span>
+          <?php elseif (!empty($policyParts[$insurance['id']])): ?>
+            <span class="deadline-badge"><i class="fa-solid fa-layer-group"></i> <?= sprintf(translate('policy_parts_badge', $i18n), count($policyParts[$insurance['id']]) - 1, CurrencyFormatter::format($policyParts[$insurance['id']]['_total'] ?? 0, $mainCurrencyCode)) ?></span>
+          <?php endif; ?>
+          <?php if (($insurance['cancel_mode'] ?? 'cancellable') === 'switch_only' && !$insurance['cancellation_status']): ?>
+            <span class="deadline-badge cancelled" title="<?= translate('cancel_mode_switch_only_hint', $i18n) ?>"><i class="fa-solid fa-right-left"></i> <?= translate('cancel_mode_switch_only', $i18n) ?></span>
+          <?php endif; ?>
+          <?php if (!empty($insurance['pending_price_date'])): ?>
+            <span class="deadline-badge warning"><i class="fa-solid fa-arrow-trend-up"></i> <?= sprintf(translate('price_from_date', $i18n), date('d.m.Y', strtotime($insurance['pending_price_date'])), CurrencyFormatter::format((float) $insurance['pending_price'], $currencies[$insurance['currency_id']]['code'] ?? $mainCurrencyCode)) ?></span>
+          <?php endif; ?>
           <?php if ($insurance['cancellation_status']): ?>
             <span class="deadline-badge cancelled"><i class="fa-solid fa-ban"></i> <?= translate('cancelled', $i18n) ?>
               <?php if (!empty($insurance['cancellation_confirmed_date'])): ?>
@@ -194,7 +308,7 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
             </span>
           <?php endif; ?>
           <span class="module-card-actions">
-            <?php if (!$insurance['archived']): ?>
+            <?php if (!$insurance['archived'] && ($insurance['cancel_mode'] ?? 'cancellable') !== 'not_cancellable' && empty($insurance['parent_id'])): ?>
               <button class="image-button" title="<?= translate('cancellation_letter', $i18n) ?>"
                 onClick="openCancellation(event, 'insurance', <?= $insurance['id'] ?>)">
                 <i class="fa-solid fa-envelope-open-text"></i>
@@ -233,6 +347,22 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
   <?php endif; ?>
 </section>
 
+<?php if (count($insurances) > 0 && !$showArchived): ?>
+  <section class="contain">
+    <form class="tax-export-form" action="endpoints/insurance/tax_export.php" method="get">
+      <i class="fa-solid fa-file-csv" aria-hidden="true"></i>
+      <label for="tax-export-year"><?= translate('tax_export', $i18n) ?></label>
+      <select id="tax-export-year" name="year">
+        <?php for ($y = (int) date('Y'); $y >= (int) date('Y') - 5; $y--): ?>
+          <option value="<?= $y ?>" <?= $y === (int) date('Y') - 1 ? 'selected' : '' ?>><?= $y ?></option>
+        <?php endfor; ?>
+      </select>
+      <button type="submit" class="button secondary-button thin"><?= translate('download', $i18n) ?></button>
+      <small class="loan-anchor-hint"><?= translate('tax_export_hint', $i18n) ?></small>
+    </form>
+  </section>
+<?php endif; ?>
+
 <section class="subscription-form" id="insurance-form">
   <header>
     <h3 id="insurance-form-title"><?= translate('add_insurance', $i18n) ?></h3>
@@ -249,8 +379,18 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
     <div class="form-group">
       <div class="inline">
         <div class="split50">
-          <input type="text" id="insurance-insurer" name="insurer" autocomplete="off"
+          <input type="text" id="insurance-insurer" name="insurer" autocomplete="off" list="insurance-insurer-list"
             placeholder="<?= translate('insurer', $i18n) ?>">
+          <datalist id="insurance-insurer-list">
+            <?php
+            // Names already used (archived entries too), suggested while typing.
+            $known = $db->prepare("SELECT DISTINCT insurer FROM insurances WHERE user_id = :userId AND insurer != '' ORDER BY insurer COLLATE NOCASE");
+            $known->bindValue(':userId', $userId, SQLITE3_INTEGER);
+            $knownResult = $known->execute();
+            while ($knownRow = $knownResult->fetchArray(SQLITE3_NUM)): ?>
+              <option value="<?= $knownRow[0] ?>"></option>
+            <?php endwhile; ?>
+          </datalist>
         </div>
         <div class="split50">
           <input type="text" id="insurance-policy-number" name="policy_number" autocomplete="off"
@@ -283,6 +423,21 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
         <?php endforeach; ?>
       </select>
     </div>
+
+    <details class="pending-price-details" id="insurance-pending-details">
+      <summary><i class="fa-solid fa-arrow-trend-up"></i> <?= translate('announce_price_change', $i18n) ?></summary>
+      <div class="form-group-inline">
+        <div class="grow">
+          <label for="insurance-pending-price"><?= translate('new_price', $i18n) ?></label>
+          <input type="number" step="0.01" min="0" id="insurance-pending-price" name="pending_price" autocomplete="off">
+        </div>
+        <div class="grow">
+          <label for="insurance-pending-date"><?= translate('valid_from', $i18n) ?></label>
+          <input type="date" id="insurance-pending-date" name="pending_price_date" autocomplete="off">
+        </div>
+      </div>
+      <small class="loan-anchor-hint"><?= translate('announce_price_change_hint', $i18n) ?></small>
+    </details>
 
     <div class="form-group">
       <label for="insurance-cycle"><?= translate('payment_every', $i18n) ?></label>
@@ -340,16 +495,51 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
     <div class="form-group">
       <div class="inline">
         <div class="split50">
+          <label for="insurance-parent"><?= translate('policy_part_of', $i18n) ?></label>
+          <select id="insurance-parent" name="parent_id" onchange="toggleInsuranceCancelArea()">
+            <option value=""><?= translate('policy_standalone', $i18n) ?></option>
+            <?php foreach ($insurances as $policyOption): if ($policyOption['archived'] || !empty($policyOption['parent_id'])) continue; ?>
+              <option value="<?= (int) $policyOption['id'] ?>"><?= $policyOption['name'] ?><?= $policyOption['insurer'] ? ' · ' . $policyOption['insurer'] : '' ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="split50">
+          <label for="insurance-refund"><?= translate('refund_amount', $i18n) ?></label>
+          <input type="number" step="0.01" min="0" id="insurance-refund" name="refund_amount" autocomplete="off">
+        </div>
+      </div>
+      <small class="loan-anchor-hint"><?= translate('policy_part_hint', $i18n) ?></small>
+    </div>
+
+    <div class="form-group">
+      <label for="insurance-cancel-mode"><?= translate('cancel_mode', $i18n) ?></label>
+      <select id="insurance-cancel-mode" name="cancel_mode" onchange="this.dataset.touched = '1'; toggleInsuranceCancelArea()">
+        <option value="cancellable"><?= translate('cancel_mode_cancellable', $i18n) ?></option>
+        <option value="switch_only"><?= translate('cancel_mode_switch_only', $i18n) ?></option>
+        <option value="not_cancellable"><?= translate('cancel_mode_not_cancellable', $i18n) ?></option>
+      </select>
+      <small class="loan-anchor-hint" id="insurance-cancel-mode-hint"></small>
+    </div>
+
+    <div class="form-group">
+      <div class="inline">
+        <div class="split50">
           <label for="insurance-start-date"><?= translate('start_date', $i18n) ?></label>
           <div class="date-wrapper">
             <input type="date" id="insurance-start-date" name="start_date" autocomplete="off" required>
           </div>
         </div>
         <div class="split50">
-          <label for="insurance-renewal-term"><?= translate('renewal_term_months', $i18n) ?></label>
-          <input type="number" min="1" id="insurance-renewal-term" name="renewal_term_months" value="12">
+          <label for="insurance-initial-term"><?= translate('initial_term_months', $i18n) ?></label>
+          <input type="number" min="1" id="insurance-initial-term" name="initial_term_months" value="12">
         </div>
       </div>
+    </div>
+
+    <div class="form-group">
+      <label for="insurance-renewal-term"><?= translate('renewal_term_months', $i18n) ?></label>
+      <input type="number" min="1" id="insurance-renewal-term" name="renewal_term_months" value="12">
+      <small class="loan-anchor-hint"><?= translate('term_hint', $i18n) ?></small>
     </div>
 
     <div class="form-group">
@@ -359,6 +549,7 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
       </div>
     </div>
 
+    <div id="insurance-cancel-area">
     <div class="form-group">
       <div class="inline grow">
         <input type="checkbox" id="insurance-auto-renews" name="auto_renews" checked
@@ -414,6 +605,48 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
         <label for="insurance-cancellation-status" class="grow"><?= translate('already_cancelled', $i18n) ?></label>
       </div>
     </div>
+    </div>
+
+    <div class="form-group hide" id="insurance-kfz-group">
+      <label><?= translate('kfz_data', $i18n) ?></label>
+      <div class="form-group-inline insurance-kfz">
+        <label><?= translate('kfz_sf_class', $i18n) ?><input type="text" id="insurance-kfz-sf" name="kfz_sf_class" maxlength="10" placeholder="SF 12"></label>
+        <label><?= translate('kfz_km', $i18n) ?><input type="number" id="insurance-kfz-km" name="kfz_km" min="0" step="1000" placeholder="12000"></label>
+        <label><?= translate('kfz_type_class', $i18n) ?><input type="text" id="insurance-kfz-type" name="kfz_type_class" maxlength="10"></label>
+        <label><?= translate('kfz_region_class', $i18n) ?><input type="text" id="insurance-kfz-region" name="kfz_region_class" maxlength="10"></label>
+      </div>
+      <small class="loan-anchor-hint"><?= translate('kfz_hint', $i18n) ?></small>
+    </div>
+
+    <?php if (count($members) > 1): ?>
+      <div class="form-group">
+        <label><?= translate('insured_persons', $i18n) ?></label>
+        <div class="insured-persons">
+          <?php foreach ($members as $member): ?>
+            <label><input type="checkbox" name="insured_persons[]" value="<?= (int) $member['id'] ?>"> <?= $member['name'] ?></label>
+          <?php endforeach; ?>
+        </div>
+        <small class="loan-anchor-hint"><?= translate('insured_persons_hint', $i18n) ?></small>
+      </div>
+    <?php endif; ?>
+
+    <details class="pending-price-details" id="insurance-more-details">
+      <summary><i class="fa-solid fa-list-check"></i> <?= translate('coverage_and_contact', $i18n) ?></summary>
+      <div class="form-group">
+        <label for="insurance-coverage-notes"><?= translate('coverage_notes', $i18n) ?></label>
+        <textarea id="insurance-coverage-notes" name="coverage_notes" rows="4" maxlength="2000" placeholder="<?= translate('coverage_notes_placeholder', $i18n) ?>"></textarea>
+      </div>
+      <div class="form-group-inline insurance-kfz">
+        <label><?= translate('contact_name', $i18n) ?><input type="text" id="insurance-contact-name" name="contact_name" maxlength="100"></label>
+        <label><?= translate('contact_phone', $i18n) ?><input type="tel" id="insurance-contact-phone" name="contact_phone" maxlength="40"></label>
+        <label><?= translate('contact_email', $i18n) ?><input type="email" id="insurance-contact-email" name="contact_email" maxlength="100"></label>
+      </div>
+      <div class="form-group">
+        <label for="insurance-last-review"><?= translate('last_review', $i18n) ?></label>
+        <input type="date" id="insurance-last-review" name="last_review">
+        <small class="loan-anchor-hint"><?= translate('last_review_hint', $i18n) ?></small>
+      </div>
+    </details>
 
     <div class="form-group">
       <input type="text" id="insurance-url" name="url" autocomplete="off" placeholder="<?= translate('url', $i18n) ?>">
@@ -423,6 +656,25 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
       <input type="text" id="insurance-notes" name="notes" autocomplete="off"
         placeholder="<?= translate('notes', $i18n) ?>">
     </div>
+
+    <section class="insurance-panel" id="insurance-claims-panel" hidden>
+      <h4><i class="fa-solid fa-file-medical"></i> <?= translate('claims_and_balance', $i18n) ?></h4>
+      <div id="insurance-balance"></div>
+      <div id="insurance-claims-list"></div>
+      <p class="loan-anchor-hint" id="insurance-claim-hint"></p>
+      <div class="form-group-inline insurance-kfz" id="insurance-claim-form">
+        <label><?= translate('date', $i18n) ?><input type="date" id="claim-date"></label>
+        <label class="grow"><?= translate('claim_description', $i18n) ?><input type="text" id="claim-description" maxlength="300"></label>
+        <label><?= translate('claim_number', $i18n) ?><input type="text" id="claim-number" maxlength="60"></label>
+        <label><?= translate('amount_claimed', $i18n) ?><input type="number" id="claim-amount" step="0.01" min="0"></label>
+        <button type="button" class="button thin" onClick="addClaim()"><i class="fa-solid fa-circle-plus"></i> <?= translate('add_claim', $i18n) ?></button>
+      </div>
+      <div id="insurance-development"></div>
+      <div class="insurance-panel-actions">
+        <button type="button" class="button secondary-button thin" onClick="markInsuranceReviewed()"><i class="fa-solid fa-check"></i> <?= translate('mark_reviewed', $i18n) ?></button>
+        <button type="button" class="button secondary-button thin" onClick="extractPolicyData()"><i class="fa-solid fa-wand-magic-sparkles"></i> <?= translate('extract_from_documents', $i18n) ?></button>
+      </div>
+    </section>
 
     <?php $paperlessType = 'insurance'; require 'includes/paperless_panel.php'; ?>
     <?php $filesType = 'insurance'; require 'includes/files_panel.php'; ?>

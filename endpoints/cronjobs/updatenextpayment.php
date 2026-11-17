@@ -5,6 +5,9 @@ require_once __DIR__ . '/../../includes/connect_endpoint_crontabs.php';
 
 require 'settimezone.php';
 
+require_once __DIR__ . '/../../includes/pending_prices.php';
+echo 'Announced price changes applied: ' . applyPendingPrices($db) . "<br />\n";
+
 $date = new DateTime('now');
 echo "\n" . $date->format('Y-m-d') . " " . $date->format('H:i:s') . "<br />\n";
 echo $timezone . "<br />\n";

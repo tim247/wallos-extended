@@ -2,6 +2,9 @@
 
 require_once 'includes/header.php';
 require_once 'includes/getdbkeys.php';
+require_once 'includes/contract_types.php';
+require_once 'includes/pending_prices.php';
+applyPendingPrices($db, $userId);
 require_once 'includes/price_helpers.php';
 require_once 'includes/cancellation_helpers.php';
 
@@ -119,7 +122,24 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
         }
       }
       ?>
+      <?php $cardDetails = contractDetails($contract); $cardType = $contract['contract_type'] ?? 'other';
+        $cardInfo = [];
+        if ($cardType === 'rent' && (isset($cardDetails['cold_rent']) || isset($cardDetails['utilities']))) {
+          $cardInfo[] = sprintf(translate('rent_split', $i18n), CurrencyFormatter::format($cardDetails['cold_rent'] ?? 0, $mainCurrencyCode), CurrencyFormatter::format($cardDetails['utilities'] ?? 0, $mainCurrencyCode));
+        }
+        if ($cardType === 'leasing' && ($mileage = leasingMileage($cardDetails, $contract['start_date'], $today)) !== null) {
+          $cardInfo[] = $mileage['extra_km'] > 0
+            ? sprintf(translate('leasing_extra_km', $i18n), number_format($mileage['extra_km'], 0, ',', '.'), CurrencyFormatter::format($mileage['extra_cost'], $mainCurrencyCode))
+            : sprintf(translate('leasing_within_km', $i18n), number_format($mileage['expected'], 0, ',', '.'), number_format($mileage['allowed'], 0, ',', '.'));
+        }
+        if ($cardType === 'service' && !empty($cardDetails['next_service'])) {
+          $cardInfo[] = sprintf(translate('service_next', $i18n), date('d.m.Y', strtotime($cardDetails['next_service'])));
+        }
+        foreach (['bandwidth', 'data_volume'] as $infoKey) {
+          if (!empty($cardDetails[$infoKey])) $cardInfo[] = $cardDetails[$infoKey];
+        } ?>
       <div class="module-card <?= $contract['archived'] ? 'archived' : '' ?>" data-id="<?= $contract['id'] ?>"
+        data-deadline-text="<?= $contract['deadline_info'] ? date('d.m.Y', strtotime($contract['deadline_info']['deadline'])) : '' ?>"
         data-name="<?= $contract['name'] ?>" data-price="<?= round((float) $contract['monthly_price'], 2) ?>"
         data-deadline="<?= $contract['deadline_info']['deadline'] ?? '' ?>" data-member-name="<?= $members[$contract['payer_user_id']]['name'] ?? '' ?>"
         data-member="<?= (int) $contract['payer_user_id'] ?>" data-group="<?= (int) $contract['category_id'] ?>">
@@ -136,6 +156,9 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
                 <span class="module-card-category"><?= $categories[$contract['category_id']]['name'] ?></span>
               <?php endif; ?>
             </span>
+            <?php if ($cardInfo): ?>
+              <span class="module-card-detail"><i class="fa-solid <?= CONTRACT_TYPES[$cardType][0] ?? 'fa-file-signature' ?>" aria-hidden="true"></i> <?= implode(' · ', $cardInfo) ?></span>
+            <?php endif; ?>
           </div>
           <div class="module-card-price">
             <span><?= CurrencyFormatter::format($contract['price'], $currencies[$contract['currency_id']]['code'] ?? $mainCurrencyCode) ?></span>
@@ -145,6 +168,9 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
         <div class="module-card-footer">
           <?php if (!empty($paperlessDocCounts[$contract['id']])): ?>
             <span class="deadline-badge doc-badge" title="<?= translate('paperless_documents', $i18n) ?>"><i class="fa-solid fa-paperclip"></i> <?= $paperlessDocCounts[$contract['id']] ?></span>
+          <?php endif; ?>
+          <?php if (!empty($contract['pending_price_date'])): ?>
+            <span class="deadline-badge warning"><i class="fa-solid fa-arrow-trend-up"></i> <?= sprintf(translate('price_from_date', $i18n), date('d.m.Y', strtotime($contract['pending_price_date'])), CurrencyFormatter::format((float) $contract['pending_price'], $currencies[$contract['currency_id']]['code'] ?? $mainCurrencyCode)) ?></span>
           <?php endif; ?>
           <?php if ($contract['cancellation_status']): ?>
             <span class="deadline-badge cancelled"><i class="fa-solid fa-ban"></i> <?= translate('cancelled', $i18n) ?>
@@ -212,6 +238,26 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
     <input type="hidden" id="contract-id" name="id">
 
     <div class="form-group">
+      <label for="contract-type"><?= translate('contract_type', $i18n) ?></label>
+      <select id="contract-type" name="contract_type" onchange="toggleContractType()">
+        <?php foreach (CONTRACT_TYPES as $typeKey => [$typeIcon]): ?>
+          <option value="<?= $typeKey ?>" <?= $typeKey === 'other' ? 'selected' : '' ?>><?= translate('contract_type_' . $typeKey, $i18n) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+
+    <?php foreach (CONTRACT_TYPES as $typeKey => [, , $typeFields]): if (!$typeFields) continue; ?>
+      <div class="form-group-inline insurance-kfz contract-details hide" data-type="<?= $typeKey ?>">
+        <?php foreach ($typeFields as $fieldKey => $fieldKind): ?>
+          <label><?= translate('contract_detail_' . $fieldKey, $i18n) ?>
+            <input type="<?= $fieldKind === 'date' ? 'date' : ($fieldKind === 'text' ? 'text' : 'number') ?>" name="detail_<?= $fieldKey ?>"
+              <?= $fieldKind === 'money' ? 'step="0.01" min="0"' : ($fieldKind === 'number' ? 'step="1" min="0"' : 'maxlength="100"') ?>>
+          </label>
+        <?php endforeach; ?>
+      </div>
+    <?php endforeach; ?>
+
+    <div class="form-group">
       <input type="text" id="contract-name" name="name" autocomplete="off"
         placeholder="<?= translate('contract_name', $i18n) ?>" required>
     </div>
@@ -219,8 +265,18 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
     <div class="form-group">
       <div class="inline">
         <div class="split50">
-          <input type="text" id="contract-provider" name="provider" autocomplete="off"
+          <input type="text" id="contract-provider" name="provider" autocomplete="off" list="contract-provider-list"
             placeholder="<?= translate('provider', $i18n) ?>">
+          <datalist id="contract-provider-list">
+            <?php
+            // Names already used (archived entries too), suggested while typing.
+            $known = $db->prepare("SELECT DISTINCT provider FROM contracts WHERE user_id = :userId AND provider != '' ORDER BY provider COLLATE NOCASE");
+            $known->bindValue(':userId', $userId, SQLITE3_INTEGER);
+            $knownResult = $known->execute();
+            while ($knownRow = $knownResult->fetchArray(SQLITE3_NUM)): ?>
+              <option value="<?= $knownRow[0] ?>"></option>
+            <?php endwhile; ?>
+          </datalist>
         </div>
         <div class="split50">
           <input type="text" id="contract-number" name="contract_number" autocomplete="off"
@@ -240,6 +296,21 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
         <?php endforeach; ?>
       </select>
     </div>
+
+    <details class="pending-price-details" id="contract-pending-details">
+      <summary><i class="fa-solid fa-arrow-trend-up"></i> <?= translate('announce_price_change', $i18n) ?></summary>
+      <div class="form-group-inline">
+        <div class="grow">
+          <label for="contract-pending-price"><?= translate('new_price', $i18n) ?></label>
+          <input type="number" step="0.01" min="0" id="contract-pending-price" name="pending_price" autocomplete="off">
+        </div>
+        <div class="grow">
+          <label for="contract-pending-date"><?= translate('valid_from', $i18n) ?></label>
+          <input type="date" id="contract-pending-date" name="pending_price_date" autocomplete="off">
+        </div>
+      </div>
+      <small class="loan-anchor-hint"><?= translate('announce_price_change_hint', $i18n) ?></small>
+    </details>
 
     <div class="form-group">
       <label for="contract-cycle"><?= translate('payment_every', $i18n) ?></label>
@@ -352,6 +423,25 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
       </div>
     </div>
 
+    <p class="loan-anchor-hint hide" id="contract-statutory-hint">
+      <i class="fa-solid fa-scale-balanced"></i> <?= translate('contract_statutory_hint', $i18n) ?>
+      <button type="button" class="link-button" onclick="applyStatutoryTerms()"><?= translate('contract_statutory_apply', $i18n) ?></button>
+    </p>
+
+    <section class="insurance-panel" id="contract-switch-panel" hidden>
+      <h4><i class="fa-solid fa-right-left"></i> <?= translate('contract_switch', $i18n) ?></h4>
+      <div class="form-group-inline insurance-kfz">
+        <label><?= translate('contract_switch_offer', $i18n) ?><input type="number" id="switch-offer" step="0.01" min="0" oninput="compareContractSwitch()"></label>
+        <label><?= translate('contract_switch_bonus', $i18n) ?><input type="number" id="switch-bonus" step="0.01" min="0" oninput="compareContractSwitch()"></label>
+        <label><?= translate('contract_switch_fee', $i18n) ?><input type="number" id="switch-fee" step="0.01" min="0" oninput="compareContractSwitch()"></label>
+        <label><?= translate('contract_switch_months', $i18n) ?><input type="number" id="switch-months" step="1" min="1" value="24" oninput="compareContractSwitch()"></label>
+      </div>
+      <p id="switch-result" aria-live="polite"></p>
+      <div class="insurance-panel-actions">
+        <button type="button" class="button secondary-button thin" onClick="extractContractData()"><i class="fa-solid fa-wand-magic-sparkles"></i> <?= translate('extract_from_documents', $i18n) ?></button>
+      </div>
+    </section>
+
     <div class="form-group-inline grow">
       <input type="checkbox" id="contract-notifications" name="notifications" onchange="toggleContractNotifyDays()">
       <label for="contract-notifications" class="grow"><?= translate('cancellation_reminder', $i18n) ?></label>
@@ -398,6 +488,7 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
 <?php require 'includes/cancellation_modal.php'; ?>
 <script src="scripts/paperless.js?<?= $assetVersion ?>"></script>
 <script src="scripts/files.js?<?= $assetVersion ?>"></script>
+<script>window.mainCurrencyCode = <?= json_encode($mainCurrencyCode) ?>;</script>
 <script src="scripts/contracts.js?<?= $assetVersion ?>"></script>
 <script src="scripts/module-filter.js?<?= $assetVersion ?>"></script>
 <?php

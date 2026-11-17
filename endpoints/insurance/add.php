@@ -122,9 +122,73 @@ if ($isEdit) {
 
 header('Content-Type: application/json');
 if ($stmt->execute()) {
+    $savedId = $isEdit ? $id : $db->lastInsertRowID();
+    $cancelMode = in_array($_POST['cancel_mode'] ?? '', ['cancellable', 'switch_only', 'not_cancellable'], true) ? $_POST['cancel_mode'] : 'cancellable';
+    $modeStmt = $db->prepare('UPDATE insurances SET cancel_mode = :mode, initial_term_months = :initialTerm WHERE id = :id AND user_id = :userId');
+    $modeStmt->bindValue(':mode', $cancelMode);
+    $modeStmt->bindValue(':initialTerm', max(1, intval($_POST['initial_term_months'] ?? 12)), SQLITE3_INTEGER);
+    $modeStmt->bindValue(':id', $savedId, SQLITE3_INTEGER);
+    $modeStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $modeStmt->execute();
+    // Coverage, contact, insured persons, motor data, review date.
+    $text = fn(string $key, int $max) => validate(mb_substr(trim((string) ($_POST[$key] ?? '')), 0, $max));
+    $memberIds = array_map('intval', (array) ($_POST['insured_persons'] ?? []));
+    $ownMembers = [];
+    $memberResult = $db->query('SELECT id FROM household WHERE user_id = ' . (int) $userId);
+    while ($memberRow = $memberResult->fetchArray(SQLITE3_NUM)) {
+        $ownMembers[] = (int) $memberRow[0];
+    }
+    $lastReview = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['last_review'] ?? '') ? $_POST['last_review'] : null;
+    $extraStmt = $db->prepare('UPDATE insurances SET coverage_notes = :notes, contact_name = :cname, contact_phone = :cphone, contact_email = :cemail,
+        insured_persons = :persons, kfz_sf_class = :sf, kfz_km = :km, kfz_type_class = :typeClass, kfz_region_class = :regionClass, last_review = :review
+        WHERE id = :id AND user_id = :userId');
+    $extraStmt->bindValue(':notes', $text('coverage_notes', 2000));
+    $extraStmt->bindValue(':cname', $text('contact_name', 100));
+    $extraStmt->bindValue(':cphone', $text('contact_phone', 40));
+    $extraStmt->bindValue(':cemail', filter_var(trim((string) ($_POST['contact_email'] ?? '')), FILTER_VALIDATE_EMAIL) ?: '');
+    $extraStmt->bindValue(':persons', implode(',', array_values(array_intersect($memberIds, $ownMembers))));
+    $extraStmt->bindValue(':sf', $text('kfz_sf_class', 10));
+    $extraStmt->bindValue(':km', max(0, intval($_POST['kfz_km'] ?? 0)), SQLITE3_INTEGER);
+    $extraStmt->bindValue(':typeClass', $text('kfz_type_class', 10));
+    $extraStmt->bindValue(':regionClass', $text('kfz_region_class', 10));
+    $extraStmt->bindValue(':review', $lastReview, $lastReview === null ? SQLITE3_NULL : SQLITE3_TEXT);
+    $extraStmt->bindValue(':id', $savedId, SQLITE3_INTEGER);
+    $extraStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $extraStmt->execute();
+    require_once '../../includes/insurance_insights.php';
+    $parentId = intval($_POST['parent_id'] ?? 0) ?: null;
+    if ($parentId !== null) {
+        // Only an own, top-level insurance can be the policy (no chains, not itself).
+        $parentCheck = $db->prepare('SELECT COUNT(*) FROM insurances WHERE id = :id AND user_id = :userId AND parent_id IS NULL AND id != :self');
+        $parentCheck->bindValue(':id', $parentId, SQLITE3_INTEGER);
+        $parentCheck->bindValue(':userId', $userId, SQLITE3_INTEGER);
+        $parentCheck->bindValue(':self', $savedId, SQLITE3_INTEGER);
+        $hasBlocks = $db->querySingle('SELECT COUNT(*) FROM insurances WHERE parent_id = ' . (int) $savedId . ' AND user_id = ' . (int) $userId);
+        if (!$parentCheck->execute()->fetchArray()[0] || $hasBlocks) {
+            $parentId = null;
+        }
+    }
+    $policyStmt = $db->prepare('UPDATE insurances SET parent_id = :parent, refund_amount = :refund WHERE id = :id AND user_id = :userId');
+    $policyStmt->bindValue(':parent', $parentId, $parentId === null ? SQLITE3_NULL : SQLITE3_INTEGER);
+    $policyStmt->bindValue(':refund', max(0.0, floatval(str_replace(',', '.', $_POST['refund_amount'] ?? '0'))), SQLITE3_FLOAT);
+    $policyStmt->bindValue(':id', $savedId, SQLITE3_INTEGER);
+    $policyStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $policyStmt->execute();
+    // One notice period for the whole policy: building blocks take over its term fields.
+    $copy = implode(', ', array_map(fn($f) => "$f = (SELECT p.$f FROM insurances p WHERE p.id = insurances.parent_id)", POLICY_TERM_FIELDS));
+    $db->exec("UPDATE insurances SET $copy WHERE user_id = " . (int) $userId . " AND parent_id IS NOT NULL AND (id = " . (int) $savedId . " OR parent_id = " . (int) $savedId . ")");
+    require_once '../../includes/pending_prices.php';
+    [$pendingPrice, $pendingDate] = pendingPriceFromRequest($_POST);
+    $pendingStmt = $db->prepare('UPDATE insurances SET pending_price = :price, pending_price_date = :date WHERE id = :id AND user_id = :userId');
+    $pendingStmt->bindValue(':price', $pendingPrice, $pendingPrice === null ? SQLITE3_NULL : SQLITE3_FLOAT);
+    $pendingStmt->bindValue(':date', $pendingDate, $pendingDate === null ? SQLITE3_NULL : SQLITE3_TEXT);
+    $pendingStmt->bindValue(':id', $savedId, SQLITE3_INTEGER);
+    $pendingStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $pendingStmt->execute();
+    applyPendingPrices($db, $userId); // a date today or in the past applies at once
     $taxStmt = $db->prepare('UPDATE insurances SET tax_deductible = :tax WHERE id = :id AND user_id = :userId');
     $taxStmt->bindValue(':tax', isset($_POST['tax_deductible']) ? 1 : 0, SQLITE3_INTEGER);
-    $taxStmt->bindValue(':id', $isEdit ? $id : $db->lastInsertRowID(), SQLITE3_INTEGER);
+    $taxStmt->bindValue(':id', $savedId, SQLITE3_INTEGER);
     $taxStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
     $taxStmt->execute();
     $text = $isEdit ? 'insurance_updated_successfully' : 'insurance_added_successfully';

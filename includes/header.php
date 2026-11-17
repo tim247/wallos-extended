@@ -188,6 +188,7 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
           $menuGroups = [
             'menu_overview' => [
               ['.', 'svg:home', 'dashboard', true],
+              ['tasks.php', 'fa-inbox', 'task_inbox'],
               ['calendar.php', 'svg:calendar', 'calendar', true],
               ['yearly.php', 'fa-calendar-days', 'yearly_overview'],
               ['stats.php', 'svg:statistics', 'stats', true],
@@ -203,6 +204,8 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
               ['finances.php', 'fa-sack-dollar', 'finances'],
               ['report.php', 'fa-file-invoice', 'cost_report'],
               ['wrapped.php', 'fa-gift', 'wrapped'],
+              ['annual_review.php', 'fa-clipboard-check', 'annual_review'],
+              ['person.php', 'fa-users', 'person_view'],
             ],
             'menu_household' => [
               ['reminders.php', 'fa-calendar-check', 'reminders'],
@@ -221,6 +224,7 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
               $isAdmin ? ['admin.php', 'svg:admin', 'admin'] : null,
               ['help.php', 'fa-circle-question', 'help'],
               ['about.php', 'svg:about', 'about'],
+              ['#install-app', 'fa-mobile-screen-button', 'install_app'],
               $settings['disableLogin'] == 0 ? ['logout.php', 'svg:logout', 'logout'] : null,
             ]),
           ];
@@ -229,7 +233,7 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
           <div class="dropdown-content menu-grouped">
             <?php foreach ($menuGroups as $groupKey => $items):
               // A read-only account only sees what it may open.
-              $items = array_filter($items, fn($item) => empty($isReadOnlyAccount) || $item[0] === '.' || readonlyAllows($item[0]));
+              $items = array_filter($items, fn($item) => empty($isReadOnlyAccount) || $item[0] === '.' || $item[0] === '#install-app' || readonlyAllows($item[0]));
               if (!$items) continue; ?>
               <div class="menu-group">
                 <div class="menu-group-title"><?= translate($groupKey, $i18n) ?></div>

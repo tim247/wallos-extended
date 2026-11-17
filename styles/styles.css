@@ -7144,3 +7144,447 @@ dialog label > input[type="date"],
 .meter-compare-change.negative {
   color: var(--error-color);
 }
+
+.pending-price-details {
+  margin: 4px 0 14px;
+}
+
+.pending-price-details > summary {
+  cursor: pointer;
+  color: var(--main-color);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.pending-price-details .grow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 140px;
+}
+
+.insurance-kfz {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.insurance-kfz > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.insurance-kfz > label.grow {
+  flex-basis: 220px;
+}
+
+.insurance-kfz input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.insured-persons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+
+.insured-persons label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.insurance-panel {
+  border: 1px solid var(--box-border-color);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 10px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insurance-panel h4 {
+  margin: 0;
+}
+
+.insurance-panel p {
+  margin: 0;
+}
+
+.insurance-panel .claim-paid {
+  width: 100px;
+}
+
+.insurance-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.insurance-panel td.negative {
+  color: var(--error-color);
+}
+
+.insurance-overview {
+  border: 1px solid var(--box-border-color);
+  border-radius: 12px;
+  background-color: var(--box-background-color);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.insurance-overview h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.insurance-overview ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.insurance-overview li {
+  margin: 4px 0;
+}
+
+.tax-export-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+input.below-break-even {
+  border-color: var(--error-color);
+}
+
+.insurance-panel small.negative {
+  color: var(--error-color);
+}
+
+.annual-review-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.annual-review-summary > div {
+  border: 1px solid var(--box-border-color);
+  border-radius: 10px;
+  background-color: var(--box-background-color);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.annual-review-summary strong {
+  font-size: 20px;
+}
+
+.annual-review-summary span {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.annual-review-bar {
+  height: 8px;
+  border-radius: 4px;
+  background-color: rgba(128, 128, 128, 0.18);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.annual-review-bar > span {
+  display: block;
+  height: 100%;
+  background-color: var(--main-color);
+  transition: width .2s ease;
+}
+
+.annual-review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.annual-review-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--box-border-color);
+  border-radius: 10px;
+  background-color: var(--box-background-color);
+  padding: 12px 14px;
+}
+
+.annual-review-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.annual-review-info a {
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.annual-review-info span {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.annual-review-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.annual-review-choice {
+  min-height: 36px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--box-border-color);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.annual-review-choice.keep[aria-pressed="true"] {
+  background-color: #2e9e44;
+  border-color: #2e9e44;
+  color: #fff;
+}
+
+.annual-review-choice.compare[aria-pressed="true"] {
+  background-color: #c87618;
+  border-color: #c87618;
+  color: #fff;
+}
+
+.annual-review-choice.cancel[aria-pressed="true"] {
+  background-color: var(--error-color);
+  border-color: var(--error-color);
+  color: #fff;
+}
+
+.annual-review-choice:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+}
+
+.person-chips {
+  margin: 8px 0 4px;
+}
+
+.person-chips .module-filter-chip {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.person-chips .module-filter-chip[aria-current="page"] {
+  background: var(--main-color);
+  border-color: var(--main-color);
+  color: #fff;
+}
+
+.trial-tag {
+  background: #c87618;
+  color: #fff;
+}
+
+.loan-simulator {
+  margin: 18px 0;
+}
+
+.loan-simulator h3 {
+  margin-bottom: 6px;
+}
+
+.loan-allowance,
+.loan-rate-changes {
+  margin: 18px 0;
+}
+
+.loan-allowance p {
+  margin: 0 0 6px;
+}
+
+.emergency-editor {
+  margin: 16px 0 24px;
+}
+
+.emergency-review {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--box-border-color);
+  margin-bottom: 12px;
+}
+
+.emergency-review.due {
+  border-color: #c87618;
+}
+
+.emergency-review > i {
+  color: #2e9e44;
+}
+
+.emergency-review.due > i {
+  color: #c87618;
+}
+
+.emergency-section {
+  border: 1px solid var(--box-border-color);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.emergency-section > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.emergency-section .bank-table {
+  margin: 8px 0;
+}
+
+.emergency-medical-optin {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.dossier-checklist {
+  list-style: none;
+  padding-left: 0;
+}
+
+.dossier-checklist li {
+  margin: 6px 0;
+}
+
+.task-list .annual-review-item.overdue {
+  border-color: #c87618;
+}
+
+.task-prefs-title {
+  margin-top: 28px;
+}
+
+.task-prefs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px 16px;
+}
+
+.task-pref {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.task-pref i {
+  width: 18px;
+  text-align: center;
+  color: var(--main-color);
+}
+
+/* Dashboard on phones: long names are cut with "…" instead of widening the whole column
+   (flex and grid items do not shrink below their text by default). */
+.dashboard-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+}
+
+.dashboard-panel,
+.upcoming-event-name {
+  min-width: 0;
+}
+
+/* Toolbars on phones wrap onto a second line instead of running off the screen
+   (subscriptions: search, filter, sort, archive and the list/grid switch need ~450 px). */
+@media (max-width: 768px) {
+  .top-actions {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .main-actions-primary {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+}
+
+/* Person and trial tags of a subscription: a row of their own across the whole entry
+   (the entry is a grid with fixed areas, extra items would land in its narrow columns). */
+.subscription-main .subscription-tags {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.subscription-main .subscription-tags .member-tag {
+  margin-left: 0;
+}
+
+.dossier-print-footer {
+  display: none;
+}
+
+@media print {
+  /* On every printed page: the date, so an old paper copy is noticed. */
+  .dossier-print-footer {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: 9pt;
+    text-align: center;
+    color: #555;
+    border-top: 1px solid #999;
+    padding-top: 2mm;
+    background: #fff;
+  }
+
+  .dossier {
+    padding-bottom: 12mm;
+  }
+}
+
+.emergency-letters {
+  border: 1px solid var(--box-border-color);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+
+.emergency-letters > summary {
+  cursor: pointer;
+  font-weight: 600;
+}

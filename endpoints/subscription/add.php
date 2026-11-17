@@ -544,6 +544,13 @@ if ($stmt->execute()) {
     }
 
     $savedSubscriptionId = $isEdit ? intval($id) : $db->lastInsertRowID();
+    // Free trial: the reminder comes a few days before it ends (and once per end date).
+    $trialEnd = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['trial_end'] ?? '') ? $_POST['trial_end'] : null;
+    $trialStmt = $db->prepare('UPDATE subscriptions SET trial_end = :trial, trial_notified = CASE WHEN trial_end IS :trial THEN trial_notified ELSE NULL END WHERE id = :id AND user_id = :userId');
+    $trialStmt->bindValue(':trial', $trialEnd, $trialEnd === null ? SQLITE3_NULL : SQLITE3_TEXT);
+    $trialStmt->bindValue(':id', $savedSubscriptionId, SQLITE3_INTEGER);
+    $trialStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $trialStmt->execute();
     saveSubscriptionPayers($db, $savedSubscriptionId, $payerIds);
     saveSubscriptionCategories($db, $savedSubscriptionId, $categoryIds);
 

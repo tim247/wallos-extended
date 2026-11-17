@@ -44,9 +44,9 @@ Eine Kurzfassung gibt es in der App selbst unter *Menü → Hilfe*.
 | **Dashboard** | Monatliche Gesamtbelastung, nächste Zahlungen und Fristen | Suche ganz oben, Kacheln führen in den jeweiligen Bereich, Hinweise (Budget, fehlende Versicherungen, Systemstatus) |
 | **Abonnements** | Streaming, Software, Mitgliedschaften … | Preisverlauf, Archiv, mehrere Kategorien/Zahler, Massenaktionen, „bezahlt“ markieren |
 | **Verträge** | Strom, Internet, Handy, Fitnessstudio … | Mindestlaufzeit, Verlängerung, Kündigungsfrist, Kündigungsschreiben als PDF |
-| **Versicherungen** | Haftpflicht, Hausrat, Kfz … | wie Verträge, mit Versicherungsnummer |
-| **Finanzierungen** | Darlehen, Bausparverträge | Tilgungsplan, Sondertilgungen, Zinsbindung, Abgleich mit Kontoauszug, Ablösung durch Bausparvertrag |
-| **Verbrauch** | Strom, Gas, Wasser, PV-Einspeisung | Zählerstände, Diagramme, Abschlag vs. Verbrauch, Home-Assistant-Import |
+| **Versicherungen** | Haftpflicht, Hausrat, Kfz, Krankenkasse … | wie Verträge; Schadensfälle mit Bilanz, Kombi-Policen, versicherte Personen, Vorsorge-Check, Steuer-Export |
+| **Finanzierungen** | Darlehen, Bausparverträge | Tilgungsplan, Sondertilgungen (auch simulieren), Ratenänderungen, Zinsbindung, Abgleich mit Kontoauszug, Ablösung durch Bausparvertrag |
+| **Verbrauch** | Strom, Gas, Wasser, PV | Zählerstände, Auswertungen, Abrechnung prüfen, Abschlag vs. Verbrauch, Home-Assistant-Import |
 | **Kalender** | alle Zahlungen eines Monats | iCal-Link für Outlook/Google/Apple |
 | **Jahresübersicht** | jährliche Beiträge je Monat | Vorschlag für die monatliche Rücklage |
 | **Statistiken** | Auswertungen | Abschnitt „Haushalt“ über alle Bereiche |
@@ -54,9 +54,11 @@ Eine Kurzfassung gibt es in der App selbst unter *Menü → Hilfe*.
 | **Kontoabgleich** | Kontoauszug (CSV) gegen erfasste Kosten | findet Preisänderungen und nicht erfasste Abbuchungen |
 | **Einnahmen & Rücklagen** | Budgetplanung: Einnahmen gegen alle Kosten | Budgetplan, Kontoverlauf, Ausblick, Aufteilung im Haushalt, Was-wäre-wenn |
 | **Jahresrückblick** | dein Jahr als Karten | gespart, gekündigt, günstiger geworden, teuerstes Hobby, freigeschaufelte Zeit |
+| **Jahres-Check** | einmal im Jahr alles durchgehen | behalten, vergleichen, kündigen – mit Ersparnis pro Jahr |
+| **Pro Person** | wer zahlt was, wer ist wo versichert | Kosten, Einnahmen und Mitversicherung je Haushaltsmitglied |
 | **Fristen & Wartung** | Ausweise, Führerschein, Impfungen, TÜV, Heizung, Filter … | Erinnerung vorher, „Erledigt“ plant den nächsten Termin |
-| **Inventar** | was steht wo, was ist es wert | Neuwert und Zeitwert, Standorte, Kaufbelege, Warnung bei Unterversicherung |
-| **Notfall-Dossier** | alles für Angehörige im Notfall | drucken, verschlüsselt exportieren, Inaktivitäts-Wächter |
+| **Inventar** | was steht wo, was ist es wert | Neuwert und Zeitwert, Standorte, Kaufbelege, Garantie, Warnung bei Unterversicherung |
+| **Notfall-Dossier** | alles für Angehörige im Notfall | Kontakte, Verfügungen, Konten, digitaler Nachlass, Checkliste; drucken, verschlüsselt exportieren, Inaktivitäts-Wächter |
 
 Das Menü ist in Gruppen geordnet: *Übersicht*, *Laufende Kosten*, *Planung*, *Haushalt & Vorsorge*,
 *Erfassen & Werkzeuge* und *Konto*.
@@ -79,6 +81,68 @@ letzten 12 Monate zeigt das Dashboard im Panel **Preiserhöhungen** mit altem un
 Prozent. Bei Verträgen und Versicherungen steht dazu der Hinweis *Sonderkündigungsrecht prüfen*:
 Erhöht ein Anbieter einseitig den Preis, darfst du meist außerordentlich kündigen – das
 Kündigungsschreiben ist einen Klick entfernt.
+
+Ist eine Erhöhung angekündigt („ab 01.01. neuer Beitrag“), trag sie im Vertrag bzw. in der
+Versicherung unter **Preisänderung ankündigen** mit *Neuer Betrag* und *gültig ab* ein. Bis zum
+Stichtag gilt der alte Betrag, dann stellt Wallos automatisch um.
+
+### Versicherungen
+
+- **Kündigung:** *Kündbar*, *Nur Wechsel* (z. B. Krankenkasse – keine Fristen und Erinnerungen,
+  nur der Hinweis auf das Sonderkündigungsrecht bei Beitragserhöhung) oder *Nicht kündbar*.
+  Vorbelegt nach der Art.
+- **Erstlaufzeit und Verlängerung** getrennt, z. B. 72 Monate, danach je 12 Monate.
+- **Schadensfälle & Bilanz** (beim Bearbeiten): Schäden mit Datum, Nummer, Betrag und Status
+  (gemeldet, in Prüfung, reguliert, abgelehnt); offene Fälle erinnern nach 4 Wochen. Daneben
+  stehen gezahlte Beiträge gegen erhaltene Leistungen und die Beitragsentwicklung pro Jahr im
+  Vergleich zur Inflation.
+- **Leistungen, Ansprechpartner & Überprüfung:** Eckdaten der Deckung, Makler mit Telefon und
+  E-Mail (beides auch im Notfall-Dossier und in der Suche) und das Datum der letzten Überprüfung –
+  nach 2 Jahren erinnert Wallos daran.
+- **Versicherte Personen:** Wer ist mitversichert? Oben auf der Seite zeigt *Absicherung im Blick*,
+  wem eine Krankenversicherung oder Privathaftpflicht fehlt, ob die Hausrat bei 650 € pro m²
+  Wohnfläche (aus *Verbrauch → Haushalt & Ort*) unterversichert ist und welche Versicherungen eine
+  Überprüfung brauchen.
+- **Kfz:** SF-Klasse, km, Typ- und Regionalklasse; ab Oktober erinnert Wallos an den Wechsel-Stichtag 30.11.
+- **Daten aus Unterlagen übernehmen:** liest Versicherungsnummer, Beitrag, Beginn und Laufzeit aus
+  hochgeladenen PDFs (mit Textebene) und verknüpften Paperless-Dokumenten und füllt leere Felder.
+- **Steuer-Export:** unter der Liste eine CSV mit den im Jahr gezahlten Beiträgen der steuerlich
+  absetzbaren Versicherungen, sortiert nach Abschnitt der Steuererklärung.
+- **Kombi-Police:** Bausteine (z. B. Hausrat in einer Haftpflicht-Kombi) über *Teil der Police*
+  zuordnen – sie übernehmen Laufzeit und Kündigungsfrist der Police, die Karte zeigt den Gesamtbetrag.
+- **Melden oder selbst zahlen?** Mit Selbstbeteiligung und *Rückerstattung (schadenfreies Jahr)*
+  zeigt der Schadensbereich, ab welchem Betrag sich eine Meldung lohnt.
+- **Vorsorge-Check:** Aus den Einnahmen (*Finanzen*) prüft Wallos, ob jede Person mit Einkommen eine
+  BU hat, ob die BU-Rente (= Deckungssumme der BU) mindestens 70 % des Nettos erreicht und ob der
+  Hauptverdiener eine Risikolebensversicherung hat.
+- **Nur Wechsel:** Bei einer Beitragserhöhung weist Wallos auf den möglichen Wechsel hin; das
+  Kündigungsschreiben enthält dann den Satz zur beigelegten Bestätigung der Anschlussversicherung.
+
+### Jahres-Check und Pro Person
+
+*Planung → Jahres-Check* geht einmal im Jahr alle Verträge und Versicherungen durch: *Passt*,
+*Vergleichen* oder *Kündigen*. Oben steht, was die Kündigungen im Jahr sparen.
+*Planung → Pro Person* zeigt je Haushaltsmitglied, was es zahlt, wo es mitversichert ist und seine
+Einnahmen – praktisch bei einer Trennung oder wenn Kinder ausziehen.
+
+### Finanzierung: Sondertilgung, Ratenwechsel, Gesamtübersicht
+
+- **Sondertilgung simulieren:** In der Detailansicht Betrag und Datum eingeben – Wallos zeigt
+  ersparte Zinsen und wie viel früher das Darlehen abbezahlt ist (nichts wird gespeichert).
+- **Sondertilgungsrecht:** Im Darlehen *% der Darlehenssumme* oder einen festen Betrag pro Jahr
+  eintragen. Die Detailansicht zeigt, wie viel davon im Jahr genutzt ist; im November erinnert
+  Wallos an den Rest.
+- **Geplante Ratenänderungen:** z. B. „ab 01.01.2027 1.200 € statt 900 €“ – ab dem Datum rechnet der
+  Tilgungsplan mit der neuen Rate.
+- **Alle Finanzierungen:** Ab zwei Darlehen steht oben die Gesamtschuld, die Summe der Raten, der
+  gewichtete Zins, das Datum der Schuldenfreiheit und die Reihenfolge, in der sich Sondertilgungen
+  am meisten lohnen (höchster Zins zuerst).
+
+### Testphasen und Garantien
+
+Im Abo-Formular *Testphase endet am* eintragen: 3 Tage vorher kommt eine Erinnerung, das Dashboard
+zeigt es unter *Demnächst*. Im Inventar *Garantie bis* eintragen: 30 Tage vorher kommt eine
+Erinnerung; den Kassenbon als Dokument anhängen.
 
 ### Tarifvergleich (Strom, Gas, Wasser)
 
@@ -659,6 +723,20 @@ Passwörter, lieber auf den Notfallzugang des Passwort-Managers verweisen).
   im Browser, das Passwort erreicht den Server nie. Das funktioniert nur über **HTTPS oder
   localhost** – sonst *Drucken / PDF* verwenden. Das Passwort getrennt aufbewahren.
 
+Dazu kommen eigene Bereiche, jeweils mit Bezeichnung, Angabe und Details:
+
+- **Wichtige Kontakte** (Hausarzt, Anwalt, Steuerberater, Arbeitgeber, Nachbar mit Schlüssel …)
+- **Verfügungen & Vollmachten** (Patientenverfügung, Vorsorgevollmacht, Testament) – wo das
+  Original liegt, wer bevollmächtigt ist; nach 2 Jahren erinnert Wallos ans Prüfen
+- **Konten & Depots** – Kontonummern werden automatisch auf die letzten 4 Stellen gekürzt, keine Passwörter
+- **Digitaler Nachlass** – Dienste und was damit passieren soll
+- **Haustiere** und **Wo liegt was?** (Schlüssel, Safe, Ordner, Ausweise)
+- **Medizinische Notfallinfos** – Gesundheitsdaten; ins Dossier nur, wenn du es dort ausdrücklich erlaubst
+
+Das Dossier enthält außerdem eine **Checkliste für Angehörige** (sofort, in den ersten 4 Wochen,
+später), die die Versicherungen, Verträge, Abos und Kredite aus Wallos gleich zuordnet. Oben steht,
+wann du das Dossier zuletzt geprüft hast; nach 6 Monaten kommt eine Erinnerung.
+
 ### Inaktivitäts-Wächter
 
 Im Notfall-Dossier unter *Inaktivitäts-Wächter*: Meldest du dich eine bestimmte Zeit lang
@@ -670,6 +748,10 @@ persönlichen Link zum Notfall-Dossier und deiner Nachricht.
    Vertrauensperson **persönlich oder auf Papier** gibst – eine weitergeleitete E-Mail allein reicht
    nicht. Nach 10 falschen Codes ist der Link gesperrt, nach 30 Tagen läuft er ab.
 3. Meldest du dich danach wieder an (z. B. nach einem langen Urlaub), wird der Link sofort ungültig.
+
+Optional gibt es eine **zweite Vertrauensperson** mit eigenem Link und eigenem Zugangscode. Sie sieht
+entweder alles oder – Voreinstellung – nur Notizen, Kontakte, Verfügungen, Orte, Haustiere und die
+Checkliste, keine Finanzen und keine Gesundheitsdaten.
 
 Voraussetzungen: *Admin → Server-URL* ist eingetragen und E-Mail-Versand ist eingerichtet (SMTP in
 der Verwaltung oder bei den E-Mail-Benachrichtigungen). Fehlt etwas, steht ein Hinweis im Wächter.

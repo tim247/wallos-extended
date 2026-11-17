@@ -4,7 +4,13 @@
 // encrypted HTML file (encrypted in the browser, the password never reaches the server).
 require_once 'includes/header.php';
 require_once 'includes/getdbkeys.php';
+require_once 'includes/emergency_entries.php';
 $readOnlyView = !empty($isReadOnlyAccount);
+$dossierScope = 'all'; // the owner sees everything
+if (!$readOnlyView) {
+  $letterForm = ['action' => 'endpoints/life/letters.php', 'hidden' => ['csrf_token' => generate_csrf_token()],
+    'deceased' => trim(($userData['firstname'] ?? '') . ' ' . ($userData['lastname'] ?? ''))];
+}
 ob_start();
 require 'includes/emergency_dossier.php'; // loads the data and prints the dossier
 $dossierHtml = ob_get_clean();
@@ -29,6 +35,97 @@ $dossierHtml = ob_get_clean();
       <textarea id="emergency-notes" rows="8" class="emergency-notes"><?= $h($notes['notes']) ?></textarea>
       <div class="buttons"><button class="button thin" onclick="lifeRequest({kind: 'notes', notes: document.getElementById('emergency-notes').value})"><?= translate('save', $i18n) ?></button></div>
     </div>
+  <?php endif; ?>
+
+  <?php if (!$readOnlyView):
+    $reviewDue = emergencyReviewDue($notes['reviewed_at'] ?? null, $db->querySingle('SELECT MIN(updated_at) FROM emergency_entries WHERE user_id = ' . (int) $userId), date('Y-m-d')); ?>
+    <div class="no-print emergency-editor">
+      <div class="emergency-review <?= $reviewDue ? 'due' : '' ?>">
+        <i class="fa-solid <?= $reviewDue ? 'fa-triangle-exclamation' : 'fa-circle-check' ?>" aria-hidden="true"></i>
+        <span><?= !empty($notes['reviewed_at']) ? sprintf(translate('dossier_reviewed_on', $i18n), date('d.m.Y', strtotime($notes['reviewed_at']))) : translate('dossier_never_reviewed', $i18n) ?>
+          <?= $reviewDue ? ' – ' . translate('dossier_review_due', $i18n) : '' ?></span>
+        <button class="button thin secondary-button" type="button" onclick="emergencyRequest({action: 'review'})"><i class="fa-solid fa-check"></i> <?= translate('dossier_reviewed_today', $i18n) ?></button>
+      </div>
+
+      <?php foreach (EMERGENCY_SECTIONS as $section => [$icon]): $entries = $emergencyEntries[$section]; ?>
+        <details class="emergency-section" <?= $entries ? '' : '' ?>>
+          <summary><i class="fa-solid <?= $icon ?>" aria-hidden="true"></i> <?= translate('emergency_section_' . $section, $i18n) ?> (<?= count($entries) ?>)</summary>
+          <p class="settings-notes"><?= translate('emergency_section_' . $section . '_info', $i18n) ?></p>
+          <?php if ($section === 'medical'): ?>
+            <label class="inline emergency-medical-optin"><input type="checkbox" <?= !empty($notes['medical_in_dossier']) ? 'checked' : '' ?>
+              onchange="emergencyRequest({action: 'medical', enabled: this.checked ? 1 : 0})"> <?= translate('medical_in_dossier', $i18n) ?></label>
+          <?php endif; ?>
+          <?php if ($entries): ?>
+            <table class="bank-table">
+              <?php foreach ($entries as $entry):
+                $due = $section === 'directives' && emergencyDirectivesDue([$entry], date('Y-m-d')); ?>
+                <tr>
+                  <td><strong><?= htmlspecialchars($entry['name']) ?></strong><?= $due ? ' <span class="deadline-badge warning">' . translate('directive_update_due', $i18n) . '</span>' : '' ?></td>
+                  <td><?= nl2br(htmlspecialchars($entry['info'])) ?></td>
+                  <td><small><?= nl2br(htmlspecialchars($entry['detail'])) ?></small></td>
+                  <td class="no-print">
+                    <button class="image-button" type="button" title="<?= translate('edit', $i18n) ?>" onclick="emergencyEdit(JSON.parse(this.dataset.row))" data-row="<?= htmlspecialchars(json_encode($entry, JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES) ?>"><i class="fa-solid fa-pen"></i></button>
+                    <button class="image-button" type="button" title="<?= translate('delete', $i18n) ?>" onclick="confirm(translate('confirm_delete')) && emergencyRequest({action: 'delete', id: <?= (int) $entry['id'] ?>})"><i class="fa-solid fa-trash-can"></i></button>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </table>
+          <?php endif; ?>
+          <button class="button thin" type="button" onclick="emergencyEdit({section: '<?= $section ?>'})"><i class="fa-solid fa-plus"></i> <?= translate('add', $i18n) ?></button>
+        </details>
+      <?php endforeach; ?>
+    </div>
+
+    <dialog id="emergency-entry-dialog" class="finance-dialog">
+      <form method="dialog" onsubmit="return emergencySave(this)">
+        <input type="hidden" name="id"><input type="hidden" name="section">
+        <h3 id="emergency-entry-title"></h3>
+        <label><span id="emergency-label-name"></span><input type="text" name="name" required maxlength="150"></label>
+        <label><span id="emergency-label-info"></span><input type="text" name="info" maxlength="300"></label>
+        <label><span id="emergency-label-detail"></span><textarea name="detail" rows="3" maxlength="2000"></textarea></label>
+        <p class="settings-notes" id="emergency-entry-hint"></p>
+        <div class="buttons">
+          <button type="button" class="secondary-button thin" onclick="this.closest('dialog').close()"><?= translate('cancel', $i18n) ?></button>
+          <input type="submit" class="thin" value="<?= translate('save', $i18n) ?>">
+        </div>
+      </form>
+    </dialog>
+    <script>
+      const emergencyLabels = <?= json_encode(array_combine(array_keys(EMERGENCY_SECTIONS), array_map(fn($s) => [
+        'title' => translate('emergency_section_' . $s, $i18n),
+        'name' => translate('emergency_' . $s . '_name', $i18n),
+        'info' => translate('emergency_' . $s . '_field_info', $i18n),
+        'detail' => translate('emergency_' . $s . '_field_detail', $i18n),
+        'hint' => $s === 'accounts' ? translate('emergency_accounts_mask_hint', $i18n) : '',
+      ], array_keys(EMERGENCY_SECTIONS))), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+      function emergencyEdit(entry) {
+        const dialog = document.getElementById('emergency-entry-dialog');
+        const form = dialog.querySelector('form');
+        const labels = emergencyLabels[entry.section];
+        form.reset();
+        form.id.value = entry.id || '';
+        form.section.value = entry.section;
+        ['name', 'info', 'detail'].forEach((field) => {
+          document.getElementById('emergency-label-' + field).textContent = labels[field];
+          form[field].value = entry[field] || '';
+        });
+        document.getElementById('emergency-entry-title').textContent = labels.title;
+        document.getElementById('emergency-entry-hint').textContent = labels.hint;
+        dialog.showModal();
+      }
+      function emergencyRequest(body) {
+        return fetch('endpoints/life/emergency_entry.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken },
+          body: JSON.stringify(body),
+        }).then((r) => r.json()).then((data) => data.success ? location.reload() : showErrorMessage(data.message))
+          .catch(() => showErrorMessage(translate('unknown_error')));
+      }
+      function emergencySave(form) {
+        emergencyRequest({ action: 'save', ...Object.fromEntries(new FormData(form)) });
+        return false;
+      }
+    </script>
   <?php endif; ?>
 
   <?= $dossierHtml ?>

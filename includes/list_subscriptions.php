@@ -441,7 +441,16 @@ function printSubscriptions($subscriptions, $sort, $categories, $folders, $membe
                         ?>
                     </span>
                     <span class="name <?= $hasLogo ? 'hideOnMobile' : '' ?>"><?= htmlSafe($subscription['name']) ?></span>
-                    <?= wallos_member_tag($members, $subscription['payer_user_id']) ?>
+                    <?php $memberTag = wallos_member_tag($members, $subscription['payer_user_id']);
+                    $trialActive = !empty($subscription['trial_end']) && $subscription['trial_end'] >= date('Y-m-d');
+                    if ($memberTag !== '' || $trialActive): ?>
+                      <span class="subscription-tags">
+                        <?= $memberTag ?>
+                        <?php if ($trialActive): ?>
+                          <span class="member-tag trial-tag" title="<?= translate('trial_end', $i18n) ?>"><?= sprintf(translate('trial_until', $i18n), date('d.m.', strtotime($subscription['trial_end']))) ?></span>
+                        <?php endif; ?>
+                      </span>
+                    <?php endif; ?>
                     <span class="cycle"
                         title="<?= $subscription['one_time'] ? $subscription['billing_cycle'] : ($subscription['auto_renew'] ? translate("automatically_renews", $i18n) : translate("manual_renewal", $i18n)) ?>">
                         <?php

@@ -52,14 +52,22 @@ function deadmanTouch(SQLite3 $db, int $userId, ?string $lastSeen): void
     $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
     $stmt->execute();
     $stmt = @$db->prepare('UPDATE deadman_settings SET triggered_at = NULL, access_token = NULL, token_expires = NULL,
-        failed_attempts = 0, last_warning = NULL WHERE user_id = :userId');
+        failed_attempts = 0, last_warning = NULL, access_token2 = NULL, token2_expires = NULL, failed_attempts2 = 0 WHERE user_id = :userId');
+    if (!$stmt) {
+        // before migration 000085
+        $stmt = @$db->prepare('UPDATE deadman_settings SET triggered_at = NULL, access_token = NULL, token_expires = NULL,
+            failed_attempts = 0, last_warning = NULL WHERE user_id = :userId');
+    }
     if ($stmt) {
         $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
         $stmt->execute();
     }
 }
 
-/** Settings row for a valid, unexpired link, or null. */
+/**
+ * Settings row for a valid, unexpired link, or null. '_slot' says whose link it is (1 = first,
+ * 2 = second trusted person) and '_scope' what that person may see ('all' or 'limited').
+ */
 function deadmanByToken(SQLite3 $db, string $token): ?array
 {
     if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
@@ -69,5 +77,15 @@ function deadmanByToken(SQLite3 $db, string $token): ?array
         AND triggered_at IS NOT NULL AND token_expires >= date('now')");
     $stmt->bindValue(':token', $token);
     $row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
-    return $row ?: null;
+    if ($row) {
+        return $row + ['_slot' => 1, '_scope' => 'all'];
+    }
+    $stmt = @$db->prepare("SELECT * FROM deadman_settings WHERE access_token2 = :token AND enabled = 1
+        AND triggered_at IS NOT NULL AND token2_expires >= date('now')");
+    if (!$stmt) {
+        return null;
+    }
+    $stmt->bindValue(':token', $token);
+    $row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    return $row ? $row + ['_slot' => 2, '_scope' => $row['trusted2_scope'] === 'all' ? 'all' : 'limited'] : null;
 }

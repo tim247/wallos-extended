@@ -30,6 +30,8 @@ function resetContractForm() {
   deleteButton.style.display = "none";
   deleteButton.removeAttribute("onClick");
   document.querySelector("#contract-save-button").disabled = false;
+  document.querySelector("#contract-switch-panel").hidden = true;
+  toggleContractType();
   toggleContractRenewalFields();
 }
 
@@ -54,6 +56,9 @@ function fillContractForm(contract) {
   document.querySelector("#contract-provider").value = contract.provider;
   document.querySelector("#contract-number").value = contract.contract_number;
   document.querySelector("#contract-price").value = contract.price;
+  document.querySelector("#contract-pending-price").value = contract.pending_price ?? "";
+  document.querySelector("#contract-pending-date").value = contract.pending_price_date ?? "";
+  document.querySelector("#contract-pending-details").open = !!contract.pending_price_date;
   document.querySelector("#contract-currency").value = contract.currency_id;
   document.querySelector("#contract-frequency").value = contract.frequency;
   document.querySelector("#contract-cycle").value = contract.cycle;
@@ -75,6 +80,19 @@ function fillContractForm(contract) {
   document.querySelector("#contract-cancellation-status").checked = !!contract.cancellation_status;
   document.querySelector("#contract-url").value = contract.url;
   document.querySelector("#contract-notes").value = contract.notes;
+  document.querySelector("#contract-type").value = contract.contract_type || "other";
+  const details = (() => { try { return JSON.parse(contract.details || "{}") || {}; } catch (e) { return {}; } })();
+  document.querySelectorAll('[name^="detail_"]').forEach((input) => {
+    const value = details[input.name.slice(7)];
+    input.value = value === undefined ? "" : new DOMParser().parseFromString(String(value), "text/html").documentElement.textContent;
+  });
+  const panel = document.querySelector("#contract-switch-panel");
+  panel.hidden = false;
+  panel.dataset.contract = contract.id;
+  panel.dataset.monthly = document.querySelector(`.module-card[data-id="${contract.id}"]`)?.dataset.price || "0";
+  panel.dataset.deadline = document.querySelector(`.module-card[data-id="${contract.id}"]`)?.dataset.deadlineText || "";
+  document.querySelector("#switch-result").textContent = "";
+  toggleContractType();
   toggleContractRenewalFields();
 
   const deleteButton = document.querySelector("#delete-contract");
@@ -175,4 +193,78 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
   }
+});
+
+/* ---------- contract types, statutory terms, switch calculator, documents ---------- */
+
+const CONSUMER_CONTRACT_TYPES = ["electricity", "gas", "internet", "mobile", "fitness", "streaming"];
+
+function toggleContractType() {
+  const type = document.querySelector("#contract-type").value;
+  document.querySelectorAll(".contract-details").forEach((group) => group.classList.toggle("hide", group.dataset.type !== type));
+  updateStatutoryHint();
+}
+
+// Consumer contracts from 1 March 2022: after the minimum term monthly renewal, one month's notice.
+function updateStatutoryHint() {
+  const type = document.querySelector("#contract-type").value;
+  const start = document.querySelector("#contract-start-date").value;
+  const applies = CONSUMER_CONTRACT_TYPES.includes(type) && start >= "2022-03-01";
+  const already = document.querySelector("#contract-renewal-term").value === "1" && document.querySelector("#contract-notice-months").value === "1";
+  document.querySelector("#contract-statutory-hint").classList.toggle("hide", !applies || already);
+}
+
+function applyStatutoryTerms() {
+  document.querySelector("#contract-auto-renews").checked = true;
+  document.querySelector("#contract-renewal-term").value = 1;
+  document.querySelector("#contract-notice-months").value = 1;
+  document.querySelector("#contract-notice-days").value = 0;
+  toggleContractRenewalFields();
+  updateStatutoryHint();
+}
+
+function compareContractSwitch() {
+  const panel = document.querySelector("#contract-switch-panel");
+  const months = Number(document.querySelector("#switch-months").value) || 24;
+  const offer = Number(document.querySelector("#switch-offer").value);
+  const result = document.querySelector("#switch-result");
+  if (!offer) { result.textContent = ""; return; }
+  const current = Number(panel.dataset.monthly) * months;
+  const total = offer * months - (Number(document.querySelector("#switch-bonus").value) || 0) + (Number(document.querySelector("#switch-fee").value) || 0);
+  const money = new Intl.NumberFormat(navigator.language, { style: "currency", currency: window.mainCurrencyCode || "EUR" });
+  const saving = current - total;
+  result.innerHTML = "";
+  const line = document.createElement("span");
+  line.className = saving >= 0 ? "positive" : "negative";
+  line.textContent = translate(saving >= 0 ? "contract_switch_saves" : "contract_switch_costs")
+    .replace("%1", money.format(Math.abs(saving))).replace("%2", months);
+  result.appendChild(line);
+  if (panel.dataset.deadline) {
+    result.append(" · " + translate("contract_switch_deadline").replace("%s", panel.dataset.deadline));
+  }
+}
+
+function extractContractData() {
+  const contractId = Number(document.querySelector("#contract-switch-panel").dataset.contract);
+  fetch("endpoints/insurance/extract.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": window.csrfToken },
+    body: JSON.stringify({ type: "contract", item_id: contractId }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data.success) { showErrorMessage(data.message || translate("unknown_error")); return; }
+      const fields = { policy_number: "#contract-number", price: "#contract-price", start_date: "#contract-start-date", initial_term_months: "#contract-initial-term" };
+      Object.entries(fields).forEach(([key, selector]) => {
+        const input = document.querySelector(selector);
+        if (data.data[key] !== undefined && (!input.value || (key === "initial_term_months" && input.value === "12"))) input.value = data.data[key];
+      });
+      (Object.keys(data.data).length ? showSuccessMessage : showErrorMessage)(data.message);
+    })
+    .catch(() => showErrorMessage(translate("unknown_error")));
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelector("#contract-start-date")?.addEventListener("change", updateStatutoryHint);
+  document.querySelector("#contract-type")?.addEventListener("change", updateStatutoryHint);
 });

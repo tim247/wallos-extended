@@ -41,6 +41,7 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
             $subscriptionData['url'] = htmlspecialchars_decode($row['url'] ?? "");
             $subscriptionData['notify_days_before'] = $row['notify_days_before'];
             $subscriptionData['cancellation_date'] = $row['cancellation_date'];
+            $subscriptionData['trial_end'] = $row['trial_end'] ?? null;
             $subscriptionData['replacement_subscription_id'] = $row['replacement_subscription_id'];
             $subscriptionData['archived'] = $row['archived'] ?? 0;
 

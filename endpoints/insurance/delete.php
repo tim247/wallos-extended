@@ -6,6 +6,14 @@ $postData = file_get_contents("php://input");
 $data = json_decode($postData, true);
 
 $insuranceId = intval($data["id"] ?? 0);
+$claimsDelete = $db->prepare('DELETE FROM insurance_claims WHERE insurance_id = :insuranceId AND user_id = :userId');
+$claimsDelete->bindValue(':insuranceId', (int) ($data['id'] ?? $_POST['id'] ?? 0), SQLITE3_INTEGER);
+$claimsDelete->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$claimsDelete->execute();
+$freeBlocks = $db->prepare('UPDATE insurances SET parent_id = NULL WHERE parent_id = :insuranceId AND user_id = :userId');
+$freeBlocks->bindValue(':insuranceId', $insuranceId, SQLITE3_INTEGER);
+$freeBlocks->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$freeBlocks->execute();
 $deleteQuery = "DELETE FROM insurances WHERE id = :insuranceId AND user_id = :userId";
 $deleteStmt = $db->prepare($deleteQuery);
 $deleteStmt->bindParam(':insuranceId', $insuranceId, SQLITE3_INTEGER);

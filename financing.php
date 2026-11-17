@@ -31,10 +31,11 @@ foreach ($loans as &$loan) {
   $loanTypeVal = $loan['loan_type'] ?? 'annuity';
   if ($loanTypeVal === 'bausparen') {
     $loan['extra_payments'] = [];
-    $loan['schedule'] = computeBausparSchedule($loan, $today);
+    $loan['schedule'] = computeBausparSchedule($loan, $today, bausparPayoutFromLoan($db, $userId, $loan));
   } else {
     $loan['inputs'] = loadLoanInputs($db, $userId, $loan);
     $loan['extra_payments'] = $loan['inputs']['extras'];
+    $loan['rate_changes'] = $loan['inputs']['rate_changes'];
     $loan['schedule'] = computeLoanSchedule($loan, $loan['extra_payments'], $today, $loan['inputs']['overrides'], $loan['inputs']['anchors'], $loan['inputs']['redeem_on']);
   }
 }
@@ -101,6 +102,21 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
     <h2 class="archive-title"><i class="fa-solid fa-box-archive"></i> <?= translate('archive', $i18n) ?></h2>
   <?php endif; ?>
 
+  <?php $loansTotal = $showArchived ? null : loansOverview($loans); ?>
+  <?php if ($loansTotal !== null && $loansTotal['count'] >= 2): ?>
+    <section class="pv-summary" aria-labelledby="loans-overview-title">
+      <h3 id="loans-overview-title"><i class="fa-solid fa-scale-unbalanced"></i> <?= translate('loans_overview', $i18n) ?></h3>
+      <div class="pv-summary-grid">
+        <div><strong><?= CurrencyFormatter::format($loansTotal['debt'], $mainCurrencyCode) ?></strong><span><?= translate('remaining_debt_today', $i18n) ?></span></div>
+        <div><strong><?= CurrencyFormatter::format($loansTotal['monthly'], $mainCurrencyCode) ?></strong><span><?= translate('monthly_rate', $i18n) ?></span></div>
+        <div><strong><?= number_format($loansTotal['interest'], 2, ',', '.') ?> %</strong><span><?= translate('average_interest', $i18n) ?></span></div>
+        <div><strong><?= $loansTotal['debt_free'] ? date('m/Y', strtotime($loansTotal['debt_free'])) : '—' ?></strong><span><?= translate('debt_free_on', $i18n) ?></span></div>
+      </div>
+      <p class="forecast-label"><?= translate('extra_repayment_priority', $i18n) ?>:
+        <?= implode(' → ', array_map(fn($l) => '<a href="financing.php?id=' . (int) $l['id'] . '">' . htmlspecialchars($l['name']) . ' (' . number_format($l['rate'], 2, ',', '.') . ' %)</a>', $loansTotal['priority'])) ?></p>
+    </section>
+  <?php endif; ?>
+
   <div class="module-cards" id="loans">
     <?php foreach ($loans as $loan):
       $loanTypeVal = $loan['loan_type'] ?? 'annuity';
@@ -119,9 +135,11 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
             ? min(100, round($schedule['paid_principal_as_of'] / $schedule['loan_amount'] * 100, 1))
             : 100;
         } else {
-          $paidPercent = $targetSavings > 0
-            ? max(0, min(100, round($schedule['balance_as_of'] / $targetSavings * 100, 1)))
-            : 0;
+          // Payout at the end of the loan term: progress is the time until then, not the savings quota.
+          $savingsDone = count(array_filter($schedule['savings_rows'], fn($r) => $r['date'] <= $today));
+          $paidPercent = !empty($schedule['payout_by_term'])
+            ? (count($schedule['savings_rows']) > 0 ? min(100, round($savingsDone / count($schedule['savings_rows']) * 100, 1)) : 0)
+            : ($targetSavings > 0 ? max(0, min(100, round($schedule['balance_as_of'] / $targetSavings * 100, 1))) : 0);
         }
       } else {
         $paidPercent = $hasError || $loan['principal'] <= 0
@@ -401,7 +419,7 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
         $bsStmt->bindValue(':id', $detailLoan['replaced_by_loan_id'], SQLITE3_INTEGER);
         $bsStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
         $bsLoan = $bsStmt->execute()->fetchArray(SQLITE3_ASSOC);
-        $bsSchedule = $bsLoan ? computeBausparSchedule($bsLoan) : null;
+        $bsSchedule = $bsLoan ? computeBausparSchedule($bsLoan, null, bausparPayoutFromLoan($db, $userId, $bsLoan)) : null;
         if ($bsSchedule && $bsSchedule['error'] === null && !empty($bsSchedule['repayment_rows'])) {
           $chartBauspar[] = ['label' => date('m/Y', strtotime($schedule['redeemed_on'])), 'y' => $bsSchedule['loan_amount']];
           foreach ($bsSchedule['repayment_rows'] as $bsRow) {
@@ -551,6 +569,47 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
               </tbody>
             </table>
           <?php endif; ?>
+        </div>
+
+        <div class="loan-simulator">
+          <h3><i class="fa-solid fa-calculator"></i> <?= translate('extra_repayment_simulator', $i18n) ?></h3>
+          <form class="inline-form insight-form" onsubmit="return simulateExtraRepayment(event, <?= (int) $detailLoan['id'] ?>, '<?= $loanCode ?>')">
+            <label><?= translate('amount', $i18n) ?><input type="number" name="amount" step="100" min="1" required placeholder="5000"></label>
+            <label><?= translate('date', $i18n) ?><input type="date" name="date" value="<?= date('Y-m-d') ?>" required></label>
+            <button type="submit" class="button thin"><i class="fa-solid fa-play"></i> <?= translate('simulate', $i18n) ?></button>
+          </form>
+          <p class="forecast-label" id="loan-simulator-result" aria-live="polite"><?= translate('extra_repayment_simulator_hint', $i18n) ?></p>
+        </div>
+        <?php $allowance = extraRepaymentAllowance($detailLoan, $detailLoan['extra_payments'], (int) date('Y')); ?>
+        <?php if ($allowance !== null): ?>
+          <div class="loan-allowance">
+            <p><?= sprintf(translate('extra_allowance_status', $i18n), date('Y'), CurrencyFormatter::format($allowance['used'], $loanCode), CurrencyFormatter::format($allowance['allowed'], $loanCode)) ?>
+              · <strong><?= sprintf(translate('extra_allowance_left', $i18n), CurrencyFormatter::format($allowance['left'], $loanCode)) ?></strong></p>
+            <div class="pv-amortization-bar" role="progressbar" aria-valuemin="0" aria-valuemax="<?= $allowance['allowed'] ?>" aria-valuenow="<?= $allowance['used'] ?>"
+              aria-label="<?= translate('extra_allowance', $i18n) ?>"><span style="width: <?= min(100, $allowance['used'] / $allowance['allowed'] * 100) ?>%"></span></div>
+          </div>
+        <?php endif; ?>
+
+        <div class="loan-rate-changes">
+          <h3><i class="fa-solid fa-arrow-right-arrow-left"></i> <?= translate('rate_changes', $i18n) ?></h3>
+          <?php if ($detailLoan['inputs']['rate_changes']): ?>
+            <table class="schedule-table">
+              <thead><tr><th><?= translate('valid_from', $i18n) ?></th><th><?= translate('monthly_rate', $i18n) ?></th><th></th></tr></thead>
+              <tbody>
+                <?php foreach ($detailLoan['inputs']['rate_changes'] as $rateChange): ?>
+                  <tr><td><?= date('d.m.Y', strtotime($rateChange['valid_from'])) ?></td>
+                    <td><?= CurrencyFormatter::format((float) $rateChange['monthly_rate'], $loanCode) ?></td>
+                    <td><button class="image-button" type="button" title="<?= translate('delete', $i18n) ?>" onClick="saveRateChange({ action: 'delete', id: <?= (int) $rateChange['id'] ?> })"><i class="fa-solid fa-trash"></i></button></td></tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          <?php endif; ?>
+          <form class="inline-form insight-form" onsubmit="event.preventDefault(); saveRateChange({ action: 'add', loan_id: <?= (int) $detailLoan['id'] ?>, valid_from: this.valid_from.value, monthly_rate: this.monthly_rate.value }); return false;">
+            <label><?= translate('valid_from', $i18n) ?><input type="date" name="valid_from" required></label>
+            <label><?= translate('monthly_rate', $i18n) ?><input type="number" name="monthly_rate" step="0.01" min="0" required></label>
+            <button type="submit" class="button thin"><i class="fa-solid fa-circle-plus"></i> <?= translate('add', $i18n) ?></button>
+          </form>
+          <p class="forecast-label"><?= translate('rate_changes_hint', $i18n) ?></p>
         </div>
 
         <div class="loan-extra-payments">
@@ -802,6 +861,19 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
         <?php endforeach; ?>
       </select>
       <small class="loan-anchor-hint"><?= translate('loan_replaced_by_hint', $i18n) ?></small>
+    </div>
+
+    <div class="form-group" id="field-extra-allowance">
+      <label><?= translate('extra_allowance', $i18n) ?></label>
+      <div class="inline">
+        <div class="split50">
+          <input type="number" step="0.1" min="0" max="100" id="loan-extra-pct" name="extra_allowance_pct" placeholder="5" aria-label="<?= translate('extra_allowance_pct', $i18n) ?>">
+        </div>
+        <div class="split50">
+          <input type="number" step="100" min="0" id="loan-extra-amount" name="extra_allowance_amount" placeholder="<?= translate('extra_allowance_amount', $i18n) ?>" aria-label="<?= translate('extra_allowance_amount', $i18n) ?>">
+        </div>
+      </div>
+      <small class="loan-anchor-hint"><?= translate('extra_allowance_hint', $i18n) ?></small>
     </div>
 
     <div class="form-group">

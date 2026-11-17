@@ -216,6 +216,8 @@ function fillLoanForm(loan) {
   document.querySelector("#loan-fixed-interest-end").value = loan.fixed_interest_end ?? "";
   document.querySelector("#loan-replaced-by").value = loan.replaced_by_loan_id ?? "";
   document.querySelector("#loan-notes").value   = loan.notes || "";
+  document.querySelector("#loan-extra-pct").value = Number(loan.extra_allowance_pct) || "";
+  document.querySelector("#loan-extra-amount").value = Number(loan.extra_allowance_amount) || "";
 
   if (loanType === "bausparen") {
     document.querySelector("#loan-bausparen-sparrate").value         = loan.monthly_rate || "";
@@ -427,3 +429,49 @@ document.addEventListener("DOMContentLoaded", function () {
   input.addEventListener("input", update);
   update();
 })();
+
+// "What does an extra repayment bring?" - computed on the server, nothing is stored.
+function simulateExtraRepayment(event, loanId, currency) {
+  event.preventDefault();
+  const form = event.target;
+  const result = document.getElementById("loan-simulator-result");
+  fetch("endpoints/financing/simulate.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": window.csrfToken },
+    body: JSON.stringify({ loan_id: loanId, amount: form.amount.value, date: form.date.value }),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data.success) { showErrorMessage(data.message || translate("unknown_error")); return; }
+      const money = new Intl.NumberFormat(navigator.language, { style: "currency", currency });
+      const date = (d) => (d ? new Date(d).toLocaleDateString(navigator.language, { month: "2-digit", year: "numeric" }) : "—");
+      let text = translate("simulation_interest_saved").replace("%s", money.format(data.interest_saved)) + " (" + String(data.return_percent).replace(".", ",") + " %)";
+      if (data.months_saved > 0) {
+        text += " · " + translate("simulation_paid_off_earlier").replace("%d", data.months_saved).replace("%s", date(data.payoff_after));
+      }
+      if (data.redemption_less > 0) {
+        text += " · " + translate("simulation_redemption_less").replace("%s", money.format(data.redemption_less));
+      }
+      result.textContent = text;
+    })
+    .catch(() => showErrorMessage(translate("unknown_error")));
+  return false;
+}
+
+function saveRateChange(body) {
+  if (body.action === "delete" && !confirm(translate("confirm_delete"))) return;
+  fetch("endpoints/financing/rate_change.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRF-Token": window.csrfToken },
+    body: JSON.stringify(body),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        showErrorMessage(data.message || translate("unknown_error"));
+      }
+    })
+    .catch(() => showErrorMessage(translate("unknown_error")));
+}

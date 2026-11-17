@@ -38,17 +38,20 @@ Selbst gehostet, ohne Cloud, ohne Tracking. Deine Daten bleiben auf deinem Serve
 - Aufteilung nach Bereich, Kategorie, Zahler, Zahlungsmethode
 - 12-Monats-Trend, Preisentwicklung, Prognose
 - Nächste Zahlungen und Fristen auf einen Blick
-- **Preiserhöhungen** automatisch erkannt, mit Hinweis aufs Sonderkündigungsrecht
+- **Preiserhöhungen** automatisch erkannt – auch angekündigte mit Stichtag –, mit Hinweis aufs Sonderkündigungsrecht
+- **Jahres-Check** (behalten, vergleichen, kündigen) und Ansicht **pro Person**
 - **Kostenbericht** mit Aufteilung je Person – drucken oder als PDF
 
 </td>
 <td width="50%" valign="top">
 
 ### 📄 Verträge & Versicherungen
-- Mindestlaufzeit, automatische Verlängerung, Kündigungsfrist
-- **Erinnerung** rechtzeitig vor dem letzten Kündigungstag
-- **Kündigungsschreiben als PDF** mit einem Klick
-- Status „verschickt“ / „bestätigt“, Vorlage im Admin-Bereich
+- Erstlaufzeit, Verlängerung, Kündigungsfrist – Versicherungen auch *nur Wechsel* (Krankenkasse) oder *nicht kündbar*
+- **Erinnerung** rechtzeitig vor dem letzten Kündigungstag, **Kündigungsschreiben als PDF**
+- Filter, Suche (auch nach Person) und farbige Personen-Tags
+- **Schadensfälle** mit Bilanz (Beiträge gegen Leistungen), „melden oder selbst zahlen?“
+- Kombi-Policen, versicherte Personen, Absicherungs- und **Vorsorge-Check** (BU, Risikoleben)
+- Beitragsentwicklung gegen Inflation, **Steuer-Export**, Daten aus der Police lesen
 
 </td>
 </tr>
@@ -57,21 +60,22 @@ Selbst gehostet, ohne Cloud, ohne Tracking. Deine Daten bleiben auf deinem Serve
 
 ### 🏦 Finanzierungen
 - Annuitäten- und endfällige Darlehen, **Bausparverträge**
-- Tilgungsplan, Sondertilgungen, Restschuld-Diagramm
+- Tilgungsplan, Sondertilgungen, Restschuld-Diagramm, **Sondertilgung simulieren**
+- Sondertilgungsrecht im Blick, geplante Ratenänderungen, Übersicht aller Kredite
 - **Abgleich mit dem Kontoauszug** der Bank
-- Ablösung eines Darlehens durch einen Bausparvertrag
+- Ablösung durch einen Bausparvertrag zum Laufzeitende, Abschlussgebühr
 - Hinweis 12 Monate vor Ende der Zinsbindung
 
 </td>
 <td valign="top">
 
 ### ⚡ Verbrauch
-- Zähler für Strom, Gas, Wasser, **PV-Einspeisung**
-- Verbrauch je Monat, Abschlag vs. tatsächlicher Verbrauch
-- Nachzahlung / Erstattung abschätzen
-- **Tarifvergleich**: neues Angebot gegen deinen Jahresverbrauch
+- Zähler für Strom, Gas, Wasser, **PV-Erzeugung und -Einspeisung**
+- Jahresvergleich, Kosten pro Tag/Monat, **witterungsbereinigt** (Gradtage), Haushaltsvergleich
+- Ungewöhnlich hoher Verbrauch (Leck?), Grundlast, Abschlag-Empfehlung
+- **Abrechnung prüfen**, Tarifwechsel mit Datum, Erinnerung zum Wechsel
+- Eigenverbrauch, Autarkie und **Amortisation** der PV-Anlage
 - **Home Assistant**: Zählerstände täglich automatisch
-- Ablese-Erinnerung
 
 </td>
 </tr>
@@ -112,16 +116,16 @@ Selbst gehostet, ohne Cloud, ohne Tracking. Deine Daten bleiben auf deinem Serve
 
 ### 🏠 Haushalt & Vorsorge
 - **Fristen & Wartung**: Ausweise, Führerschein, TÜV, Heizung, Filter …
-- **Inventar** mit Neu- und Zeitwert, Standorten und Kaufbelegen
-- **Notfall-Dossier** – drucken oder verschlüsselt exportieren
-- **Inaktivitäts-Wächter**: Vertrauensperson bekommt das Dossier, wenn du länger inaktiv bist
+- **Inventar** mit Neu- und Zeitwert, Standorten, Kaufbelegen und **Garantie**
+- **Notfall-Dossier** mit Kontakten, Verfügungen, Konten, digitalem Nachlass und Checkliste für Angehörige
+- **Inaktivitäts-Wächter** mit bis zu zwei Vertrauenspersonen (eine mit eingeschränkter Sicht)
 - Lese-Zugang für Partner oder Steuerberater
 
 </td>
 </tr>
 </table>
 
-Außerdem: Suche direkt auf dem Dashboard, Schnellerfassung fürs Handy mit Zählerstand-Prognose,
+Außerdem: als **App installierbar**, Testphasen-Erinnerung für Abos, Suche direkt auf dem Dashboard, Schnellerfassung fürs Handy mit Zählerstand-Prognose,
 CSV-Import und -Export, Änderungsprotokoll, automatische und externe Sicherung (WebDAV),
 Systemstatus und eine REST-API.
 

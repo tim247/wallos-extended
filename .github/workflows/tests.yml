@@ -18,3 +18,28 @@ jobs:
         run: php -v && php -m | grep -E 'sqlite3|mbstring|intl|curl|zip|openssl'
       - name: Run the test suite
         run: php tests/run.php
+
+  browser:
+    # Every page at phone width, the menu and the read-only login in a real browser
+    # (tests/browser/smoke.mjs) on a fresh database.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fresh database
+        run: php endpoints/cronjobs/createdatabase.php
+      - name: Start PHP
+        run: |
+          php -S 127.0.0.1:8721 > /tmp/php-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:8721/login.php && break; sleep 1; done
+      - name: Install Playwright
+        run: |
+          npm install --no-save --no-package-lock playwright@1.49.1
+          npx playwright install --with-deps chromium
+      - name: Browser smoke test
+        run: node tests/browser/smoke.mjs
+      - name: PHP server log
+        if: failure()
+        run: tail -n 100 /tmp/php-server.log

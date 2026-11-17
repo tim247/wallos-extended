@@ -222,6 +222,7 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
     $print[$id]['category_ids'] = $categoriesBySubscription[$id] ?? [];
     $print[$id]['folder_id'] = $subscription['folder_id'] ?? null;
     $print[$id]['payer_user_id'] = $subscription['payer_user_id'];
+    $print[$id]['trial_end'] = $subscription['trial_end'] ?? null;
     $print[$id]['payer_user_ids'] = $payersBySubscription[$id] ?? [];
     $print[$id]['price'] = floatval($subscription['price']);
     $print[$id]['sort_price'] = getSortPrice($subscription['price'], $subscription['currency_id'], $mainCurrencyId, $cycle, $frequency, $settings, $db);

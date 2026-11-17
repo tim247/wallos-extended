@@ -386,6 +386,8 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
 
         // Unusually high consumption (leak, faulty appliance), each reading period reported once.
         require_once __DIR__ . '/../../includes/consumption_insights.php';
+        require_once __DIR__ . '/../../includes/task_inbox.php'; // notification centre
+        $consumptionOn = notificationEnabled($db, (int) $userId, 'consumption');
         $stmt = $db->prepare("SELECT * FROM meters WHERE user_id = :user_id AND archived = 0 AND meter_type NOT IN ('pv_feed_in', 'pv_generation')");
         $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
         $resultOutlierMeters = $stmt->execute();
@@ -395,7 +397,7 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
         }
         foreach ($outlierMeters as $meter) {
             $outlier = detectOutlier(computeConsumptionSegments(loadMeterRows($db, 'meter_readings', (int) $meter['id'], $userId, 'reading_date'))['segments']);
-            if ($outlier === null || ($meter['outlier_notified'] ?? '') === $outlier['to']) {
+            if (!$consumptionOn || $outlier === null || ($meter['outlier_notified'] ?? '') === $outlier['to']) {
                 continue;
             }
             $label = translate('outlier_notification', $i18n);
@@ -418,7 +420,7 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
         }
 
         foreach ($outlierMeters as $meter) {
-            foreach (tariffSwitchHints($meter, $todayString) as $hint) {
+            foreach ($consumptionOn ? tariffSwitchHints($meter, $todayString) : [] as $hint) {
                 $reason = $hint['key'] === 'guarantee' ? 'guarantee:' . $hint['date'] : 'expensive:' . $meter['price_per_unit'];
                 if (($meter['switch_notified'] ?? '') === $reason) {
                     continue;
@@ -445,6 +447,121 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
                 $update->execute();
                 break; // one reminder per meter and run
             }
+        }
+
+        // Insurances: open claims after four weeks, cover review every two years, motor switching time.
+        require_once __DIR__ . '/../../includes/insurance_insights.php';
+        $insuranceNotice = function (string $label, string $name, string $date, string $kind = '') use (&$notify, &$i, $mainMemberId, $mainMemberName, $db, $userId) {
+            if ($kind !== '' && !notificationEnabled($db, (int) $userId, $kind)) {
+                return;
+            }
+            $notify[$mainMemberId][$i] = ['name' => $label . ': ' . $name, 'price' => '', 'currency' => '', 'category' => $label,
+                'payer' => $mainMemberName, 'date' => $date, 'url' => '', 'notes' => ''];
+            $i++;
+        };
+        $stmt = $db->prepare("SELECT c.*, i.name AS insurance_name FROM insurance_claims c JOIN insurances i ON i.id = c.insurance_id
+            WHERE c.user_id = :user_id AND c.status IN ('reported', 'in_review') AND c.open_notified = 0 AND COALESCE(c.status_changed, c.claim_date) <= date(:today, '-28 days')");
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':today', $todayString);
+        $openClaims = [];
+        $resultClaims = $stmt->execute();
+        while ($claim = $resultClaims->fetchArray(SQLITE3_ASSOC)) {
+            $openClaims[] = $claim;
+        }
+        foreach ($openClaims as $claim) {
+            $insuranceNotice(translate('claim_open_reminder', $i18n), $claim['insurance_name'] . ($claim['claim_number'] ? ' (' . $claim['claim_number'] . ')' : ''), $claim['claim_date'], 'insurance_claims');
+            $db->exec('UPDATE insurance_claims SET open_notified = 1 WHERE id = ' . (int) $claim['id']);
+        }
+        $stmt = $db->prepare("SELECT * FROM insurances WHERE user_id = :user_id AND archived = 0 AND cancellation_status = 0");
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $activeInsurances = [];
+        $resultInsurances = $stmt->execute();
+        while ($row = $resultInsurances->fetchArray(SQLITE3_ASSOC)) {
+            $activeInsurances[] = $row;
+        }
+        foreach ($activeInsurances as $row) {
+            $marker = $row['last_review'] ?: $row['start_date'];
+            if (insuranceReviewDue($row, $todayString) && ($row['review_notified'] ?? '') !== $marker) {
+                $insuranceNotice(translate('review_reminder', $i18n), $row['name'], $todayString, 'insurance_review');
+                $update = $db->prepare('UPDATE insurances SET review_notified = :marker WHERE id = :id');
+                $update->bindValue(':marker', $marker);
+                $update->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+                $update->execute();
+            }
+            if (motorSwitchReminderDue($row, $todayString)) {
+                $insuranceNotice(translate('kfz_switch_reminder', $i18n), $row['name'], substr($todayString, 0, 4) . '-11-30', 'kfz');
+                $db->exec('UPDATE insurances SET kfz_reminded_year = ' . (int) substr($todayString, 0, 4) . ' WHERE id = ' . (int) $row['id']);
+            }
+        }
+
+        // Free trials ending in 3 days, warranties ending in 30 days - each once per date.
+        $stmt = $db->prepare("SELECT id, name, trial_end FROM subscriptions WHERE user_id = :user_id AND inactive = 0 AND archived = 0
+            AND trial_end IS NOT NULL AND trial_end >= :today AND trial_end <= date(:today, '+3 days') AND (trial_notified IS NULL OR trial_notified != trial_end)");
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':today', $todayString);
+        $trials = [];
+        $resultTrials = $stmt->execute();
+        while ($row = $resultTrials->fetchArray(SQLITE3_ASSOC)) {
+            $trials[] = $row;
+        }
+        foreach ($trials as $row) {
+            $insuranceNotice(translate('trial_reminder', $i18n), $row['name'], $row['trial_end'], 'deadline');
+            $db->exec('UPDATE subscriptions SET trial_notified = trial_end WHERE id = ' . (int) $row['id']);
+        }
+        $stmt = $db->prepare("SELECT id, name, warranty_until FROM inventory WHERE user_id = :user_id
+            AND warranty_until IS NOT NULL AND warranty_until >= :today AND warranty_until <= date(:today, '+30 days') AND (warranty_notified IS NULL OR warranty_notified != warranty_until)");
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $stmt->bindValue(':today', $todayString);
+        $warranties = [];
+        $resultWarranties = $stmt->execute();
+        while ($row = $resultWarranties->fetchArray(SQLITE3_ASSOC)) {
+            $warranties[] = $row;
+        }
+        foreach ($warranties as $row) {
+            $insuranceNotice(translate('warranty_reminder', $i18n), $row['name'], $row['warranty_until'], 'warranty');
+            $db->exec('UPDATE inventory SET warranty_notified = warranty_until WHERE id = ' . (int) $row['id']);
+        }
+
+        // Extra repayment allowance not used up: a reminder in November / December, once a year.
+        if (substr($todayString, 5, 2) >= '11') {
+            require_once __DIR__ . '/../../includes/financing_calculations.php';
+            $stmt = $db->prepare("SELECT * FROM loans WHERE user_id = :user_id AND archived = 0 AND loan_type != 'bausparen'
+                AND (extra_allowance_pct > 0 OR extra_allowance_amount > 0) AND extra_reminded_year < :year");
+            $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $stmt->bindValue(':year', (int) substr($todayString, 0, 4), SQLITE3_INTEGER);
+            $allowanceLoans = [];
+            $resultAllowance = $stmt->execute();
+            while ($row = $resultAllowance->fetchArray(SQLITE3_ASSOC)) {
+                $allowanceLoans[] = $row;
+            }
+            foreach ($allowanceLoans as $row) {
+                $allowance = extraRepaymentAllowance($row, loadLoanInputs($db, $userId, $row)['extras'], (int) substr($todayString, 0, 4));
+                if ($allowance !== null && $allowance['left'] > 0) {
+                    $insuranceNotice(translate('extra_allowance_reminder', $i18n), $row['name'] . ' – ' . number_format($allowance['left'], 2, ',', '.'), substr($todayString, 0, 4) . '-12-31', 'financing');
+                }
+                $db->exec('UPDATE loans SET extra_reminded_year = ' . (int) substr($todayString, 0, 4) . ' WHERE id = ' . (int) $row['id']);
+            }
+        }
+
+        // Emergency dossier: check every 6 months, directives (living will, power of attorney) every 2 years.
+        require_once __DIR__ . '/../../includes/emergency_entries.php';
+        $emergencyNotes = @$db->querySingle('SELECT reviewed_at, review_notified FROM emergency_notes WHERE user_id = ' . (int) $userId, true) ?: [];
+        $firstEntry = @$db->querySingle('SELECT MIN(updated_at) FROM emergency_entries WHERE user_id = ' . (int) $userId);
+        $reviewMarker = ($emergencyNotes['reviewed_at'] ?? null) ?: $firstEntry;
+        if (emergencyReviewDue($emergencyNotes['reviewed_at'] ?? null, $firstEntry, $todayString) && ($emergencyNotes['review_notified'] ?? '') !== $reviewMarker) {
+            $insuranceNotice(translate('dossier_review_reminder', $i18n), translate('emergency', $i18n), $todayString, 'emergency');
+            $db->exec('INSERT OR IGNORE INTO emergency_notes (user_id, notes) VALUES (' . (int) $userId . ", '')");
+            $mark = $db->prepare('UPDATE emergency_notes SET review_notified = :marker WHERE user_id = :userId');
+            $mark->bindValue(':marker', $reviewMarker);
+            $mark->bindValue(':userId', $userId, SQLITE3_INTEGER);
+            $mark->execute();
+        }
+        foreach (emergencyDirectivesDue(emergencyEntries($db, (int) $userId)['directives'], $todayString) as $directive) {
+            if (($directive['notified'] ?? '') === $directive['updated_at']) {
+                continue;
+            }
+            $insuranceNotice(translate('directive_reminder', $i18n), $directive['name'], $todayString, 'emergency');
+            $db->exec('UPDATE emergency_entries SET notified = updated_at WHERE id = ' . (int) $directive['id']);
         }
 
         // Price increases recorded by the price_history triggers, each reported once.

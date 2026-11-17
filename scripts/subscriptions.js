@@ -239,6 +239,7 @@ function fillEditFormFields(subscription) {
   nextPament.value = subscription.next_payment;
   const cancellationDate = document.querySelector("#cancellation_date");
   cancellationDate.value = subscription.cancellation_date;
+  document.querySelector("#trial_end").value = subscription.trial_end || "";
 
   const notes = document.querySelector("#notes");
   notes.value = subscription.notes;

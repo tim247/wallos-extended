@@ -388,6 +388,7 @@ $subscriptionsView = (isset($_COOKIE['subscriptionsView']) && $_COOKIE['subscrip
       $print[$id]['category_ids'] = $categoriesBySubscription[$id] ?? [];
       $print[$id]['folder_id'] = $subscription['folder_id'] ?? null;
       $print[$id]['payer_user_id'] = $subscription['payer_user_id'];
+      $print[$id]['trial_end'] = $subscription['trial_end'] ?? null;
       $print[$id]['payer_user_ids'] = $payersBySubscription[$id] ?? [];
       $print[$id]['price'] = floatval($subscription['price']);
       $print[$id]['sort_price'] = getSortPrice($subscription['price'], $subscription['currency_id'], $mainCurrencyId, $cycle, $frequency, $settings, $db);
@@ -704,6 +705,14 @@ $subscriptionsView = (isset($_COOKIE['subscriptionsView']) && $_COOKIE['subscrip
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="form-group">
+      <label for="trial_end"><?= translate('trial_end', $i18n) ?></label>
+      <div class="date-wrapper">
+        <input type="date" id="trial_end" name="trial_end" autocomplete="off">
+      </div>
+      <small class="loan-anchor-hint"><?= translate('trial_end_hint', $i18n) ?></small>
     </div>
 
     <div class="form-group" id="price-change-group">

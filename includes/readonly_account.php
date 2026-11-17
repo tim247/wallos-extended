@@ -9,12 +9,14 @@
 
 const READONLY_PAGES = ['index.php', 'subscriptions.php', 'contracts.php', 'insurance.php', 'financing.php',
     'consumption.php', 'calendar.php', 'yearly.php', 'report.php', 'stats.php', 'search.php', 'history.php',
-    'finances.php', 'wrapped.php', 'reminders.php', 'inventory.php', 'emergency.php', 'help.php', 'about.php', 'logout.php'];
+    'finances.php', 'wrapped.php', 'reminders.php', 'inventory.php', 'emergency.php', 'help.php', 'about.php', 'logout.php', 'person.php', 'tasks.php'];
 
 const READONLY_ENDPOINTS = ['subscriptions/get.php', 'subscription/get.php', 'subscriptions/export.php',
     'subscription/exportcalendar.php', 'contracts/get.php', 'insurance/get.php', 'financing/get.php',
     'consumption/get_meter.php', 'consumption/get_chart_data.php', 'files/list.php', 'files/download.php',
-    'report/export.php', 'report/export_all.php', 'search/query.php'];
+    'report/export.php', 'report/export_all.php', 'search/query.php',
+    // read-only computations and exports
+    'consumption/weather.php', 'insurance/tax_export.php', 'financing/simulate.php'];
 
 /** Owner id of a read-only account, or null for a normal account. */
 function readonlyOwnerOf(SQLite3 $db, int $viewerId): ?int

@@ -85,12 +85,14 @@ if ($kind === 'reminder') {
         ':price' => max(0, (float) ($data['price'] ?? 0)),
         ':lifetime' => max(0, min(100, (int) ($data['lifetime_years'] ?? 0))),
         ':serial' => $text('serial_number', 100),
+        ':warranty' => $date('warranty_until'),
         ':notes' => $text('notes', 1000),
     ];
     $columns = 'name = :name, category = :category, location = :location, purchase_date = :purchase, price = :price,
-        lifetime_years = :lifetime, serial_number = :serial, notes = :notes';
-    $insert = '(user_id, name, category, location, purchase_date, price, lifetime_years, serial_number, notes)
-        VALUES (:userId, :name, :category, :location, :purchase, :price, :lifetime, :serial, :notes)';
+        lifetime_years = :lifetime, serial_number = :serial, warranty_until = :warranty, notes = :notes,
+        warranty_notified = CASE WHEN warranty_until IS :warranty THEN warranty_notified ELSE NULL END';
+    $insert = '(user_id, name, category, location, purchase_date, price, lifetime_years, serial_number, warranty_until, notes)
+        VALUES (:userId, :name, :category, :location, :purchase, :price, :lifetime, :serial, :warranty, :notes)';
 }
 $stmt = $db->prepare($id > 0 ? "UPDATE $table SET $columns WHERE id = :id AND user_id = :userId" : "INSERT INTO $table $insert");
 $bind($stmt, $values + [':userId' => (int) $userId] + ($id > 0 ? [':id' => $id] : []));

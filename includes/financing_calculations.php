@@ -176,6 +176,12 @@ function computeLoanSchedule(array $loan, array $extraPayments = [], ?string $as
             continue;
         }
 
+        // Planned rate change ("from 2027 600 € instead of 500 €"): the latest one up to this payment.
+        foreach ($loan['rate_changes'] ?? [] as $rateChange) {
+            if ($rateChange['valid_from'] <= $payDateStr) {
+                $rate = (float) $rateChange['monthly_rate'];
+            }
+        }
         $effectiveRate = $overridePayment !== null ? $overridePayment : $rate;
         $principalPart = round($effectiveRate - $interest, 2);
 
@@ -231,11 +237,39 @@ function computeLoanSchedule(array $loan, array $extraPayments = [], ?string $as
     if ($result['payoff_date'] === null && count($result['rows']) > 0) {
         $result['payoff_date'] = end($result['rows'])['date'];
     }
+    if ($redeemOn !== null && $result['redeemed_on'] === null && $result['rows'] && end($result['rows'])['date'] === $redeemOn) {
+        $result['rows'][count($result['rows']) - 1]['redemption'] = true;
+        $result['redeemed_on'] = $redeemOn;
+    }
 
     // Paid principal follows from the current balance, so anchors and redemption stay consistent.
     $result['paid_principal_as_of'] = max(0.0, round((float) $loan['principal'] - $result['balance_as_of'], 2));
     $result['months_total'] = count($result['rows']);
     return $result;
+}
+
+/** Date of the last instalment of a loan with a term (start + term months, same day of month). */
+function loanTermEnd(array $loan): ?string
+{
+    $term = (int) ($loan['term_months'] ?? 0);
+    if ($term <= 0 || empty($loan['start_date'])) {
+        return null;
+    }
+    $date = new DateTime($loan['start_date']);
+    $day = (int) $date->format('d');
+    $date->modify('first day of this month')->modify('+' . $term . ' months');
+    $date->setDate((int) $date->format('Y'), (int) $date->format('m'), min($day, (int) $date->format('t')));
+    return $date->format('Y-m-d');
+}
+
+/** End of the term of the loan a Bausparvertrag replaces; null when none or without a term. */
+function bausparPayoutFromLoan(SQLite3 $db, int $userId, array $bausparLoan): ?string
+{
+    $stmt = $db->prepare("SELECT * FROM loans WHERE user_id = :userId AND replaced_by_loan_id = :id AND archived = 0 ORDER BY id LIMIT 1");
+    $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $stmt->bindValue(':id', $bausparLoan['id'], SQLITE3_INTEGER);
+    $replaced = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    return $replaced ? loanTermEnd($replaced) : null;
 }
 
 /** Statement balances, extra payments and overrides of a loan, plus the redemption date. */
@@ -260,7 +294,7 @@ function loadLoanInputs(SQLite3 $db, int $userId, array $loan): array
         $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
         $bausparLoan = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
         if ($bausparLoan) {
-            $redeemOn = computeBausparSchedule($bausparLoan)['payout_date'] ?? null;
+            $redeemOn = loanTermEnd($loan) ?? (computeBausparSchedule($bausparLoan)['payout_date'] ?? null);
         }
     }
 
@@ -268,6 +302,7 @@ function loadLoanInputs(SQLite3 $db, int $userId, array $loan): array
         'extras' => $fetch('loan_extra_payments', 'payment_date'),
         'overrides' => $fetch('loan_schedule_overrides', 'period_n'),
         'anchors' => $fetch('loan_balance_anchors', 'anchor_date'),
+        'rate_changes' => $fetch('loan_rate_changes', 'valid_from'),
         'redeem_on' => $redeemOn,
     ];
 }
@@ -279,9 +314,10 @@ function loadLoanInputs(SQLite3 $db, int $userId, array $loan): array
 function loadLoanSchedule(SQLite3 $db, int $userId, array $loan, ?string $asOf = null, bool $plan = false): array
 {
     if (($loan['loan_type'] ?? 'annuity') === 'bausparen') {
-        return computeBausparSchedule($loan, $asOf);
+        return computeBausparSchedule($loan, $asOf, bausparPayoutFromLoan($db, $userId, $loan));
     }
     $in = loadLoanInputs($db, $userId, $loan);
+    $loan['rate_changes'] = $in['rate_changes'];
     return $plan
         ? computeLoanSchedule($loan, [], $asOf, [], [], $in['redeem_on'])
         : computeLoanSchedule($loan, $in['extras'], $asOf, $in['overrides'], $in['anchors'], $in['redeem_on']);
@@ -295,8 +331,11 @@ function loadLoanSchedule(SQLite3 $db, int $userId, array $loan, ?string $asOf =
  * Phase 2 – Zuteilung: Savings liquidated, loan = principal - accumulated_savings.
  * Phase 3 – Tilgungsphase: Annuity repayment of the loan portion at
  *   bausparen_loan_rate with bausparen_loan_monthly monthly payment.
+ *
+ * $payoutOn: fixed payout date - the end of the term of the loan the contract replaces.
+ *   The savings phase then runs until that date instead of until the minimum savings.
  */
-function computeBausparSchedule(array $loan, ?string $asOfDate = null): array
+function computeBausparSchedule(array $loan, ?string $asOfDate = null, ?string $payoutOn = null): array
 {
     $asOf = $asOfDate ?? date('Y-m-d');
 
@@ -347,7 +386,7 @@ function computeBausparSchedule(array $loan, ?string $asOfDate = null): array
         }
     }
 
-    while ($savings < $minSavings && $n < 1200) {
+    while ($n < 1200 && ($payoutOn !== null || $savings < $minSavings)) {
         $n++;
         $payDate = new DateTime($loan['start_date']);
         $payDate->modify('first day of this month');
@@ -358,6 +397,9 @@ function computeBausparSchedule(array $loan, ?string $asOfDate = null): array
             min($startDay, (int) $payDate->format('t'))
         );
         $payDateStr = $payDate->format('Y-m-d');
+        if ($payoutOn !== null && $payDateStr > $payoutOn) {
+            break;
+        }
 
         $interestEarned = $savings > 0 ? round($savings * $guthabenzins, 2) : 0.0; // no interest on a negative balance
         $savings = round($savings + $sparrate + $interestEarned, 2);
@@ -376,8 +418,9 @@ function computeBausparSchedule(array $loan, ?string $asOfDate = null): array
         }
     }
 
-    $payoutDateStr = end($result['savings_rows'])['date'] ?? null;
+    $payoutDateStr = $payoutOn ?? (end($result['savings_rows'])['date'] ?? null);
     $result['payout_date'] = $payoutDateStr;
+    $result['payout_by_term'] = $payoutOn !== null;
     $result['accumulated_savings'] = $savings;
     $result['total_savings_interest'] = $totalSavingsInterest;
 
@@ -465,4 +508,43 @@ function computeBausparSchedule(array $loan, ?string $asOfDate = null): array
     $result['total_loan_interest'] = $totalLoanInterest;
     $result['months_total'] = count($result['savings_rows']) + count($result['repayment_rows']);
     return $result;
+}
+
+/**
+ * Extra repayment allowed in a calendar year and how much of it is used.
+ * @return array{allowed: float, used: float, left: float}|null Null when no allowance is set.
+ */
+function extraRepaymentAllowance(array $loan, array $extraPayments, int $year): ?array
+{
+    $allowed = (float) ($loan['extra_allowance_amount'] ?? 0);
+    if ($allowed <= 0 && (float) ($loan['extra_allowance_pct'] ?? 0) > 0) {
+        $allowed = (float) $loan['principal'] * (float) $loan['extra_allowance_pct'] / 100;
+    }
+    if ($allowed <= 0) {
+        return null;
+    }
+    $used = array_sum(array_map(fn($e) => (float) $e['amount'], array_filter($extraPayments, fn($e) => (int) substr($e['payment_date'], 0, 4) === $year)));
+    return ['allowed' => round($allowed, 2), 'used' => round($used, 2), 'left' => round(max(0, $allowed - $used), 2)];
+}
+
+/**
+ * All loans together: remaining debt, monthly rate, weighted interest, debt-free date and the
+ * order in which extra repayments save most (highest interest first).
+ * @param array $loans rows with 'schedule' (computeLoanSchedule) and interest_rate / monthly_rate
+ */
+function loansOverview(array $loans): array
+{
+    $active = array_filter($loans, fn($l) => ($l['loan_type'] ?? '') !== 'bausparen' && empty($l['schedule']['error']) && ($l['schedule']['balance_as_of'] ?? 0) > 0);
+    $debt = array_sum(array_map(fn($l) => (float) $l['schedule']['balance_as_of'], $active));
+    $weighted = $debt > 0 ? array_sum(array_map(fn($l) => (float) $l['schedule']['balance_as_of'] * (float) $l['interest_rate'], $active)) / $debt : 0.0;
+    $payoffs = array_filter(array_map(fn($l) => $l['schedule']['payoff_date'] ?? null, $active));
+    usort($active, fn($a, $b) => (float) $b['interest_rate'] <=> (float) $a['interest_rate']);
+    return [
+        'count' => count($active),
+        'debt' => round($debt, 2),
+        'monthly' => round(array_sum(array_map(fn($l) => (float) $l['monthly_rate'], $active)), 2),
+        'interest' => round($weighted, 2),
+        'debt_free' => $payoffs ? max($payoffs) : null,
+        'priority' => array_map(fn($l) => ['id' => $l['id'], 'name' => $l['name'], 'rate' => (float) $l['interest_rate']], array_values($active)),
+    ];
 }

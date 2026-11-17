@@ -14,7 +14,7 @@ function globalSearch(SQLite3 $db, int $userId, string $q, int $perArea = 50): a
     $sources = [
         ['subscriptions', 'fa-credit-card', 'subscriptions.php', "SELECT id, name, notes AS info FROM subscriptions WHERE user_id = :userId AND (name LIKE :q OR notes LIKE :q OR url LIKE :q)"],
         ['contracts', 'fa-file-signature', 'contracts.php', "SELECT id, name, provider || ' ' || contract_number AS info FROM contracts WHERE user_id = :userId AND (name LIKE :q OR provider LIKE :q OR contract_number LIKE :q OR notes LIKE :q)"],
-        ['insurances', 'fa-shield-halved', 'insurance.php', "SELECT id, name, insurer || ' ' || policy_number AS info FROM insurances WHERE user_id = :userId AND (name LIKE :q OR insurer LIKE :q OR policy_number LIKE :q OR notes LIKE :q)"],
+        ['insurances', 'fa-shield-halved', 'insurance.php', "SELECT id, name, insurer || ' ' || policy_number AS info FROM insurances WHERE user_id = :userId AND (name LIKE :q OR insurer LIKE :q OR policy_number LIKE :q OR notes LIKE :q OR coverage_notes LIKE :q OR contact_name LIKE :q)"],
         ['financing', 'fa-landmark', 'financing.php?id=', "SELECT id, name, lender AS info FROM loans WHERE user_id = :userId AND (name LIKE :q OR lender LIKE :q OR notes LIKE :q)"],
         ['consumption', 'fa-gauge', 'consumption.php', "SELECT id, name, meter_number AS info FROM meters WHERE user_id = :userId AND (name LIKE :q OR meter_number LIKE :q)"],
         ['reminders', 'fa-calendar-check', 'reminders.php', "SELECT id, name, holder || ' ' || notes AS info FROM reminders WHERE user_id = :userId AND (name LIKE :q OR holder LIKE :q OR notes LIKE :q)"],

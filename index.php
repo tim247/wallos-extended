@@ -337,6 +337,22 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     ];
 }
 
+// Free trials ending within the next 14 days: cancel before the first payment.
+$stmt = $db->prepare("SELECT name, trial_end, price, currency_id FROM subscriptions WHERE user_id = :userId AND inactive = 0 AND archived = 0 AND trial_end >= date('now') AND trial_end <= date('now', '+14 days')");
+$stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$result = $stmt->execute();
+while ($result && $row = $result->fetchArray(SQLITE3_ASSOC)) {
+    $upcomingEvents[] = [
+        'type' => 'trial',
+        'icon' => 'fa-hourglass-end',
+        'name' => $row['name'],
+        'date' => $row['trial_end'],
+        'detail' => translate('trial_ends', $i18n) . ' · ' . formatPrice($row['price'], $currencies[$row['currency_id']]['code'] ?? $mainCurrencyCode, $currencies),
+        'link' => 'subscriptions.php',
+        'class' => 'warning',
+    ];
+}
+
 // Contract & insurance payments within the next 30 days.
 $next30 = date('Y-m-d', strtotime('+30 days'));
 foreach ($upcomingPayments as $payment) {
@@ -434,7 +450,9 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 }
 
 /* ---------- price increases (last 12 months, from the price_history triggers) ---------- */
-$priceIncreases = [];
+require_once 'includes/pending_prices.php';
+applyPendingPrices($db, $userId);
+$priceIncreases = announcedPriceIncreases($db, $userId);
 $stmt = $db->prepare("SELECT ph.item_type, ph.old_price, ph.new_price, ph.changed_at,
         COALESCE(s.name, c.name, i.name) AS name, COALESCE(s.currency_id, c.currency_id, i.currency_id) AS currency_id
     FROM price_history ph
@@ -698,6 +716,27 @@ if ($consumptionMonthly > 0) {
             <?php endif; ?>
         </div>
 
+        <?php
+        require_once 'includes/task_inbox.php';
+        $openTasks = openTasks($db, (int) $userId, $i18n, $today);
+        if ($openTasks): ?>
+            <div class="dashboard-panel">
+                <h2><i class="fa-solid fa-inbox"></i> <?= translate('task_inbox', $i18n) ?> (<?= count($openTasks) ?>)</h2>
+                <ul class="upcoming-events">
+                    <?php foreach (array_slice($openTasks, 0, 5) as $task): ?>
+                        <li class="upcoming-event <?= $task['date'] < $today ? 'warning' : '' ?>">
+                            <a href="<?= htmlspecialchars($task['link']) ?>">
+                                <span class="upcoming-event-date"><?= formatDate($task['date'], $lang) ?></span>
+                                <span class="upcoming-event-icon"><i class="fa-solid <?= $task['icon'] ?>"></i></span>
+                                <span class="upcoming-event-name"><?= htmlspecialchars($task['text']) ?></span>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+                <a class="dashboard-panel-link" href="tasks.php"><?= translate('task_inbox_all', $i18n) ?> <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+        <?php endif; ?>
+
         <?php if ($showFirstSteps): ?>
             <div class="dashboard-panel">
                 <h2><i class="fa-solid fa-flag-checkered"></i> <?= translate('first_steps', $i18n) ?></h2>
@@ -731,7 +770,7 @@ if ($consumptionMonthly > 0) {
                         ?>
                         <li class="upcoming-event warning">
                             <a href="<?= $link ?>">
-                                <span class="upcoming-event-date"><?= formatDate($pi['changed_at'], $lang) ?></span>
+                                <span class="upcoming-event-date"><?= !empty($pi['announced']) ? translate('from_date_short', $i18n) . ' ' : '' ?><?= formatDate($pi['changed_at'], $lang) ?></span>
                                 <span class="upcoming-event-icon"><i class="fa-solid fa-arrow-trend-up"></i></span>
                                 <span class="upcoming-event-name"><?= htmlspecialchars($pi['name']) ?></span>
                                 <span class="upcoming-event-detail">
@@ -740,6 +779,27 @@ if ($consumptionMonthly > 0) {
                                     <?php if ($pi['item_type'] !== 'subscription'): ?>
                                         · <?= translate('special_termination_hint', $i18n) ?>
                                     <?php endif; ?>
+                                </span>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($hasUpcomingCancellations): ?>
+            <div class="dashboard-panel">
+                <h2><i class="fa-solid fa-ban"></i> <?= translate('upcoming_cancellations', $i18n) ?></h2>
+                <ul class="upcoming-events">
+                    <?php foreach ($upcomingCancellations as $subscription):
+                        $daysLeft = (strtotime($subscription['cancellation_date']) - strtotime($today)) / 86400; ?>
+                        <li class="upcoming-event <?= $daysLeft <= 7 ? 'warning' : '' ?>">
+                            <a href="subscriptions.php" onclick="if (typeof showSubscriptionDetails === 'function') { showSubscriptionDetails(event, <?= (int) $subscription['id'] ?>); return false; }">
+                                <span class="upcoming-event-date"><?= formatDate($subscription['cancellation_date'], $lang) ?></span>
+                                <span class="upcoming-event-icon"><i class="fa-solid fa-ban"></i></span>
+                                <span class="upcoming-event-name"><?= htmlSafe($subscription['name']) ?></span>
+                                <span class="upcoming-event-detail">
+                                    <?= formatPrice($subscription['price'], $currencies[$subscription['currency_id']]['code'] ?? $mainCurrencyCode, $currencies) ?>
                                 </span>
                             </a>
                         </li>
@@ -823,45 +883,6 @@ if ($consumptionMonthly > 0) {
                 </div>
             <?php endif; ?>
         <?php endforeach; ?>
-
-        <?php if ($hasUpcomingCancellations) { ?>
-            <div class="cancellation-subscriptions">
-                <h2><?= translate('upcoming_cancellations', $i18n) ?></h2>
-                <div class="dashboard-subscriptions-container">
-                    <div class="dashboard-subscriptions-list">
-                        <?php
-                        foreach ($upcomingCancellations as $subscription) {
-                            $subscriptionName = htmlSafe($subscription['name']);
-                            $subscriptionPrice = $subscription['price'];
-                            $subscriptionCurrency = $subscription['currency_id'];
-                            $subscriptionDisplayCancellationDate = formatDate($subscription['cancellation_date'], $lang);
-                            $subscriptionDisplayPrice = formatPrice($subscriptionPrice, $currencies[$subscriptionCurrency]['code'], $currencies);
-
-                            ?>
-                            <div class="subscription-item" onClick="showSubscriptionDetails(event, <?= $subscription['id'] ?>)" data-id="<?= $subscription['id'] ?>">
-                                <?php
-                                if (empty($subscription['logo'])) {
-                                    ?>
-                                    <p class="subscription-item-title"><?= $subscriptionName ?></p>
-                                    <?php
-                                } else {
-                                    $subscriptionLogoSrc = "images/uploads/logos/" . $subscription['logo'];
-                                    $subscriptionLogoVariantSrc = !empty($subscription['logo_variant']) ? "images/uploads/logos/" . $subscription['logo_variant'] : null;
-                                    echo renderThemedLogoImg($subscriptionLogoSrc, $subscriptionLogoVariantSrc, $subscription['logo_text_color'] ?? null, 'subscription-item-logo', 'alt="' . $subscriptionName . ' logo" title="' . $subscriptionName . '"');
-                                }
-                                ?>
-                                <div class="subscription-item-info">
-                                    <p class="subscription-item-date"> <?= $subscriptionDisplayCancellationDate ?></p>
-                                    <p class="subscription-item-price"> <?= $subscriptionDisplayPrice ?></p>
-                                </div>
-                            </div>
-                            <?php
-                        }
-                        ?>
-                    </div>
-                </div>
-            </div>
-        <?php } ?>
 
         <?php if (!empty($aiRecommendations)) { ?>
             <div class="dashboard-panel">

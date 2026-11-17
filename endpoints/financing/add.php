@@ -126,6 +126,12 @@ if ($isEdit) {
 
 header('Content-Type: application/json');
 if ($stmt->execute()) {
+    $allowanceStmt = $db->prepare('UPDATE loans SET extra_allowance_pct = :pct, extra_allowance_amount = :amount WHERE id = :id AND user_id = :userId');
+    $allowanceStmt->bindValue(':pct', max(0.0, min(100.0, floatval(str_replace(',', '.', $_POST['extra_allowance_pct'] ?? '0')))), SQLITE3_FLOAT);
+    $allowanceStmt->bindValue(':amount', max(0.0, floatval(str_replace(',', '.', $_POST['extra_allowance_amount'] ?? '0'))), SQLITE3_FLOAT);
+    $allowanceStmt->bindValue(':id', $isEdit ? $id : $db->lastInsertRowID(), SQLITE3_INTEGER);
+    $allowanceStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $allowanceStmt->execute();
     $text = $isEdit ? 'loan_updated_successfully' : 'loan_added_successfully';
     echo json_encode(['success' => true, 'message' => translate($text, $i18n)]);
 } else {

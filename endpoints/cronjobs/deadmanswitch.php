@@ -29,7 +29,18 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
         $due[] = $row;
     }
 }
-if (!$due) {
+// Links already sent, but the mail to the second trusted person failed: try that one again.
+$retry = [];
+$retryStmt = @$db->prepare("SELECT d.*, u.username, u.firstname, u.lastname, u.language FROM deadman_settings d JOIN user u ON u.id = d.user_id
+    WHERE d.enabled = 1 AND d.triggered_at IS NOT NULL AND d.access_token IS NOT NULL AND d.token_expires >= date('now')
+    AND d.trusted2_email != '' AND d.access_code2_hash IS NOT NULL AND d.access_token2 IS NULL");
+if ($retryStmt) {
+    $retryResult = $retryStmt->execute();
+    while ($row = $retryResult->fetchArray(SQLITE3_ASSOC)) {
+        $retry[] = $row;
+    }
+}
+if (!$due && !$retry) {
     echo date('Y-m-d H:i:s') . " Inactivity guard: nothing due\n";
     exit;
 }
@@ -101,11 +112,65 @@ foreach ($due as $row) {
         echo "Inactivity guard: mail to the trusted person of user {$row['user_id']} failed: {$mail->ErrorInfo}\n";
         continue; // try again tomorrow
     }
+    // Second trusted person: own link, same message; a failure here does not stop the first link.
+    $token2 = null;
+    if (!empty($row['trusted2_email']) && !empty($row['access_code2_hash'])) {
+        $token2 = bin2hex(random_bytes(32));
+        $link2 = $serverUrl . '/emergency_access.php?token=' . $token2;
+        $mail2 = deadmanMailer($db, $admin, (int) $row['user_id']);
+        try {
+            $mail2->addAddress($row['trusted2_email'], $row['trusted2_name']);
+            $mail2->isHTML(true);
+            $mail2->Subject = sprintf(translate('deadman_mail_subject', $i18n), $owner);
+            $mail2->Body = '<p>' . sprintf($h(translate('deadman_mail_intro', $i18n)), $h($row['trusted2_name']), $h($owner), (int) $row['days']) . '</p>'
+                . ($row['message'] !== '' ? '<blockquote style="border-left:3px solid #888;padding-left:10px">' . nl2br($h($row['message'])) . '</blockquote>' : '')
+                . '<p>' . $h(translate('deadman_mail_link', $i18n)) . '<br><a href="' . $h($link2) . '">' . $h($link2) . '</a></p>'
+                . '<p>' . sprintf($h(translate('deadman_mail_code', $i18n)), date('d.m.Y', strtotime($expires))) . '</p>';
+            $mail2->AltBody = strip_tags(str_replace(['<br>', '</p>'], "\n", $mail2->Body));
+            $mail2->send();
+        } catch (Exception $e) {
+            echo "Inactivity guard: mail to the second trusted person of user {$row['user_id']} failed: {$mail2->ErrorInfo}\n";
+            $token2 = null;
+        }
+    }
     $update = $db->prepare("UPDATE deadman_settings SET triggered_at = datetime('now', 'localtime'), access_token = :token,
-        token_expires = :expires, failed_attempts = 0 WHERE user_id = :userId");
+        token_expires = :expires, failed_attempts = 0, access_token2 = :token2, token2_expires = :expires, failed_attempts2 = 0 WHERE user_id = :userId");
+    $update->bindValue(':token2', $token2, $token2 === null ? SQLITE3_NULL : SQLITE3_TEXT);
     $update->bindValue(':token', $token);
     $update->bindValue(':expires', $expires);
     $update->bindValue(':userId', $row['user_id'], SQLITE3_INTEGER);
     $update->execute();
     echo date('Y-m-d H:i:s') . " Inactivity guard: link sent for user {$row['user_id']}\n";
+}
+
+foreach ($retry as $row) {
+    $userLanguage = resolve_language($row['language'] ?? 'en');
+    require __DIR__ . '/../../includes/i18n/' . $userLanguage . '.php';
+    $owner = trim(($row['firstname'] ?? '') . ' ' . ($row['lastname'] ?? '')) ?: $row['username'];
+    $h = fn($value) => htmlspecialchars((string) $value, ENT_QUOTES);
+    $token2 = bin2hex(random_bytes(32));
+    $link2 = $serverUrl . '/emergency_access.php?token=' . $token2;
+    $mail2 = deadmanMailer($db, $admin, (int) $row['user_id']);
+    if (!$mail2) {
+        continue;
+    }
+    try {
+        $mail2->addAddress($row['trusted2_email'], $row['trusted2_name']);
+        $mail2->isHTML(true);
+        $mail2->Subject = sprintf(translate('deadman_mail_subject', $i18n), $owner);
+        $mail2->Body = '<p>' . sprintf($h(translate('deadman_mail_intro', $i18n)), $h($row['trusted2_name']), $h($owner), (int) $row['days']) . '</p>'
+            . ($row['message'] !== '' ? '<blockquote style="border-left:3px solid #888;padding-left:10px">' . nl2br($h($row['message'])) . '</blockquote>' : '')
+            . '<p>' . $h(translate('deadman_mail_link', $i18n)) . '<br><a href="' . $h($link2) . '">' . $h($link2) . '</a></p>'
+            . '<p>' . sprintf($h(translate('deadman_mail_code', $i18n)), date('d.m.Y', strtotime($row['token_expires']))) . '</p>';
+        $mail2->AltBody = strip_tags(str_replace(['<br>', '</p>'], "\n", $mail2->Body));
+        $mail2->send();
+    } catch (Exception $e) {
+        echo "Inactivity guard: retry to the second trusted person of user {$row['user_id']} failed: {$mail2->ErrorInfo}\n";
+        continue; // again tomorrow
+    }
+    $update = $db->prepare('UPDATE deadman_settings SET access_token2 = :token, token2_expires = token_expires, failed_attempts2 = 0 WHERE user_id = :userId');
+    $update->bindValue(':token', $token2);
+    $update->bindValue(':userId', $row['user_id'], SQLITE3_INTEGER);
+    $update->execute();
+    echo date('Y-m-d H:i:s') . " Inactivity guard: link sent to the second trusted person of user {$row['user_id']}\n";
 }

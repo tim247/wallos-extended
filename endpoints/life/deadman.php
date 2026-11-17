@@ -26,6 +26,19 @@ if ($enabled && ($email === '' || ($code === '' && empty($current['access_code_h
     $fail('deadman_incomplete'); // armed needs a recipient and an access code
 }
 
+// Second trusted person: checked before anything is written, so an error saves nothing.
+$email2 = trim((string) ($data['trusted2_email'] ?? ''));
+$code2 = (string) ($data['access_code2'] ?? '');
+if ($email2 !== '' && !filter_var($email2, FILTER_VALIDATE_EMAIL)) {
+    $fail('deadman_invalid_email');
+}
+if ($code2 !== '' && strlen($code2) < 8) {
+    $fail('deadman_code_short');
+}
+if ($email2 !== '' && $code2 === '' && empty($current['access_code2_hash'])) {
+    $fail('deadman_incomplete');
+}
+
 $hash = $code !== '' ? password_hash($code, PASSWORD_DEFAULT) : ($current['access_code_hash'] ?? null);
 $stmt = $db->prepare('INSERT INTO deadman_settings (user_id, enabled, days, trusted_name, trusted_email, message, access_code_hash)
     VALUES (:userId, :enabled, :days, :name, :email, :message, :hash)
@@ -39,4 +52,15 @@ $stmt->bindValue(':name', $name);
 $stmt->bindValue(':email', $email);
 $stmt->bindValue(':message', $message);
 $stmt->bindValue(':hash', $hash, $hash === null ? SQLITE3_NULL : SQLITE3_TEXT);
-echo json_encode(['success' => (bool) $stmt->execute(), 'message' => translate('success', $i18n)]);
+$ok = (bool) $stmt->execute();
+// Second trusted person: own e-mail, own access code, own scope (validated above).
+$hash2 = $email2 === '' ? null : ($code2 !== '' ? password_hash($code2, PASSWORD_DEFAULT) : ($current['access_code2_hash'] ?? null));
+$second = $db->prepare('UPDATE deadman_settings SET trusted2_name = :name, trusted2_email = :email, trusted2_scope = :scope,
+    access_code2_hash = :hash, access_token2 = NULL, token2_expires = NULL, failed_attempts2 = 0 WHERE user_id = :userId');
+$second->bindValue(':name', mb_substr(trim(strip_tags((string) ($data['trusted2_name'] ?? ''))), 0, 100));
+$second->bindValue(':email', $email2);
+$second->bindValue(':scope', ($data['trusted2_scope'] ?? '') === 'all' ? 'all' : 'limited');
+$second->bindValue(':hash', $hash2, $hash2 === null ? SQLITE3_NULL : SQLITE3_TEXT);
+$second->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$ok = $ok && $second->execute() !== false;
+echo json_encode(['success' => $ok, 'message' => translate('success', $i18n)]);

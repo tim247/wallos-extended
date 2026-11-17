@@ -21,14 +21,18 @@ require_once 'includes/i18n/' . $lang . '.php';
 $error = '';
 $unlocked = false;
 if ($settings && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (password_verify((string) ($_POST['code'] ?? ''), (string) $settings['access_code_hash'])) {
+    $second = $settings['_slot'] === 2;
+    if (password_verify((string) ($_POST['code'] ?? ''), (string) $settings[$second ? 'access_code2_hash' : 'access_code_hash'])) {
         $unlocked = true;
     } else {
         sleep(1); // slows down guessing
-        $attempts = (int) $settings['failed_attempts'] + 1;
-        // The 10th wrong code withdraws the link for good.
-        $stmt = $db->prepare('UPDATE deadman_settings SET failed_attempts = :attempts,
-            access_token = CASE WHEN :attempts >= :max THEN NULL ELSE access_token END WHERE user_id = :userId');
+        $attempts = (int) $settings[$second ? 'failed_attempts2' : 'failed_attempts'] + 1;
+        // The 10th wrong code withdraws the link for good (each person has their own link and count).
+        $stmt = $db->prepare($second
+            ? 'UPDATE deadman_settings SET failed_attempts2 = :attempts,
+                access_token2 = CASE WHEN :attempts >= :max THEN NULL ELSE access_token2 END WHERE user_id = :userId'
+            : 'UPDATE deadman_settings SET failed_attempts = :attempts,
+                access_token = CASE WHEN :attempts >= :max THEN NULL ELSE access_token END WHERE user_id = :userId');
         $stmt->bindValue(':attempts', $attempts, SQLITE3_INTEGER);
         $stmt->bindValue(':max', DEADMAN_MAX_ATTEMPTS, SQLITE3_INTEGER);
         $stmt->bindValue(':userId', $settings['user_id'], SQLITE3_INTEGER);
@@ -38,6 +42,17 @@ if ($settings && $_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = sprintf(translate('deadman_wrong_code', $i18n), DEADMAN_MAX_ATTEMPTS - $attempts);
         }
+    }
+}
+// Cancellation package for the trusted person with full access.
+if ($unlocked && ($_POST['action'] ?? '') === 'letters' && $settings['_scope'] === 'all') {
+    require_once 'includes/emergency_letters.php';
+    $clean = fn(string $key, int $max) => mb_substr(trim(strip_tags((string) ($_POST[$key] ?? ''))), 0, $max);
+    $path = emergencyLetterZip($db, (int) $settings['user_id'],
+        ['name' => $clean('sender_name', 120), 'address' => $clean('sender_address', 400), 'place' => $clean('place', 80)], $clean('deceased', 120));
+    if ($path !== null) {
+        emergencySendLetterZip($path);
+        exit;
     }
 }
 if (!$settings) {
@@ -74,6 +89,11 @@ if (!$settings) {
       $userId = (int) $settings['user_id'];
       $GLOBALS['userId'] = $userId;
       $main_currency = $owner['main_currency'];
+      $dossierScope = $settings['_scope']; // the second person may only see a part
+      if ($dossierScope === 'all') {
+        $letterForm = ['action' => 'emergency_access.php', 'hidden' => ['token' => $token, 'code' => (string) ($_POST['code'] ?? ''), 'action' => 'letters'],
+          'deceased' => trim(($owner['firstname'] ?? '') . ' ' . ($owner['lastname'] ?? ''))];
+      }
       require 'includes/getdbkeys.php';
       ?>
       <div class="no-print"><button class="button thin" onclick="window.print()"><i class="fa-solid fa-print"></i> <?= translate('report_print', $i18n) ?></button></div>

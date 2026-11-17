@@ -31,3 +31,5 @@ plan.html
 # Windows thumbnail caches
 Thumbs.db
 RELEASE
+
+node_modules/

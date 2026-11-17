@@ -39,6 +39,20 @@ $deadmanMailReady = !empty($deadmanAdmin['smtp_address']) || (bool) $db->querySi
       <input type="password" name="access_code" minlength="8" maxlength="100" autocomplete="new-password"
         placeholder="<?= !empty($deadman['access_code_hash']) ? '••••••••  (' . translate('deadman_code_keep', $i18n) . ')' : '' ?>"></label>
     <p class="settings-notes"><?= translate('deadman_code_info', $i18n) ?></p>
+    <fieldset class="deadman-second">
+      <legend><?= translate('deadman_second_person', $i18n) ?></legend>
+      <label><?= translate('deadman_trusted_name', $i18n) ?><input type="text" name="trusted2_name" maxlength="100" value="<?= htmlspecialchars($deadman['trusted2_name'] ?? '') ?>"></label>
+      <label><?= translate('deadman_trusted_email', $i18n) ?><input type="email" name="trusted2_email" maxlength="200" value="<?= htmlspecialchars($deadman['trusted2_email'] ?? '') ?>"></label>
+      <label><?= translate('deadman_scope', $i18n) ?>
+        <select name="trusted2_scope">
+          <option value="limited" <?= ($deadman['trusted2_scope'] ?? 'limited') !== 'all' ? 'selected' : '' ?>><?= translate('deadman_scope_limited', $i18n) ?></option>
+          <option value="all" <?= ($deadman['trusted2_scope'] ?? '') === 'all' ? 'selected' : '' ?>><?= translate('deadman_scope_all', $i18n) ?></option>
+        </select></label>
+      <label><?= translate('deadman_code', $i18n) ?>
+        <input type="password" name="access_code2" minlength="8" maxlength="100" autocomplete="new-password"
+          placeholder="<?= !empty($deadman['access_code2_hash']) ? '••••••••  (' . translate('deadman_code_keep', $i18n) . ')' : '' ?>"></label>
+      <p class="settings-notes"><?= translate('deadman_second_info', $i18n) ?></p>
+    </fieldset>
     <div class="buttons"><input type="submit" class="thin" value="<?= translate('save', $i18n) ?>"></div>
   </form>
 </details>

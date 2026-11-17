@@ -75,6 +75,9 @@ $categories = array_values(array_unique(array_filter(array_column($items, 'categ
         <td><strong><?= htmlspecialchars($item['name']) ?></strong>
           <?= $item['category'] !== '' ? '<br><small>' . htmlspecialchars($item['category']) . '</small>' : '' ?>
           <?= $item['serial_number'] !== '' ? '<br><small>' . translate('inventory_serial', $i18n) . ': ' . htmlspecialchars($item['serial_number']) . '</small>' : '' ?>
+          <?php if (!empty($item['warranty_until'])): $warrantyLeft = (strtotime($item['warranty_until']) - strtotime(date('Y-m-d'))) / 86400; ?>
+            <br><span class="deadline-badge <?= $warrantyLeft < 0 ? 'cancelled' : ($warrantyLeft <= 60 ? 'warning' : '') ?>"><i class="fa-solid fa-shield"></i> <?= sprintf(translate($warrantyLeft < 0 ? 'warranty_expired' : 'warranty_badge', $i18n), date('d.m.Y', strtotime($item['warranty_until']))) ?></span>
+          <?php endif; ?>
           <?= $item['files'] ? ' <i class="fa-solid fa-paperclip" title="' . translate('item_files', $i18n) . '"></i>' : '' ?></td>
         <td><?= htmlspecialchars($item['location']) ?></td>
         <td><?= $item['purchase_date'] ? date('d.m.Y', strtotime($item['purchase_date'])) : '–' ?></td>
@@ -105,6 +108,7 @@ $categories = array_values(array_unique(array_filter(array_column($items, 'categ
         <label><?= translate('inventory_price', $i18n) ?><input type="number" name="price" step="0.01" min="0"></label>
         <label><?= translate('inventory_lifetime', $i18n) ?><input type="number" name="lifetime_years" min="0" max="100"></label>
         <label><?= translate('inventory_serial', $i18n) ?><input type="text" name="serial_number" maxlength="100"></label>
+        <label><?= translate('warranty_until', $i18n) ?><input type="date" name="warranty_until"></label>
         <label><?= translate('notes', $i18n) ?><input type="text" name="notes" maxlength="1000"></label>
         <?php $filesType = 'inventory'; include 'includes/files_panel.php'; ?>
         <div class="buttons">

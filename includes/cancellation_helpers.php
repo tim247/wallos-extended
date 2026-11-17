@@ -13,6 +13,9 @@
  */
 function getNextCancellationDeadline(array $item, ?string $today = null): ?array
 {
+    if (isset($item['cancel_mode']) && $item['cancel_mode'] !== 'cancellable') {
+        return null; // health insurance (switch only) or not cancellable at all
+    }
     $today = $today ?? date('Y-m-d');
 
     $noticeMonths = (int) ($item['notice_period_months'] ?? 0);

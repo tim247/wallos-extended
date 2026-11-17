@@ -398,3 +398,241 @@ wallos_test('base load, tariff switch hints and the last-month comparison', func
     assert_same(-10.0, $cmp['change'], '10 % less than a year before');
     assert_same(null, lastMonthComparison([$seg('2025-12-01', 40, 10.0)], ['2026-01' => 100.0], '2026-02-15'), 'no reading after the month ended');
 });
+
+wallos_test('the Bausparvertrag replaces the loan at the end of the loan term', function () {
+    require_once WALLOS_ROOT . '/includes/financing_calculations.php';
+    $loan = ['principal' => 100000, 'interest_rate' => 3, 'monthly_rate' => 0, 'start_date' => '2024-01-15',
+        'term_months' => 120, 'interest_only_months' => 0, 'loan_type' => 'interest_only'];
+    assert_same('2034-01-15', loanTermEnd($loan), 'start + 120 months');
+    $schedule = computeLoanSchedule($loan, [], '2025-01-01', [], [], loanTermEnd($loan));
+    assert_same('2034-01-15', $schedule['redeemed_on'], 'redeemed at the end of the term');
+    assert_true(!empty(end($schedule['rows'])['redemption']), 'the last row is the redemption');
+
+    $bauspar = ['principal' => 100000, 'interest_rate' => 0.1, 'monthly_rate' => 300, 'start_date' => '2024-01-15',
+        'bausparen_min_savings_pct' => 40, 'bausparen_loan_rate' => 2, 'bausparen_loan_monthly' => 600];
+    $byQuota = computeBausparSchedule($bauspar, '2025-01-01');
+    $byTerm = computeBausparSchedule($bauspar, '2025-01-01', '2034-01-15');
+    assert_same('2034-01-15', $byTerm['payout_date'], 'payout on the term end');
+    assert_true($byQuota['payout_date'] !== $byTerm['payout_date'], 'not the quota date any more');
+    assert_same(120, count($byTerm['savings_rows']), 'saving until then');
+    assert_true(abs($byTerm['loan_amount'] - (100000 - $byTerm['accumulated_savings'])) < 0.01, 'loan = sum - savings at payout');
+});
+
+wallos_test('an announced price applies on its date, dated in the price history', function () {
+    require_once WALLOS_ROOT . '/includes/pending_prices.php';
+    $db = wallos_test_open_database();
+    require WALLOS_ROOT . '/migrations/000078.php';
+    $user = extension_insert($db, "INSERT INTO user (username, email, password, main_currency) VALUES ('p', 'p@example.com', 'x', 1)");
+    $id = extension_insert($db, "INSERT INTO insurances (user_id, name, price, currency_id, cycle, frequency, pending_price, pending_price_date)
+        VALUES ($user, 'Hausrat', 10, 1, 3, 1, 12.5, '2027-01-01')");
+    assert_same('2027-01-01', announcedPriceIncreases($db, $user, '2026-11-17')[0]['changed_at'], 'announced on the dashboard');
+    assert_same(0, applyPendingPrices($db, $user, '2026-12-31'), 'not yet due');
+    assert_same(10.0, $db->querySingle("SELECT price FROM insurances WHERE id = $id"), 'old price until then');
+    assert_same(1, applyPendingPrices($db, $user, '2027-01-03'), 'due - applied a few days late');
+    assert_same(12.5, $db->querySingle("SELECT price FROM insurances WHERE id = $id"), 'new price');
+    assert_same(null, $db->querySingle("SELECT pending_price FROM insurances WHERE id = $id"), 'announcement cleared');
+    assert_same('2027-01-01', $db->querySingle("SELECT changed_at FROM price_history WHERE item_type = 'insurance' AND item_id = $id"), 'history dated on the announced day');
+    assert_same([null, null], pendingPriceFromRequest(['pending_price' => '12', 'pending_price_date' => '']), 'a price without a date is ignored');
+});
+
+wallos_test('health insurance has no cancellation deadline, a normal one keeps it', function () {
+    require_once WALLOS_ROOT . '/includes/cancellation_helpers.php';
+    $item = ['start_date' => '2024-01-01', 'initial_term_months' => 12, 'renewal_term_months' => 12, 'auto_renews' => 1, 'notice_period_months' => 3];
+    assert_true(getNextCancellationDeadline($item + ['cancel_mode' => 'cancellable'], '2026-06-01') !== null, 'cancellable: deadline');
+    assert_same(null, getNextCancellationDeadline($item + ['cancel_mode' => 'switch_only'], '2026-06-01'), 'switch only: none');
+    assert_same(null, getNextCancellationDeadline($item + ['cancel_mode' => 'not_cancellable'], '2026-06-01'), 'not cancellable: none');
+    assert_true(getNextCancellationDeadline($item, '2026-06-01') !== null, 'contracts (no column) unchanged');
+    $db = wallos_test_open_database();
+    $db->exec("INSERT INTO insurances (user_id, name, price, currency_id, cycle, frequency, insurance_type) VALUES (1, 'TK', 900, 1, 3, 1, 'health')");
+    $db->exec("ALTER TABLE insurances DROP COLUMN cancel_mode");
+    require WALLOS_ROOT . '/migrations/000079.php';
+    assert_same('switch_only', $db->querySingle("SELECT cancel_mode FROM insurances WHERE name = 'TK'"), 'existing health insurance becomes switch only');
+});
+
+wallos_test('an insurance with a 6-year first term and 12-month renewals', function () {
+    require_once WALLOS_ROOT . '/includes/cancellation_helpers.php';
+    $item = ['start_date' => '2022-01-01', 'initial_term_months' => 72, 'renewal_term_months' => 12, 'auto_renews' => 1, 'notice_period_months' => 3, 'cancel_mode' => 'cancellable'];
+    $first = getNextCancellationDeadline($item, '2026-11-17');
+    assert_same('2028-01-01', $first['term_end'], 'first term ends after 6 years');
+    assert_same('2027-10-01', $first['deadline'], '3 months before');
+    $later = getNextCancellationDeadline($item, '2028-03-01');
+    assert_same('2029-01-01', $later['term_end'], 'then yearly');
+});
+
+wallos_test('insurance insights: premiums paid, balance, development, gaps, reminders, documents', function () {
+    require_once WALLOS_ROOT . '/includes/insurance_insights.php';
+    $ins = ['start_date' => '2024-01-01', 'price' => 120.0, 'cycle' => 4, 'frequency' => 1, 'payer_user_id' => 1, 'insurance_type' => 'household', 'insured_persons' => ''];
+    $history = [['id' => 1, 'old_price' => 100.0, 'new_price' => 120.0, 'changed_at' => '2025-01-01']];
+    $periods = insurancePricePeriods($ins, $history);
+    assert_same(100.0, $periods[0]['price'], 'the first year at the old price');
+    $paid = insurancePremiumsBetween($ins, $periods, '2024-01-01', '2026-01-01');
+    assert_true(abs($paid - 220.0) < 1.5, 'two years: 100 + 120 (' . $paid . ')');
+    $balance = insuranceBalance($ins, $periods, [['status' => 'settled', 'amount_paid' => 300], ['status' => 'reported', 'amount_paid' => 0]], '2026-01-01');
+    assert_same(300.0, $balance['benefits'], 'only settled claims count');
+    assert_same(1, $balance['open'], 'one open claim');
+    $dev = premiumDevelopment($ins, $periods, '2025-06-01');
+    assert_same(20.0, $dev[2025]['change'], '+20 % in 2025');
+    assert_same(2.2, $dev[2024]['inflation'], 'inflation of 2024');
+
+    $health = ['insurance_type' => 'health', 'insured_persons' => '1,2', 'payer_user_id' => 1];
+    $liability = ['insurance_type' => 'liability', 'insured_persons' => '', 'payer_user_id' => 1];
+    assert_same([3 => ['health']], coverageGaps([1, 2, 3], [$health, $liability]), 'member 3 lacks health insurance, liability covers all');
+    assert_same([1 => ['liability'], 2 => ['health', 'liability']], coverageGaps([1, 2], [['insurance_type' => 'health', 'insured_persons' => '', 'payer_user_id' => 1]]), 'no liability at all');
+
+    assert_same(13700.0, householdUnderinsurance($ins + ['coverage_amount' => 50000], 98), '98 m² need 63,700 €');
+    assert_same(null, householdUnderinsurance($ins + ['coverage_amount' => 70000], 98), 'enough');
+    assert_true(insuranceReviewDue(['last_review' => null, 'start_date' => '2023-01-01'], '2026-01-01'), 'never checked, older than 2 years');
+    assert_true(!insuranceReviewDue(['last_review' => '2025-03-01', 'start_date' => '2010-01-01'], '2026-01-01'), 'checked last year');
+    assert_true(motorSwitchReminderDue(['insurance_type' => 'car', 'kfz_reminded_year' => 2025], '2026-10-15'), 'October: compare motor insurance');
+    assert_true(!motorSwitchReminderDue(['insurance_type' => 'car', 'kfz_reminded_year' => 2026], '2026-10-15'), 'once a year');
+    assert_same('tax_basic_provision', insuranceTaxCategory('health'), 'health insurance is basic provision');
+
+    $data = extractPolicyData("Versicherungsschein-Nr.: HR-4711/22\nVersicherungsbeginn: 01.03.2024\nVertragslaufzeit 3 Jahre\nJahresbeitrag 189,40 EUR");
+    assert_same('HR-4711/22', $data['policy_number'], 'policy number');
+    assert_same(189.4, $data['price'], 'premium');
+    assert_same('2024-03-01', $data['start_date'], 'start');
+    assert_same(36, $data['initial_term_months'], 'term');
+    $pdf = "%PDF-1.4\n1 0 obj<</Length 9 /Filter /FlateDecode>>stream\n" . gzcompress("BT (Beitrag 12,50 EUR) Tj ET") . "\nendstream\nendobj";
+    assert_true(str_contains(pdfPlainText($pdf), 'Beitrag 12,50 EUR'), 'text from a compressed PDF stream');
+});
+
+wallos_test('report a claim or pay it yourself, and the provision check per earner', function () {
+    require_once WALLOS_ROOT . '/includes/insurance_insights.php';
+    $small = claimWorthReporting(400, 300, 150);
+    assert_same(100.0, $small['payout'], 'after the deductible');
+    assert_same(450.0, $small['break_even'], 'deductible + refund');
+    assert_true(!$small['worth_it'], 'a 400 € claim does not pay off');
+    assert_true(claimWorthReporting(2000, 300, 150)['worth_it'], 'a 2,000 € claim does');
+
+    $bu = ['insurance_type' => 'disability', 'insured_persons' => '1', 'payer_user_id' => 1, 'coverage_amount' => 1200];
+    $gaps = provisionGaps([1 => 2500, 2 => 1800], [$bu], 2);
+    $keys = array_map(fn($g) => $g['key'] . ':' . $g['member'], $gaps);
+    assert_same(['provision_bu_low:1', 'provision_no_life:1', 'provision_no_bu:2'], $keys, 'BU too low and no life insurance for the main earner, no BU for the second');
+    assert_same(550.0, $gaps[0]['value'], '70 % of 2,500 = 1,750, 1,200 covered');
+    assert_same([], provisionGaps([1 => 0], [], 1), 'no income, no gap');
+});
+
+wallos_test('planned rate change, extra repayment allowance and the loans overview', function () {
+    require_once WALLOS_ROOT . '/includes/financing_calculations.php';
+    $loan = ['id' => 1, 'name' => 'Haus', 'principal' => 100000, 'interest_rate' => 3, 'monthly_rate' => 500, 'start_date' => '2025-01-01', 'loan_type' => 'annuity'];
+    $plain = computeLoanSchedule($loan, [], '2025-01-01');
+    $changed = computeLoanSchedule($loan + ['rate_changes' => [['valid_from' => '2027-01-01', 'monthly_rate' => 800]]], [], '2025-01-01');
+    assert_same(500.0, $changed['rows'][0]['payment'], 'old rate before the change');
+    $row2027 = current(array_filter($changed['rows'], fn($r) => $r['date'] === '2027-02-01'));
+    assert_same(800.0, $row2027['payment'], 'new rate from 2027');
+    assert_true($changed['payoff_date'] < $plain['payoff_date'], 'paid off earlier');
+
+    $allowance = extraRepaymentAllowance($loan + ['extra_allowance_pct' => 5], [['payment_date' => '2026-03-01', 'amount' => 2000], ['payment_date' => '2025-03-01', 'amount' => 900]], 2026);
+    assert_same(5000.0, $allowance['allowed'], '5 % of 100,000');
+    assert_same(3000.0, $allowance['left'], '2,000 used this year');
+    assert_same(null, extraRepaymentAllowance($loan, [], 2026), 'no allowance set');
+
+    $car = ['id' => 2, 'name' => 'Auto', 'interest_rate' => 6, 'monthly_rate' => 300, 'loan_type' => 'annuity', 'schedule' => ['error' => null, 'balance_as_of' => 10000, 'payoff_date' => '2028-01-01']];
+    $house = $loan + ['schedule' => ['error' => null, 'balance_as_of' => 90000, 'payoff_date' => '2045-01-01']];
+    $o = loansOverview([$house, $car]);
+    assert_same(100000.0, $o['debt'], 'total debt');
+    assert_same(3.3, $o['interest'], 'weighted interest');
+    assert_same('2045-01-01', $o['debt_free'], 'debt-free with the last loan');
+    assert_same('Auto', $o['priority'][0]['name'], 'highest interest first');
+});
+
+wallos_test('emergency dossier: account numbers masked, reviews due, checklist from the data', function () {
+    require_once WALLOS_ROOT . '/includes/emergency_entries.php';
+    assert_same('Girokonto …3000', emergencyMaskNumbers('Girokonto DE89 3704 0044 0532 0130 00'), 'IBAN keeps the last 4');
+    assert_same('Karte …1234', emergencyMaskNumbers('Karte 4111-1111-1111-1234'), 'card number too');
+    assert_same('Tel. 0171 1234567', emergencyMaskNumbers('Tel. 0171 1234567'), 'a phone number stays');
+    assert_true(emergencyReviewDue('2026-01-01', null, '2026-08-01'), 'checked more than 6 months ago');
+    assert_true(!emergencyReviewDue(null, null, '2026-08-01'), 'nothing entered yet');
+    assert_same(1, count(emergencyDirectivesDue([['updated_at' => '2023-05-01'], ['updated_at' => '2026-01-01']], '2026-06-01')), 'one directive older than 2 years');
+    $i18n = [];
+    $list = emergencyChecklist([['name' => 'Risikoleben', 'insurance_type' => 'life'], ['name' => 'Hausrat', 'insurance_type' => 'household']], [['name' => 'Handy']], [['name' => 'Netflix']], [], $i18n);
+    assert_same(['Risikoleben'], $list['now'][2]['items'], 'life insurance first');
+    assert_same(['Hausrat'], $list['weeks'][2]['items'], 'other insurances later');
+    assert_same(['Netflix'], $list['weeks'][4]['items'], 'subscriptions to cancel');
+});
+
+wallos_test('the second trusted person has an own link with a limited scope', function () {
+    require_once WALLOS_ROOT . '/includes/deadman.php';
+    $db = wallos_test_open_database();
+    require WALLOS_ROOT . '/migrations/000085.php';
+    $user = extension_insert($db, "INSERT INTO user (username, email, password, main_currency, last_seen) VALUES ('d2', 'd2@example.com', 'x', 1, '2026-01-01')");
+    $first = str_repeat('a1', 32);
+    $second = str_repeat('b2', 32);
+    $db->exec("INSERT INTO deadman_settings (user_id, enabled, days, trusted_email, access_code_hash, triggered_at, access_token, token_expires,
+        trusted2_email, trusted2_scope, access_code2_hash, access_token2, token2_expires)
+        VALUES ($user, 1, 30, 'a@example.com', 'h', '2026-02-01', '$first', date('now', '+30 days'), 'b@example.com', 'limited', 'h2', '$second', date('now', '+30 days'))");
+    assert_same('all', deadmanByToken($db, $first)['_scope'], 'first person sees everything');
+    $row = deadmanByToken($db, $second);
+    assert_same(2, $row['_slot'], 'second link');
+    assert_same('limited', $row['_scope'], 'limited scope');
+    deadmanTouch($db, $user, '2026-01-01');
+    assert_same(null, deadmanByToken($db, $second), 'activity withdraws the second link too');
+});
+
+wallos_test('task inbox: done hides until a new occurrence, later for a week, kinds can be switched off', function () {
+    require_once WALLOS_ROOT . '/includes/task_inbox.php';
+    $tasks = [
+        ['key' => 'trial:1:2026-12-01', 'kind' => 'deadline', 'date' => '2026-12-01'],
+        ['key' => 'warranty:2:2026-12-10', 'kind' => 'warranty', 'date' => '2026-12-10'],
+        ['key' => 'review:3:2024-01-01', 'kind' => 'insurance_review', 'date' => '2026-11-20'],
+    ];
+    $states = [
+        'trial:1:2026-12-01' => ['status' => 'done', 'until' => null],
+        'warranty:2:2026-12-10' => ['status' => 'later', 'until' => '2026-11-27'],
+    ];
+    assert_same(['review:3:2024-01-01'], array_column(filterTasks($tasks, $states, '2026-11-20'), 'key'), 'done and later hidden');
+    assert_same(['warranty:2:2026-12-10', 'review:3:2024-01-01'], array_column(filterTasks($tasks, $states, '2026-11-27'), 'key'), 'later is back after a week');
+    $next = [['key' => 'trial:1:2027-03-01', 'kind' => 'deadline', 'date' => '2027-03-01']];
+    assert_same(1, count(filterTasks($next, $states, '2027-02-20')), 'a new trial end shows again');
+
+    $db = wallos_test_open_database();
+    require WALLOS_ROOT . '/migrations/000086.php';
+    assert_true(notificationEnabled($db, 77, 'warranty'), 'on by default');
+    $db->exec("INSERT OR REPLACE INTO notification_prefs (user_id, kind, enabled) VALUES (77, 'warranty', 0)");
+    assert_true(!notificationEnabled($db, 77, 'warranty'), 'switched off');
+});
+
+wallos_test('cancellation package: one PDF per contract, insurance and subscription, building blocks left out', function () {
+    require_once WALLOS_ROOT . '/includes/emergency_letters.php';
+    $db = wallos_test_open_database();
+    foreach (['000079', '000080', '000081', '000082', '000083'] as $m) {
+        require WALLOS_ROOT . "/migrations/$m.php";
+    }
+    $u = extension_insert($db, "INSERT INTO user (username, email, password, main_currency) VALUES ('pk', 'pk@example.com', 'x', 1)");
+    $db->exec("INSERT INTO contracts (user_id, name, provider, price, currency_id, cycle, frequency, payer_user_id) VALUES ($u, 'Handy', 'Telekom', 30, 1, 3, 1, 1)");
+    $policy = extension_insert($db, "INSERT INTO insurances (user_id, name, insurer, price, currency_id, cycle, frequency) VALUES ($u, 'Haftpflicht', 'HUK', 5, 1, 3, 1)");
+    $db->exec("INSERT INTO insurances (user_id, name, insurer, price, currency_id, cycle, frequency, parent_id) VALUES ($u, 'Hausrat (Baustein)', 'HUK', 5, 1, 3, 1, $policy)");
+    $db->exec("INSERT INTO subscriptions (name, price, currency_id, next_payment, cycle, frequency, user_id, payer_user_id, payment_method_id, inactive) VALUES ('Netflix', 13, 1, date('now'), 3, 1, $u, 1, 1, 0)");
+    assert_same(['Handy', 'Haftpflicht', 'Netflix'], array_column(emergencyLetterItems($db, $u), 'name'), 'block of the policy left out');
+    $zipPath = emergencyLetterZip($db, $u, ['name' => 'Anna Muster', 'address' => "Weg 1\n12345 Ort", 'place' => 'Ort'], 'Max Muster');
+    $zip = new ZipArchive();
+    $zip->open($zipPath);
+    assert_same(3, $zip->numFiles, 'three letters');
+    $pdf = $zip->getFromIndex(0);
+    assert_true(str_starts_with($pdf, '%PDF'), 'a PDF');
+    assert_true(str_contains($pdf, 'Max Muster'), 'names the deceased');
+    $zip->close();
+    unlink($zipPath);
+});
+
+wallos_test('contract types: details per type, statutory terms, leasing mileage, switch calculator', function () {
+    require_once WALLOS_ROOT . '/includes/contract_types.php';
+    $details = contractDetailsFromRequest('leasing', ['detail_km_per_year' => '10000', 'detail_return_date' => '2027-01-01', 'detail_bandwidth' => '100', 'detail_extra_km_cost' => '0,12']);
+    assert_same(['km_per_year' => 10000.0, 'extra_km_cost' => 0.12, 'return_date' => '2027-01-01'], $details, 'only leasing fields, numbers parsed');
+    assert_same(['bandwidth' => '250 Mbit'], contractDetails(['contract_type' => 'internet', 'details' => json_encode(['bandwidth' => '250 Mbit', 'cold_rent' => 900])]), 'foreign fields dropped');
+
+    assert_same(['renewal' => 1, 'notice' => 1], statutoryContractTerms('mobile', '2023-05-01'), 'consumer contract after March 2022');
+    assert_same(null, statutoryContractTerms('mobile', '2021-05-01'), 'older contract');
+    assert_same(null, statutoryContractTerms('rent', '2024-01-01'), 'rent has its own rules');
+
+    $km = leasingMileage(['km_per_year' => 10000, 'km_current' => 15000, 'km_date' => '2025-01-01', 'return_date' => '2027-01-01', 'extra_km_cost' => 0.1], '2024-01-01', '2025-01-01');
+    // 2024 is a leap year, so the figures are about, not exactly, 45,000 / 15,000.
+    assert_true(abs($km['expected'] - 45000) < 200, '15,000 km in the first year -> about 45,000 after three');
+    assert_true(abs($km['extra_km'] - 15000) < 200, 'about 30,000 allowed');
+    assert_true(abs($km['extra_cost'] - 1500) < 20, 'about 15,000 × 0.10 €');
+
+    $switch = contractSwitchComparison(40, 30, 100, 20, 24);
+    assert_same(960.0, $switch['current'], 'current over 24 months');
+    assert_same(640.0, $switch['offer'], 'offer minus bonus plus setup fee');
+    assert_same(320.0, $switch['saving'], 'saving');
+});
