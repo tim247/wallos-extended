@@ -41,6 +41,8 @@ for ($d = strtotime('-400 days'); $d <= time(); $d += 7 * 86400) {
     $db->exec(sprintf("INSERT OR IGNORE INTO meter_readings (meter_id, user_id, reading_date, reading_value) VALUES (%d, %d, '%s', %.1f)", $meter, $u, date('Y-m-d', $d), $value));
     $value += 60;
 }
+$db->exec("INSERT INTO incomes (user_id, name, amount, currency_id) VALUES ($u, 'Gehalt', 3200, $c)");
+$db->exec("INSERT INTO price_history (user_id, item_type, item_id, old_price, new_price, changed_at) VALUES ($u, 'contract', (SELECT id FROM contracts WHERE user_id = $u LIMIT 1), 18, 21, '2023-04-01')");
 $db->exec("INSERT INTO vehicles (user_id, name, plate, insurance_id, contract_id) VALUES ($u, 'Familienauto mit langem Namen', 'M-AB 1234', (SELECT id FROM insurances WHERE user_id = $u AND insurance_type = 'car'), (SELECT id FROM contracts WHERE user_id = $u LIMIT 1))");
 $vehicle = $db->lastInsertRowID();
 foreach ([[60, 40, 70, 10000], [30, 35, 63, 10600], [1, 38, 69, 11200]] as [$ago, $l, $cost, $km]) {

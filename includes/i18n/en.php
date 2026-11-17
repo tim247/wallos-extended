@@ -1615,6 +1615,17 @@ $i18n = [
     'child_exam_toggle' => 'Mark as done',
     'child_no_documents' => 'No ID documents - add them under Deadlines & maintenance with holder "%s".',
     'task_child_exam' => '%1$s due for %2$s',
+    'fixed_cost_ratio' => 'Fixed-cost ratio: %s %% of income',
+    'fixed_cost_ratio_green' => 'healthy (rule of thumb: at most 50 %)',
+    'fixed_cost_ratio_yellow' => 'tight - little room for savings and surprises',
+    'fixed_cost_ratio_red' => 'critical - fixed costs take almost all income',
+    'price_trend' => 'Price trend and inflation',
+    'price_trend_summary' => 'Since %1$s: your fixed costs were %2$s a month at their first known prices, now %3$s (%4$s %%). Inflation over the same time: %5$s %%.',
+    'price_trend_since' => 'Since',
+    'price_trend_then_now' => 'Then → now (month)',
+    'price_trend_change' => 'Change',
+    'price_trend_inflation' => 'Inflation',
+    'price_trend_note' => 'Marked: rose faster than inflation. Based on the German consumer price index (yearly average).',
 ];
 
 

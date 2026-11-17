@@ -7611,3 +7611,10 @@ input.below-break-even {
 .input-unit { position: relative; display: block; }
 .input-unit:not([data-unit=""])::after { content: attr(data-unit); position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-color); opacity: .6; pointer-events: none; font-size: 14px; }
 .input-unit:not([data-unit=""]) > input { padding-right: 64px; }
+
+/* Fixed-cost ratio on the finances page: a small traffic light before the text. */
+.fixed-cost-ratio { display: flex; align-items: center; gap: 8px; }
+.traffic-light { flex: none; width: 14px; height: 14px; border-radius: 50%; }
+.traffic-light.green { background: #16a34a; }
+.traffic-light.yellow { background: #f59e0b; }
+.traffic-light.red { background: #dc2626; }

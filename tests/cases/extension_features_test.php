@@ -666,3 +666,27 @@ wallos_test('children: U check-ups are due in their window, long-gone ones are n
     assert_same([], childExams(null, '', '2026-01-01'), 'no birthdate, no check-ups');
     assert_true(readonlyAllows('vehicles.php') && readonlyAllows('children.php'), 'read-only accounts see both pages');
 });
+
+wallos_test('price trend: change since the first known price against inflation', function () {
+    require_once WALLOS_ROOT . '/includes/price_trend.php';
+    $history = [
+        ['item_type' => 'contract', 'item_id' => 1, 'old_price' => 40, 'new_price' => 45, 'changed_at' => '2022-03-01'],
+        ['item_type' => 'contract', 'item_id' => 1, 'old_price' => 45, 'new_price' => 50, 'changed_at' => '2024-03-01'],
+    ];
+    $items = [['type' => 'contract', 'id' => 1, 'name' => 'Strom', 'monthly' => 50.0], ['type' => 'subscription', 'id' => 1, 'name' => 'Abo', 'monthly' => 10.0]];
+    $trend = priceTrend($history, $items, '2025-06-01');
+    assert_same(1, count($trend['items']), 'only items whose price changed are listed');
+    assert_same(25.0, $trend['items'][0]['change'], '40 → 50');
+    assert_same(10.6, $trend['items'][0]['inflation'], 'index 2022 → 2025');
+    assert_same(50.0, $trend['then'], '40 + 10 per month at first prices');
+    assert_same(20.0, $trend['change'], '50 → 60 in total');
+    assert_same(2.0, inflationBetween('2025-01-01', '2026-01-01'), 'after the table: 2 % a year');
+});
+
+wallos_test('fixed-cost ratio: traffic light at 50 and 70 percent of income', function () {
+    require_once WALLOS_ROOT . '/includes/price_trend.php';
+    assert_same(['share' => 50.0, 'light' => 'green'], fixedCostRatio(1500, 3000), 'half');
+    assert_same('yellow', fixedCostRatio(2000, 3000)['light'], 'two thirds');
+    assert_same('red', fixedCostRatio(2400, 3000)['light'], '80 %');
+    assert_same(null, fixedCostRatio(500, 0), 'no income');
+});

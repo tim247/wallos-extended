@@ -1634,6 +1634,17 @@ $i18n = [
     'child_exam_toggle' => 'Als erledigt markieren',
     'child_no_documents' => 'Keine Ausweise hinterlegt – unter „Fristen & Wartung“ als Inhaber „%s“ eintragen.',
     'task_child_exam' => '%1$s für %2$s fällig',
+    'fixed_cost_ratio' => 'Fixkosten-Quote: %s %% des Einkommens',
+    'fixed_cost_ratio_green' => 'gesund (Faustregel: höchstens 50 %)',
+    'fixed_cost_ratio_yellow' => 'knapp – wenig Spielraum für Sparen und Unvorhergesehenes',
+    'fixed_cost_ratio_red' => 'kritisch – die Fixkosten binden fast das ganze Einkommen',
+    'price_trend' => 'Preisentwicklung und Inflation',
+    'price_trend_summary' => 'Seit %1$s: Deine Fixkosten lagen beim ersten bekannten Preis bei %2$s im Monat, jetzt %3$s (%4$s %%). Die Inflation im selben Zeitraum: %5$s %%.',
+    'price_trend_since' => 'Seit',
+    'price_trend_then_now' => 'Damals → heute (Monat)',
+    'price_trend_change' => 'Änderung',
+    'price_trend_inflation' => 'Inflation',
+    'price_trend_note' => 'Markiert: stärker gestiegen als die Inflation. Grundlage ist der Verbraucherpreisindex des Statistischen Bundesamts (Jahresdurchschnitt).',
 ];
 
 

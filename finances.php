@@ -26,6 +26,16 @@ $lineLabels = ['insurance' => 'insurances', 'loan' => 'financing', 'contract' =>
 $cashflow = financeCashflow($db, $userId, $incomes, $costItems, $expenses, (int) date('Y'), (int) date('n'));
 $outlook = financeOutlook($db, $userId, $incomes);
 $people = financePerPerson($db, $userId, $incomes, $costItems, $expenses);
+require_once 'includes/price_trend.php';
+$ratio = fixedCostRatio($fixedMonthly, $incomeMonthly);
+$historyStmt = $db->prepare('SELECT item_type, item_id, old_price, new_price, changed_at FROM price_history WHERE user_id = :userId ORDER BY changed_at, id');
+$historyStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$historyResult = $historyStmt->execute();
+$history = [];
+while ($historyRow = $historyResult->fetchArray(SQLITE3_ASSOC)) {
+  $history[] = $historyRow;
+}
+$trend = priceTrend($history, $costItems, date('Y-m-d'));
 $loanMonthly = array_sum(array_column(array_filter($costItems, fn($item) => $item['type'] === 'loan'), 'monthly'));
 
 $members = [];
@@ -57,6 +67,10 @@ $actions = function (string $kind, array $row) use ($readOnlyView): string {
     <div class="statistic"><span><?= $fmt($savingsMonthly) ?></span><div class="title"><?= translate('savings_monthly', $i18n) ?></div></div>
     <div class="statistic highlight <?= $left < 0 ? 'negative' : '' ?>"><span><?= $fmt($left) ?></span><div class="title"><?= translate('left_monthly', $i18n) ?></div></div>
   </div>
+  <?php if ($ratio): ?>
+    <p class="fixed-cost-ratio"><span class="traffic-light <?= $ratio['light'] ?>" aria-hidden="true"></span>
+      <?= sprintf(translate('fixed_cost_ratio', $i18n), number_format($ratio['share'], 1, ',', '.')) ?> – <?= translate('fixed_cost_ratio_' . $ratio['light'], $i18n) ?></p>
+  <?php endif; ?>
 
   <?php if ($breakdown): ?>
     <h3><i class="fa-solid fa-scale-balanced"></i> <?= translate('budget_breakdown', $i18n) ?></h3>
@@ -74,6 +88,21 @@ $actions = function (string $kind, array $row) use ($readOnlyView): string {
       <tr class="<?= $left < 0 ? 'warning' : '' ?>"><td><strong><?= translate('left_monthly', $i18n) ?></strong></td><td><strong><?= $fmt($left) ?></strong></td>
         <td><?= $incomeMonthly > 0 ? '<small>' . number_format($left / $incomeMonthly * 100, 1, ',', '.') . ' %</small>' : '' ?></td></tr>
     </table>
+  <?php endif; ?>
+
+  <?php if ($trend['items']): ?>
+    <h3><i class="fa-solid fa-arrow-trend-up"></i> <?= translate('price_trend', $i18n) ?></h3>
+    <p class="settings-notes"><?= sprintf(translate('price_trend_summary', $i18n), date('m/Y', strtotime($trend['since'])), $fmt($trend['then']), $fmt($trend['now']),
+      number_format($trend['change'], 1, ',', '.'), number_format($trend['inflation'], 1, ',', '.')) ?></p>
+    <table class="bank-table">
+      <tr><th><?= translate('name', $i18n) ?></th><th><?= translate('price_trend_since', $i18n) ?></th><th><?= translate('price_trend_then_now', $i18n) ?></th><th><?= translate('price_trend_change', $i18n) ?></th><th><?= translate('price_trend_inflation', $i18n) ?></th></tr>
+      <?php foreach ($trend['items'] as $item): ?>
+        <tr class="<?= $item['change'] > $item['inflation'] ? 'warning' : '' ?>"><td><?= $item['name'] ?> <small>· <?= translate($lineLabels[$item['type']] ?? $item['type'], $i18n) ?></small></td>
+          <td><?= date('m/Y', strtotime($item['since'])) ?></td><td><?= $fmt($item['then']) ?> → <?= $fmt($item['now']) ?></td>
+          <td><?= ($item['change'] > 0 ? '+' : '') . number_format($item['change'], 1, ',', '.') ?> %</td><td><?= number_format($item['inflation'], 1, ',', '.') ?> %</td></tr>
+      <?php endforeach; ?>
+    </table>
+    <p class="settings-notes"><?= translate('price_trend_note', $i18n) ?></p>
   <?php endif; ?>
 
   <h3><i class="fa-solid fa-sack-dollar"></i> <?= translate('incomes', $i18n) ?></h3>
