@@ -12,7 +12,7 @@ const failures = [];
 const check = (ok, message) => { if (!ok) failures.push(message); console.log(`${ok ? 'ok  ' : 'FAIL'} ${message}`); };
 
 const PAGES = ['index.php', 'subscriptions.php', 'contracts.php', 'insurance.php', 'financing.php', 'consumption.php',
-  'calendar.php', 'yearly.php', 'stats.php', 'finances.php', 'report.php', 'wrapped.php', 'reminders.php', 'inventory.php',
+  'calendar.php', 'yearly.php', 'stats.php', 'finances.php', 'report.php', 'wrapped.php', 'reminders.php', 'inventory.php', 'vehicles.php', 'children.php',
   'emergency.php', 'tasks.php', 'person.php', 'annual_review.php', 'quick.php', 'bankimport.php', 'import.php',
   'history.php', 'settings.php', 'profile.php', 'admin.php', 'help.php', 'about.php'];
 

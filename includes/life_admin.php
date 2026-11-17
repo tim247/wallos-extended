@@ -11,6 +11,7 @@ const REMINDER_CATEGORIES = [
     'tuev' => ['maintenance', 'fa-car', 24],
     'car_service' => ['maintenance', 'fa-screwdriver-wrench', 12],
     'oil_change' => ['maintenance', 'fa-oil-can', 12],
+    'tires' => ['maintenance', 'fa-circle-dot', 6],
     'gas_check' => ['maintenance', 'fa-fire-flame-simple', 24],
     'heating' => ['maintenance', 'fa-temperature-arrow-up', 12],
     'filter' => ['maintenance', 'fa-filter', 6],

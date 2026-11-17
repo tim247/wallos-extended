@@ -9,6 +9,7 @@ require_once __DIR__ . '/insurance_insights.php';
 require_once __DIR__ . '/consumption_insights.php';
 require_once __DIR__ . '/financing_calculations.php';
 require_once __DIR__ . '/emergency_entries.php';
+require_once __DIR__ . '/household_extras.php';
 
 /** Reminder types of Wallos Extended that can be switched off (notification centre). */
 const NOTIFICATION_KINDS = [
@@ -119,6 +120,14 @@ function collectTasks(SQLite3 $db, int $userId, array $i18n, string $today): arr
     foreach ($rows("SELECT id, name, warranty_until FROM inventory WHERE user_id = :userId AND warranty_until IS NOT NULL") as $row) {
         if ($row['warranty_until'] >= $today && $row['warranty_until'] <= $in(30)) {
             $add("warranty:{$row['id']}:{$row['warranty_until']}", 'warranty', 'fa-shield', sprintf($t('task_warranty'), $name($row)), 'inventory.php', $row['warranty_until']);
+        }
+    }
+    // Children: a U check-up whose window is open or opens within 30 days.
+    foreach ($rows("SELECT c.id, c.birthdate, c.exams_done, h.name FROM children c JOIN household h ON h.id = c.household_id AND h.user_id = c.user_id WHERE c.user_id = :userId AND c.birthdate IS NOT NULL") as $row) {
+        foreach (childExams($row['birthdate'], (string) $row['exams_done'], $today) as $code => $exam) {
+            if ($exam['state'] === 'due' || ($exam['state'] === 'upcoming' && $exam['from'] <= $in(30))) {
+                $add("exam:{$row['id']}:$code", 'deadline', 'fa-stethoscope', sprintf($t('task_child_exam'), $code, $name($row)), 'children.php', $exam['to']);
+            }
         }
     }
     // Consumption: unusual use and tariff switch hints.

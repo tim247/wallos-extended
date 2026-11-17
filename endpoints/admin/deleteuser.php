@@ -240,6 +240,9 @@ if ($userId == 1) {
         'DELETE FROM variable_expenses WHERE user_id = :id',
         'DELETE FROM reminders WHERE user_id = :id',
         'DELETE FROM inventory WHERE user_id = :id',
+        'DELETE FROM vehicle_fuel WHERE user_id = :id',
+        'DELETE FROM vehicles WHERE user_id = :id',
+        'DELETE FROM children WHERE user_id = :id',
         'DELETE FROM emergency_notes WHERE user_id = :id',
         'DELETE FROM deadman_settings WHERE user_id = :id',
     ];

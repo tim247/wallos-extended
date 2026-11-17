@@ -210,6 +210,8 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
             'menu_household' => [
               ['reminders.php', 'fa-calendar-check', 'reminders'],
               ['inventory.php', 'fa-boxes-stacked', 'inventory'],
+              ['vehicles.php', 'fa-car', 'vehicles'],
+              ['children.php', 'fa-child', 'children'],
               ['emergency.php', 'fa-kit-medical', 'emergency'],
             ],
             'menu_tools' => [

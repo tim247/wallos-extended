@@ -4,7 +4,9 @@
 
 require_once WALLOS_ROOT . '/includes/import_helpers.php';
 require_once WALLOS_ROOT . '/includes/readonly_account.php';
-// finances.php and household_costs.php load the real price helpers, so they are required inside/n// the tests: cancellation_notifications_test stubs getPriceConverted() when it is not defined yet./n
+// finances.php and household_costs.php load the real price helpers, so they are required inside
+// the tests: cancellation_notifications_test stubs getPriceConverted() when it is not defined yet.
+
 function extension_insert(SQLite3 $db, string $sql): int
 {
     assert_true($db->exec($sql), 'insert: ' . $db->lastErrorMsg());
@@ -635,4 +637,32 @@ wallos_test('contract types: details per type, statutory terms, leasing mileage,
     assert_same(960.0, $switch['current'], 'current over 24 months');
     assert_same(640.0, $switch['offer'], 'offer minus bonus plus setup fee');
     assert_same(320.0, $switch['saving'], 'saving');
+});
+
+wallos_test('vehicles: consumption counts what was filled after the first fill-up', function () {
+    require_once WALLOS_ROOT . '/includes/household_extras.php';
+    $fuel = [
+        ['fuel_date' => '2026-01-01', 'liters' => 40, 'cost' => 70, 'mileage' => 10000],
+        ['fuel_date' => '2026-02-01', 'liters' => 30, 'cost' => 54, 'mileage' => 10500],
+        ['fuel_date' => '2026-03-01', 'liters' => 35, 'cost' => 63, 'mileage' => 11000],
+    ];
+    $stats = vehicleFuelStats($fuel, '2026-06-01');
+    assert_same(11000, $stats['mileage'], 'highest mileage');
+    assert_same(6.5, $stats['per100'], '65 l over 1000 km');
+    assert_same(0.12, $stats['cost_per_km'], '117 € over 1000 km');
+    assert_same(15.58, $stats['monthly'], '187 € in the last year / 12');
+    assert_same(null, vehicleFuelStats([$fuel[0]], '2026-06-01')['per100'], 'one fill-up: no consumption yet');
+});
+
+wallos_test('children: U check-ups are due in their window, long-gone ones are not nagged about', function () {
+    require_once WALLOS_ROOT . '/includes/household_extras.php';
+    $exams = childExams('2025-01-15', 'U2,U3', '2025-07-20');
+    assert_same('done', $exams['U3']['state'], 'ticked off');
+    assert_same('overdue', $exams['U4']['state'], 'U4 window closed in May, not done');
+    assert_same('due', $exams['U5']['state'], 'U5 window 15.07.-15.08.');
+    assert_same('upcoming', $exams['U6']['state'], 'U6 later');
+    assert_same('past', childExams('2015-01-01', '', '2026-01-01')['U9']['state'], 'U9 years ago');
+    assert_same(10, childAge('2015-06-01', '2026-01-01'), 'age in full years');
+    assert_same([], childExams(null, '', '2026-01-01'), 'no birthdate, no check-ups');
+    assert_true(readonlyAllows('vehicles.php') && readonlyAllows('children.php'), 'read-only accounts see both pages');
 });

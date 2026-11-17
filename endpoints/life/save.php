@@ -5,6 +5,7 @@ require_once '../../includes/connect_endpoint.php';
 require_once '../../includes/validate_endpoint.php';
 require_once '../../includes/life_admin.php';
 require_once '../../includes/item_files.php';
+require_once '../../includes/household_extras.php';
 
 header('Content-Type: application/json');
 $data = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -24,6 +25,78 @@ if ($kind === 'notes') {
     $stmt = $db->prepare("INSERT INTO emergency_notes (user_id, notes, updated_at) VALUES (:userId, :notes, datetime('now', 'localtime'))
         ON CONFLICT(user_id) DO UPDATE SET notes = excluded.notes, updated_at = excluded.updated_at");
     $bind($stmt, [':userId' => (int) $userId, ':notes' => mb_substr((string) ($data['notes'] ?? ''), 0, 20000)]);
+    $reply((bool) $stmt->execute());
+}
+
+// Vehicles, their fuel log and children (vehicles.php, children.php).
+$owns = function (string $table, int $rowId) use ($db, $userId, $bind): bool {
+    $stmt = $db->prepare("SELECT 1 FROM $table WHERE id = :id AND user_id = :userId");
+    $bind($stmt, [':id' => $rowId, ':userId' => (int) $userId]);
+    return (bool) $stmt->execute()->fetchArray();
+};
+$money = fn($key) => max(0, round((float) str_replace(',', '.', (string) ($data[$key] ?? 0)), 2));
+if (in_array($kind, ['vehicle', 'fuel', 'child'], true)) {
+    $table = ['vehicle' => 'vehicles', 'fuel' => 'vehicle_fuel', 'child' => 'children'][$kind];
+    if ($action === 'delete') {
+        if ($kind === 'vehicle') {
+            $stmt = $db->prepare('DELETE FROM vehicle_fuel WHERE vehicle_id = :id AND user_id = :userId');
+            $bind($stmt, [':id' => $id, ':userId' => (int) $userId]);
+            $stmt->execute();
+        }
+        $stmt = $db->prepare("DELETE FROM $table WHERE id = :id AND user_id = :userId");
+        $bind($stmt, [':id' => $id, ':userId' => (int) $userId]);
+        $reply((bool) $stmt->execute());
+    }
+    if ($kind === 'child' && $action === 'exam') {
+        // Ticks a check-up off (or back on).
+        $exam = (string) ($data['exam'] ?? '');
+        $stmt = $db->prepare('SELECT exams_done FROM children WHERE id = :id AND user_id = :userId');
+        $bind($stmt, [':id' => $id, ':userId' => (int) $userId]);
+        $row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        if (!$row || !isset(CHILD_EXAMS[$exam])) {
+            $reply(false);
+        }
+        $done = array_filter(explode(',', (string) $row['exams_done']));
+        $done = in_array($exam, $done, true) ? array_diff($done, [$exam]) : [...$done, $exam];
+        $stmt = $db->prepare('UPDATE children SET exams_done = :done WHERE id = :id AND user_id = :userId');
+        $bind($stmt, [':done' => implode(',', $done), ':id' => $id, ':userId' => (int) $userId]);
+        $reply((bool) $stmt->execute());
+    }
+    if ($kind === 'vehicle') {
+        $name = $text('name');
+        $insuranceId = (int) ($data['insurance_id'] ?? 0);
+        $contractId = (int) ($data['contract_id'] ?? 0);
+        $values = [
+            ':name' => $name, ':plate' => $text('plate', 20), ':first' => $date('first_registration'),
+            ':insurance' => $insuranceId > 0 && $owns('insurances', $insuranceId) ? $insuranceId : null,
+            ':contract' => $contractId > 0 && $owns('contracts', $contractId) ? $contractId : null,
+            ':notes' => $text('notes', 1000),
+        ];
+        $columns = 'name = :name, plate = :plate, first_registration = :first, insurance_id = :insurance, contract_id = :contract, notes = :notes';
+        $insert = '(user_id, name, plate, first_registration, insurance_id, contract_id, notes) VALUES (:userId, :name, :plate, :first, :insurance, :contract, :notes)';
+    } elseif ($kind === 'fuel') {
+        $vehicleId = (int) ($data['vehicle_id'] ?? 0);
+        $name = $date('fuel_date') ?? '';
+        if ($name !== '' && !$owns('vehicles', $vehicleId)) {
+            $reply(false);
+        }
+        $values = [':vehicle' => $vehicleId, ':date' => $name, ':liters' => $money('liters'), ':cost' => $money('cost'),
+            ':mileage' => max(0, (int) ($data['mileage'] ?? 0))];
+        $columns = 'vehicle_id = :vehicle, fuel_date = :date, liters = :liters, cost = :cost, mileage = :mileage';
+        $insert = '(user_id, vehicle_id, fuel_date, liters, cost, mileage) VALUES (:userId, :vehicle, :date, :liters, :cost, :mileage)';
+    } else {
+        $memberId = (int) ($data['household_id'] ?? 0);
+        $name = $owns('household', $memberId) ? 'ok' : '';
+        $values = [':member' => $memberId, ':birth' => $date('birthdate'), ':benefit' => $money('child_benefit'),
+            ':maintenance' => $money('maintenance'), ':care' => $money('care_costs'), ':notes' => $text('notes', 1000)];
+        $columns = 'household_id = :member, birthdate = :birth, child_benefit = :benefit, maintenance = :maintenance, care_costs = :care, notes = :notes';
+        $insert = '(user_id, household_id, birthdate, child_benefit, maintenance, care_costs, notes) VALUES (:userId, :member, :birth, :benefit, :maintenance, :care, :notes)';
+    }
+    if ($name === '') {
+        die(json_encode(['success' => false, 'message' => translate('fill_all_fields', $i18n)]));
+    }
+    $stmt = $db->prepare($id > 0 ? "UPDATE $table SET $columns WHERE id = :id AND user_id = :userId" : "INSERT INTO $table $insert");
+    $bind($stmt, $values + [':userId' => (int) $userId] + ($id > 0 ? [':id' => $id] : []));
     $reply((bool) $stmt->execute());
 }
 

@@ -9,7 +9,7 @@
 
 const READONLY_PAGES = ['index.php', 'subscriptions.php', 'contracts.php', 'insurance.php', 'financing.php',
     'consumption.php', 'calendar.php', 'yearly.php', 'report.php', 'stats.php', 'search.php', 'history.php',
-    'finances.php', 'wrapped.php', 'reminders.php', 'inventory.php', 'emergency.php', 'help.php', 'about.php', 'logout.php', 'person.php', 'tasks.php'];
+    'finances.php', 'wrapped.php', 'reminders.php', 'inventory.php', 'vehicles.php', 'children.php', 'emergency.php', 'help.php', 'about.php', 'logout.php', 'person.php', 'tasks.php'];
 
 const READONLY_ENDPOINTS = ['subscriptions/get.php', 'subscription/get.php', 'subscriptions/export.php',
     'subscription/exportcalendar.php', 'contracts/get.php', 'insurance/get.php', 'financing/get.php',

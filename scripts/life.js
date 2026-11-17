@@ -14,8 +14,8 @@ function lifeRequest(body) {
   }).catch(() => showErrorMessage(translate('unknown_error')));
 }
 
-function lifeEdit(item) {
-  const dialog = document.getElementById('life-dialog');
+function lifeEdit(item, dialogId = 'life-dialog') {
+  const dialog = document.getElementById(dialogId);
   const form = dialog.querySelector('form');
   form.reset();
   form.id.value = item.id || '';
