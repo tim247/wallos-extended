@@ -78,17 +78,16 @@ foreach ($byCategory as $category => $names) {
     $savings[] = ['fa-clone', sprintf(translate('savings_duplicate_category', $i18n), $category, implode(', ', $names))];
   }
 }
-$byInsuranceType = [];
-$stmt = $db->prepare("SELECT name, insurance_type FROM insurances WHERE user_id = :userId AND archived = 0 AND insurance_type != 'other'");
+require_once __DIR__ . '/insurance_insights.php';
+$insuranceRows = [];
+$stmt = $db->prepare('SELECT name, insurance_type, insured_persons, payer_user_id FROM insurances WHERE user_id = :userId AND archived = 0');
 $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
 $result = $stmt->execute();
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-  $byInsuranceType[$row['insurance_type']][] = $row['name'];
+  $insuranceRows[] = $row;
 }
-foreach ($byInsuranceType as $type => $names) {
-  if (count($names) > 1) {
-    $savings[] = ['fa-shield-halved', sprintf(translate('savings_duplicate_insurance', $i18n), (isset($i18n['insurance_type_' . $type]) ? translate('insurance_type_' . $type, $i18n) : $type), implode(', ', $names))];
-  }
+foreach (duplicateInsurances($insuranceRows) as $type => $names) {
+  $savings[] = ['fa-shield-halved', sprintf(translate('savings_duplicate_insurance', $i18n), (isset($i18n['insurance_type_' . $type]) ? translate('insurance_type_' . $type, $i18n) : $type), implode(', ', $names))];
 }
 foreach (['contracts', 'insurances'] as $table) {
   $stmt = $db->prepare("SELECT * FROM $table WHERE user_id = :userId AND archived = 0 AND cancellation_status = 0");

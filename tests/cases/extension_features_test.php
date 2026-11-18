@@ -727,3 +727,13 @@ wallos_test('the price trend compares the first known price with the current one
     assert_same(40.0, $trend['items'][0]['change'], '+40 % since 2021');
     assert_same(15.0, $trend['items'][0]['then'], 'then 15');
 });
+
+wallos_test('duplicate insurances only when the same person is covered twice', function () {
+    require_once WALLOS_ROOT . '/includes/insurance_insights.php';
+    $bu = fn($name, $persons, $payer = 1) => ['name' => $name, 'insurance_type' => 'disability', 'insured_persons' => $persons, 'payer_user_id' => $payer];
+    assert_same([], duplicateInsurances([$bu('BU Tim', '1'), $bu('BU Lisa', '2')]), 'two people: no duplicate');
+    assert_same([], duplicateInsurances([$bu('BU Tim', '', 1), $bu('BU Lisa', '', 2)]), 'no persons named: the payer counts');
+    assert_same(['disability' => ['BU alt', 'BU neu']], duplicateInsurances([$bu('BU alt', '1'), $bu('BU neu', '1')]), 'same person twice');
+    $car = fn($name) => ['name' => $name, 'insurance_type' => 'car', 'insured_persons' => '', 'payer_user_id' => 1];
+    assert_same([], duplicateInsurances([$car('Golf'), $car('Polo')]), 'two cars are normal');
+});

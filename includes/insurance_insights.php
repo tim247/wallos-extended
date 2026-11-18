@@ -92,6 +92,33 @@ function premiumDevelopment(array $insurance, array $periods, string $today): ar
     return $years;
 }
 
+/**
+ * Insurances of the same type that cover the same person: "Berufsunfähigkeit Tim" and "... Lisa" are two people, not a duplicate.
+ * Types insuring things (cars, pets, buildings) are left out, two of them are normal.
+ * @return array<string, string[]> type => names
+ */
+function duplicateInsurances(array $insurances): array
+{
+    $byTypeAndMember = [];
+    foreach ($insurances as $insurance) {
+        if (in_array($insurance['insurance_type'], ['other', 'car', 'pet', 'building'], true)) {
+            continue;
+        }
+        foreach (insuredMemberIds($insurance) as $memberId) {
+            $byTypeAndMember[$insurance['insurance_type']][$memberId][] = $insurance['name'];
+        }
+    }
+    $out = [];
+    foreach ($byTypeAndMember as $type => $members) {
+        foreach ($members as $names) {
+            if (count($names) > 1) {
+                $out[$type] = array_values(array_unique([...($out[$type] ?? []), ...$names]));
+            }
+        }
+    }
+    return $out;
+}
+
 /** Member ids an insurance covers; empty = the payer only. */
 function insuredMemberIds(array $insurance): array
 {
