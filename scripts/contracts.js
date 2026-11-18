@@ -37,6 +37,7 @@ function resetContractForm() {
 
 function addContract() {
   resetContractForm();
+  priceHistoryLoad("contract", 0);
   document.getElementById("contract-form").classList.add("is-open");
   document.querySelector("body").classList.add("no-scroll");
 }
@@ -80,6 +81,7 @@ function fillContractForm(contract) {
   document.querySelector("#contract-cancellation-status").checked = !!contract.cancellation_status;
   document.querySelector("#contract-url").value = contract.url;
   document.querySelector("#contract-notes").value = contract.notes;
+  priceHistoryLoad("contract", contract.id);
   document.querySelector("#contract-type").value = contract.contract_type || "other";
   const details = (() => { try { return JSON.parse(contract.details || "{}") || {}; } catch (e) { return {}; } })();
   document.querySelectorAll('[name^="detail_"]').forEach((input) => {

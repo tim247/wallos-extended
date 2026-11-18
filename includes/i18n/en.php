@@ -1638,6 +1638,13 @@ $i18n = [
     'insurance_term_until' => 'Term until',
     'hint_hide' => 'Hide tip',
     'hints_show_hidden' => 'Show hidden tips again (%d)',
+    'price_history_since' => 'Valid from',
+    'price_history_before' => 'Before',
+    'price_history_total' => 'Total since the first entry',
+    'price_history_empty' => 'No price changes yet. Add earlier prices with the date they applied from.',
+    'price_history_hint' => 'Changes to the price above are recorded automatically with today\'s date. Add earlier prices here.',
+    'change' => 'Change',
+    'price_history_current' => 'Current',
 ];
 
 

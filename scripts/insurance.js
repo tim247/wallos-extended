@@ -21,6 +21,7 @@ function resetInsuranceForm() {
   presetInsuranceCancelMode();
   toggleInsuranceKfz();
   document.querySelector("#insurance-claims-panel").hidden = true;
+  priceHistoryLoad("insurance", 0);
   document.querySelector("#insurance-more-details").open = false;
 }
 
@@ -81,6 +82,7 @@ function fillInsuranceForm(insurance) {
   toggleInsuranceCancelArea();
   toggleInsuranceKfz();
   loadInsuranceClaims(insurance.id);
+  priceHistoryLoad("insurance", insurance.id);
   document.querySelector("#insurance-auto-renews").checked = !!insurance.auto_renews;
   document.querySelector("#insurance-tax-deductible").checked = !!insurance.tax_deductible;
   document.querySelector("#insurance-end-date").value = insurance.end_date ?? "";

@@ -1657,6 +1657,13 @@ $i18n = [
     'insurance_term_until' => 'Laufzeit bis',
     'hint_hide' => 'Tipp ausblenden',
     'hints_show_hidden' => 'Ausgeblendete Tipps wieder anzeigen (%d)',
+    'price_history_since' => 'Gültig ab',
+    'price_history_before' => 'Vorher',
+    'price_history_total' => 'Gesamt seit dem ersten Eintrag',
+    'price_history_empty' => 'Noch keine Preisänderungen. Trage frühere Preise mit dem Datum ein, ab dem sie galten.',
+    'price_history_hint' => 'Änderungen am Preis oben werden automatisch mit dem heutigen Datum eingetragen. Frühere Preise kannst du hier nachtragen.',
+    'change' => 'Veränderung',
+    'price_history_current' => 'Aktuell',
 ];
 
 

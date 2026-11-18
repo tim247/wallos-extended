@@ -37,6 +37,7 @@ function householdCostItems(SQLite3 $db, int $userId): array
                 'name' => $row['name'],
                 'match' => trim($row['name'] . ' ' . ($row['provider'] ?? '')),
                 'amount' => round($amount, 2),
+                'price' => (float) $row['price'], // in its own currency, like the price history
                 'monthly' => round(getPricePerMonth((int) $row['cycle'], (int) $row['frequency'], $amount), 2),
                 'payer_id' => (int) ($row['payer_user_id'] ?? 0),
                 'tax' => (int) ($row['tax_deductible'] ?? 0),

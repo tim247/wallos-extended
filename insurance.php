@@ -680,6 +680,8 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
         placeholder="<?= translate('notes', $i18n) ?>">
     </div>
 
+    <?php $priceHistoryType = 'insurance'; require 'includes/price_history_panel.php'; ?>
+
     <section class="insurance-panel" id="insurance-claims-panel" hidden>
       <h4><i class="fa-solid fa-file-medical"></i> <?= translate('claims_and_balance', $i18n) ?></h4>
       <div id="insurance-balance"></div>

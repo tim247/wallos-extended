@@ -7639,3 +7639,9 @@ input.below-break-even {
 .insurance-overview button.hint-hide:hover, .insurance-overview button.hint-show-all:hover { opacity: 1; }
 .insurance-overview button.hint-show-all { display: inline-block; margin-top: 8px; font-size: 13px; text-decoration: underline; }
 .insurance-overview button:focus-visible { outline: 2px solid var(--main-color); border-radius: 4px; }
+
+/* Price history in the contract / insurance form: date, price and add button in one row, wrapping on phones. */
+.price-history { margin: 0 0 18px; }
+.price-history summary { cursor: pointer; font-weight: 600; margin-bottom: 10px; }
+.price-history .price-history-add { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 6px; }
+.price-history .price-history-add input { flex: 1 1 140px; min-width: 0; }

@@ -473,6 +473,8 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
         placeholder="<?= translate('notes', $i18n) ?>">
     </div>
 
+    <?php $priceHistoryType = 'contract'; require 'includes/price_history_panel.php'; ?>
+
     <?php $paperlessType = 'contract'; require 'includes/paperless_panel.php'; ?>
     <?php $filesType = 'contract'; require 'includes/files_panel.php'; ?>
 

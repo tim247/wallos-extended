@@ -46,7 +46,8 @@ function priceTrend(array $history, array $costItems, string $today): array
     $since = null;
     foreach ($costItems as $item) {
         $trend = $byItem[$item['type'] . ':' . $item['id']] ?? null;
-        $ratio = $trend && $trend['first'] > 0 ? $trend['last'] / $trend['first'] : 1.0;
+        // Against the current price: a backdated entry alone (no change recorded since) still counts.
+        $ratio = $trend && $trend['first'] > 0 ? ($item['price'] ?? $trend['last']) / $trend['first'] : 1.0;
         $now += $item['monthly'];
         $then += $item['monthly'] / $ratio;
         if ($trend && $ratio != 1.0) {

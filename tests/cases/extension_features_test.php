@@ -718,3 +718,12 @@ wallos_test('Bausparvertrag deposits start on the first debit date when set', fu
     assert_same(['2026-01-08', '2026-02-08', '2026-03-08', '2026-04-08'], $dates($loan), 'default: one month after the start');
     assert_same(['2026-01-08', '2026-01-30', '2026-02-28', '2026-03-30'], $dates($loan + ['first_payment_date' => '2026-01-30']), 'fee at the start, deposits from the first debit');
 });
+
+wallos_test('the price trend compares the first known price with the current one', function () {
+    require_once WALLOS_ROOT . '/includes/price_trend.php';
+    // A backdated entry alone (15 from 2021, no change recorded since) against the current price of 21.
+    $history = [['item_type' => 'contract', 'item_id' => 1, 'old_price' => 15, 'new_price' => 15, 'changed_at' => '2021-01-01']];
+    $trend = priceTrend($history, [['type' => 'contract', 'id' => 1, 'name' => 'Strom', 'monthly' => 21.0, 'price' => 21.0]], '2026-11-18');
+    assert_same(40.0, $trend['items'][0]['change'], '+40 % since 2021');
+    assert_same(15.0, $trend['items'][0]['then'], 'then 15');
+});
