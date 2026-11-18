@@ -806,9 +806,10 @@ $loginDisabledAllowed = $userCount == 1 && $settings['registrations_open'] == 0;
     </section>
 
     <?php
-    // System status: is everything running? Cron jobs log to /var/log/cron (Docker and LXC).
+    // System status: is everything running? Cron jobs log to /var/log/cron (Docker) or /var/log/wallos-extended (LXC).
+    require_once 'includes/system_health.php';
     $dbFile = __DIR__ . '/db/wallos.db';
-    $cronLogs = glob('/var/log/cron/*.log') ?: [];
+    $cronLogs = glob(cronLogDir() . '/*.log') ?: [];
     $lastLine = function (string $file): string {
         $lines = @file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
         return mb_substr(trim((string) end($lines)), 0, 160);

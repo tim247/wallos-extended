@@ -3,12 +3,24 @@
 // Used by the daily notification job (backup) and the admin's dashboard (both: a stopped
 // cron cannot report itself, so the dashboard is the only place that notices).
 
+/** Where the cron jobs log: /var/log/cron in Docker, /var/log/wallos-extended in the Proxmox LXC. */
+function cronLogDir(array $candidates = ['/var/log/cron', '/var/log/wallos-extended']): string
+{
+    foreach ($candidates as $dir) {
+        if (glob($dir . '/*.log')) {
+            return $dir;
+        }
+    }
+    return $candidates[0];
+}
+
 /**
  * @return array<int, array{key: string, since: ?string}> translation key + date of the last sign of life
  */
-function systemHealthIssues(SQLite3 $db, ?int $now = null, string $cronLogDir = '/var/log/cron', ?string $backupDir = null): array
+function systemHealthIssues(SQLite3 $db, ?int $now = null, ?string $cronLogDir = null, ?string $backupDir = null): array
 {
     $now ??= time();
+    $cronLogDir ??= cronLogDir();
     $backupDir ??= dirname(__DIR__) . '/db/backups';
     $limit = $now - 2 * 86400;
     $issues = [];

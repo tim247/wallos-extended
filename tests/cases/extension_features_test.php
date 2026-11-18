@@ -697,3 +697,16 @@ wallos_test('dashboard: only known panel keys can be switched off', function () 
     assert_same([], dashboardHiddenPanels([]), 'nothing set: everything shown');
     assert_true(!readonlyAllows('endpoints/settings/dashboard_panels.php'), 'read-only accounts cannot change it');
 });
+
+wallos_test('cron logs are found in Docker and in the LXC log folder', function () {
+    require_once WALLOS_ROOT . '/includes/system_health.php';
+    $dir = sys_get_temp_dir() . '/wallos-cronlog-' . getmypid();
+    @mkdir("$dir/docker", 0777, true);
+    @mkdir("$dir/lxc", 0777, true);
+    file_put_contents("$dir/lxc/checkforupdates.log", 'ok');
+    assert_same("$dir/lxc", cronLogDir(["$dir/docker", "$dir/lxc"]), 'LXC folder used when only it has logs');
+    file_put_contents("$dir/docker/checkforupdates.log", 'ok');
+    assert_same("$dir/docker", cronLogDir(["$dir/docker", "$dir/lxc"]), 'Docker folder first');
+    array_map('unlink', glob("$dir/*/*.log"));
+    assert_same("$dir/docker", cronLogDir(["$dir/docker", "$dir/lxc"]), 'no logs anywhere: the first folder');
+});
