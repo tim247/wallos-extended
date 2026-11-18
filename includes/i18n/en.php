@@ -1633,6 +1633,9 @@ $i18n = [
     'dashboard_panel_meter_charts' => 'Meter charts',
     'first_payment_date' => 'First debit',
     'first_payment_date_hint' => 'Optional, if the first deposit is not debited one month after the start. Later deposits follow monthly on this day.',
+    'insurance_term_end' => 'Term until (end of contract)',
+    'insurance_term_end_hint' => 'Optional, e.g. for life insurances with a fixed expiry date. No premiums after that date, the insurance does not renew.',
+    'insurance_term_until' => 'Term until',
 ];
 
 

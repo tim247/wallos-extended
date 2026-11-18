@@ -1652,6 +1652,9 @@ $i18n = [
     'dashboard_panel_meter_charts' => 'Zähler-Diagramme',
     'first_payment_date' => 'Erste Abbuchung',
     'first_payment_date_hint' => 'Optional, wenn die erste Sparrate nicht einen Monat nach Beginn abgebucht wird. Die weiteren Raten folgen monatlich zu diesem Tag.',
+    'insurance_term_end' => 'Laufzeit bis (Vertragsende)',
+    'insurance_term_end_hint' => 'Optional, z. B. bei Lebens- oder Risikolebensversicherungen mit festem Ablaufdatum. Danach fallen keine Beiträge mehr an, die Versicherung verlängert sich nicht.',
+    'insurance_term_until' => 'Laufzeit bis',
 ];
 
 

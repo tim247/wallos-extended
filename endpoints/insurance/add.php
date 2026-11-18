@@ -35,7 +35,8 @@ $deductible = ($_POST['deductible'] ?? '') !== '' ? floatval($_POST['deductible'
 $startDate = validate($_POST['start_date'] ?? '');
 $endDate = validate($_POST['end_date'] ?? '');
 $endDate = $endDate !== '' ? $endDate : null;
-$autoRenews = isset($_POST['auto_renews']) ? 1 : 0;
+// A fixed term (e.g. a life insurance until 2045) ends on its end date and does not renew.
+$autoRenews = isset($_POST['auto_renews']) && $endDate === null ? 1 : 0;
 $renewalTermMonths = intval($_POST['renewal_term_months'] ?? 12);
 $noticePeriodMonths = intval($_POST['notice_period_months'] ?? 3);
 $noticePeriodDays = intval($_POST['notice_period_days'] ?? 0);

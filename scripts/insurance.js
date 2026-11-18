@@ -1,13 +1,3 @@
-function toggleInsuranceRenewalFields() {
-  const autoRenews = document.querySelector("#insurance-auto-renews");
-  const endDateGroup = document.querySelector("#insurance-end-date-group");
-  if (autoRenews.checked) {
-    endDateGroup.classList.add("hide");
-  } else {
-    endDateGroup.classList.remove("hide");
-  }
-}
-
 function toggleInsuranceNotifyDays() {
   const notifyCheckbox = document.querySelector("#insurance-notifications");
   const notifyDays = document.querySelector("#insurance-notify-days");
@@ -27,7 +17,6 @@ function resetInsuranceForm() {
   deleteButton.style.display = "none";
   deleteButton.removeAttribute("onClick");
   document.querySelector("#insurance-save-button").disabled = false;
-  toggleInsuranceRenewalFields();
   delete document.querySelector("#insurance-cancel-mode").dataset.touched;
   presetInsuranceCancelMode();
   toggleInsuranceKfz();
@@ -104,7 +93,6 @@ function fillInsuranceForm(insurance) {
   document.querySelector("#insurance-cancellation-status").checked = !!insurance.cancellation_status;
   document.querySelector("#insurance-url").value = insurance.url;
   document.querySelector("#insurance-notes").value = insurance.notes;
-  toggleInsuranceRenewalFields();
 
   const deleteButton = document.querySelector("#delete-insurance");
   deleteButton.style.display = "block";

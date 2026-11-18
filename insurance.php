@@ -287,6 +287,9 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
           <?php if (($insurance['cancel_mode'] ?? 'cancellable') === 'switch_only' && !$insurance['cancellation_status']): ?>
             <span class="deadline-badge cancelled" title="<?= translate('cancel_mode_switch_only_hint', $i18n) ?>"><i class="fa-solid fa-right-left"></i> <?= translate('cancel_mode_switch_only', $i18n) ?></span>
           <?php endif; ?>
+          <?php if (!empty($insurance['end_date']) && empty($insurance['auto_renews'])): ?>
+            <span class="deadline-badge"><i class="fa-solid fa-hourglass-end"></i> <?= translate('insurance_term_until', $i18n) ?> <?= date('d.m.Y', strtotime($insurance['end_date'])) ?></span>
+          <?php endif; ?>
           <?php if (!empty($insurance['pending_price_date'])): ?>
             <span class="deadline-badge warning"><i class="fa-solid fa-arrow-trend-up"></i> <?= sprintf(translate('price_from_date', $i18n), date('d.m.Y', strtotime($insurance['pending_price_date'])), CurrencyFormatter::format((float) $insurance['pending_price'], $currencies[$insurance['currency_id']]['code'] ?? $mainCurrencyCode)) ?></span>
           <?php endif; ?>
@@ -549,19 +552,21 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
       </div>
     </div>
 
+    <div class="form-group">
+      <label for="insurance-end-date"><?= translate('insurance_term_end', $i18n) ?></label>
+      <div class="date-wrapper">
+        <input type="date" id="insurance-end-date" name="end_date" autocomplete="off"
+          onchange="if (this.value) document.querySelector('#insurance-auto-renews').checked = false">
+      </div>
+      <small class="loan-anchor-hint"><?= translate('insurance_term_end_hint', $i18n) ?></small>
+    </div>
+
     <div id="insurance-cancel-area">
     <div class="form-group">
       <div class="inline grow">
         <input type="checkbox" id="insurance-auto-renews" name="auto_renews" checked
-          onchange="toggleInsuranceRenewalFields()">
+          onchange="if (this.checked) document.querySelector('#insurance-end-date').value = ''">
         <label for="insurance-auto-renews" class="grow"><?= translate('automatically_renews', $i18n) ?></label>
-      </div>
-    </div>
-
-    <div class="form-group hide" id="insurance-end-date-group">
-      <label for="insurance-end-date"><?= translate('end_date', $i18n) ?></label>
-      <div class="date-wrapper">
-        <input type="date" id="insurance-end-date" name="end_date" autocomplete="off">
       </div>
     </div>
 
