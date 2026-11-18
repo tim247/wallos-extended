@@ -29,7 +29,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
   $documents[mb_strtolower(trim(html_entity_decode($row['holder'])))][] = $row;
 }
 $free = array_diff_key($members, array_flip(array_column($children, 'household_id')));
-$stateClass = ['done' => 'ok', 'due' => 'warning', 'overdue' => 'cancelled', 'upcoming' => '', 'past' => ''];
+$stateClass = ['done' => 'ok', 'due' => 'warning', 'overdue' => 'danger', 'upcoming' => '', 'past' => ''];
 $deleteQuestion = htmlspecialchars(json_encode(translate('finance_delete_confirm', $i18n)), ENT_QUOTES);
 ?>
 

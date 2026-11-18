@@ -1907,7 +1907,8 @@ input[type="text"].short {
 
 input[type="submit"],
 input[type="button"],
-button.button {
+button.button,
+button.secondary-button {
   height: 50px;
   padding: 0px 26px;
   font-size: 16px;
@@ -1922,12 +1923,15 @@ button.button {
 
 input[type="submit"].thin,
 input[type="button"].thin,
-button.button.thin {
+button.button.thin,
+button.secondary-button.thin {
   padding: 0px 30px;
 }
 
 input[type="button"].secondary-button,
-button.button.secondary-button {
+button.button.secondary-button,
+button.secondary-button,
+a.button.secondary-button {
   background-color: var(--box-background-color);
   color: var(--main-color);
   border-color: var(--input-border-color);
@@ -1935,7 +1939,9 @@ button.button.secondary-button {
 }
 
 input[type="button"].secondary-button:hover,
-button.button.secondary-button:hover {
+button.button.secondary-button:hover,
+button.secondary-button:hover,
+a.button.secondary-button:hover {
   background-color: var(--surface-hover);
   color: var(--hover-color);
   border-color: var(--main-color);
@@ -6967,8 +6973,8 @@ dialog label > input[type="date"],
 .insight-form input {
   width: 100%;
   box-sizing: border-box;
-  height: 44px;
-  min-height: 44px;
+  height: 50px;
+  min-height: 50px;
 }
 
 .deadline-badge.ok {
@@ -7618,3 +7624,7 @@ input.below-break-even {
 .traffic-light.green { background: #16a34a; }
 .traffic-light.yellow { background: #f59e0b; }
 .traffic-light.red { background: #dc2626; }
+
+/* Button rows on the household and finance pages: side by side with a gap, wrapping on phones. */
+.life .buttons, .finances .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+.life .buttons > .button, .finances .buttons > .button { flex: 0 0 auto; }
