@@ -690,3 +690,10 @@ wallos_test('fixed-cost ratio: traffic light at 50 and 70 percent of income', fu
     assert_same('red', fixedCostRatio(2400, 3000)['light'], '80 %');
     assert_same(null, fixedCostRatio(500, 0), 'no income');
 });
+
+wallos_test('dashboard: only known panel keys can be switched off', function () {
+    require_once WALLOS_ROOT . '/includes/dashboard_panels.php';
+    assert_same(['hints', 'vehicles'], dashboardHiddenPanels(['dashboard_hidden' => 'hints,bogus,vehicles']), 'unknown keys dropped');
+    assert_same([], dashboardHiddenPanels([]), 'nothing set: everything shown');
+    assert_true(!readonlyAllows('endpoints/settings/dashboard_panels.php'), 'read-only accounts cannot change it');
+});

@@ -10,6 +10,7 @@ require_once 'includes/logo_theme_variant.php';
 require_once 'includes/html_text.php';
 require_once 'includes/upcoming_payments.php';
 require_once 'includes/upcoming_cancellations.php';
+require_once 'includes/dashboard_panels.php';
 require_once 'includes/household_costs.php';
 
 function formatPrice($price, $currencyCode, $currencies)
@@ -695,8 +696,35 @@ if ($consumptionMonthly > 0) {
     }
     ?>
 
-    <div class="dashboard-grid">
-        <div class="dashboard-panel">
+    <?php $hiddenPanels = dashboardHiddenPanels($settings ?: []); ?>
+    <?php if ($hiddenPanels): ?><style><?= implode(', ', array_map(fn($k) => '.dashboard-panel[data-panel="' . $k . '"]', $hiddenPanels)) ?> { display: none; }</style><?php endif; ?>
+    <?php if (empty($isReadOnlyAccount)): ?>
+      <div class="dashboard-customise no-print"><button type="button" class="button secondary-button thin" onclick="document.getElementById('dashboard-panels-dialog').showModal()"><i class="fa-solid fa-sliders"></i> <?= translate('dashboard_customise', $i18n) ?></button></div>
+      <dialog id="dashboard-panels-dialog" class="finance-dialog">
+        <form method="dialog" onsubmit="return saveDashboardPanels(this)">
+          <h3><?= translate('dashboard_customise', $i18n) ?></h3>
+          <p class="settings-notes"><?= translate('dashboard_customise_intro', $i18n) ?></p>
+          <?php foreach (DASHBOARD_PANELS as $panelKey => $panelLabel): ?>
+            <div class="form-group-inline checkbox-row"><input type="checkbox" id="panel-<?= $panelKey ?>" name="<?= $panelKey ?>" <?= in_array($panelKey, $hiddenPanels, true) ? '' : 'checked' ?>><label for="panel-<?= $panelKey ?>"><?= translate($panelLabel, $i18n) ?></label></div>
+          <?php endforeach; ?>
+          <div class="buttons">
+            <button type="button" class="secondary-button thin" onclick="this.closest('dialog').close()"><?= translate('cancel', $i18n) ?></button>
+            <input type="submit" class="thin" value="<?= translate('save', $i18n) ?>">
+          </div>
+        </form>
+      </dialog>
+      <script>
+        function saveDashboardPanels(form) {
+          const hidden = [...form.querySelectorAll('input[type=checkbox]')].filter((box) => !box.checked).map((box) => box.name);
+          fetch('endpoints/settings/dashboard_panels.php', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken }, body: JSON.stringify({ hidden }) })
+            .then((r) => r.json()).then((data) => data.success ? location.reload() : showErrorMessage(data.message));
+          return false;
+        }
+      </script>
+    <?php endif; ?>
+
+<div class="dashboard-grid">
+        <div class="dashboard-panel" data-panel="upcoming">
             <h2><?= translate('upcoming_events', $i18n) ?></h2>
             <?php if (empty($upcomingEvents)): ?>
                 <p class="dashboard-empty"><?= translate('no_upcoming_payments', $i18n) ?></p>
@@ -720,7 +748,7 @@ if ($consumptionMonthly > 0) {
         require_once 'includes/task_inbox.php';
         $openTasks = openTasks($db, (int) $userId, $i18n, $today);
         if ($openTasks): ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="tasks">
                 <h2><i class="fa-solid fa-inbox"></i> <?= translate('task_inbox', $i18n) ?> (<?= count($openTasks) ?>)</h2>
                 <ul class="upcoming-events">
                     <?php foreach (array_slice($openTasks, 0, 5) as $task): ?>
@@ -738,7 +766,7 @@ if ($consumptionMonthly > 0) {
         <?php endif; ?>
 
         <?php if ($showFirstSteps): ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="first_steps">
                 <h2><i class="fa-solid fa-flag-checkered"></i> <?= translate('first_steps', $i18n) ?></h2>
                 <ul class="savings-list">
                     <?php foreach ($firstSteps as [$key, $link, $done]): ?>
@@ -749,7 +777,7 @@ if ($consumptionMonthly > 0) {
         <?php endif; ?>
 
         <?php if (!empty($householdHints)): ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="hints">
                 <h2><i class="fa-solid fa-lightbulb"></i> <?= translate('household_hints', $i18n) ?></h2>
                 <ul class="savings-list">
                     <?php foreach ($householdHints as [$icon, $text, $link]): ?>
@@ -760,7 +788,7 @@ if ($consumptionMonthly > 0) {
         <?php endif; ?>
 
         <?php if (!empty($priceIncreases)): ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="price_increases">
                 <h2><i class="fa-solid fa-arrow-trend-up"></i> <?= translate('price_increases', $i18n) ?></h2>
                 <ul class="upcoming-events price-increases">
                     <?php foreach ($priceIncreases as $pi):
@@ -788,7 +816,7 @@ if ($consumptionMonthly > 0) {
         <?php endif; ?>
 
         <?php if ($hasUpcomingCancellations): ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="cancellations">
                 <h2><i class="fa-solid fa-ban"></i> <?= translate('upcoming_cancellations', $i18n) ?></h2>
                 <ul class="upcoming-events">
                     <?php foreach ($upcomingCancellations as $subscription):
@@ -809,7 +837,7 @@ if ($consumptionMonthly > 0) {
         <?php endif; ?>
 
         <?php if (count($burdenSplitDataPoints) > 1): ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="burden_split">
                 <h2><?= translate('monthly_burden_split', $i18n) ?></h2>
                 <div class="dashboard-chart-wrapper">
                     <div id="burdenSplitChart" class="apex-chart"></div>
@@ -818,7 +846,7 @@ if ($consumptionMonthly > 0) {
         <?php endif; ?>
 
         <?php if (count($loanProgress) > 0): ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="financing">
                 <h2><?= translate('financing_progress', $i18n) ?></h2>
                 <?php foreach ($loanProgress as $loan): ?>
                     <a class="dashboard-loan" href="financing.php?id=<?= $loan['id'] ?>">
@@ -839,7 +867,7 @@ if ($consumptionMonthly > 0) {
         <?php endif; ?>
 
         <?php if ($meterMonthCompare): ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="consumption_month">
                 <h2><i class="fa-solid fa-gauge"></i> <?= sprintf(translate('consumption_last_month', $i18n), date('m/Y', strtotime($meterMonthCompare[0]['month'] . '-01'))) ?></h2>
                 <ul class="meter-compare-list">
                     <?php foreach ($meterMonthCompare as $cmp):
@@ -866,7 +894,7 @@ if ($consumptionMonthly > 0) {
 
         <?php foreach ($meterSnapshots as $snapshot): ?>
             <?php if (count($snapshot['monthly']) > 0): ?>
-                <div class="dashboard-panel">
+                <div class="dashboard-panel" data-panel="meters">
                     <h2><i class="fa-solid <?= $snapshot['icon'] ?>"></i> <?= $snapshot['name'] ?></h2>
                     <div class="dashboard-chart-wrapper small">
                         <div id="dashboardMeterChart-<?= $snapshot['id'] ?>" class="apex-chart"></div>
@@ -884,8 +912,10 @@ if ($consumptionMonthly > 0) {
             <?php endif; ?>
         <?php endforeach; ?>
 
+        <?php include 'includes/dashboard_household_panels.php'; ?>
+
         <?php if (!empty($aiRecommendations)) { ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="ai">
                 <h2><?= translate('ai_recommendations', $i18n) ?></h2>
                 <div class="ai-recommendations-container">
                     <ul class="ai-recommendations-list">
@@ -917,7 +947,7 @@ if ($consumptionMonthly > 0) {
         <?php } ?>
 
         <?php if (isset($totalCostPerMonth)) { ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="budget_month">
                 <h2><?= translate('monthly_budget', $i18n) ?></h2>
                 <div>
                     <div class="dashboard-subscriptions-list">
@@ -979,7 +1009,7 @@ if ($consumptionMonthly > 0) {
         // second arm keeps the block for anyone who had a period budget before
         // the opt-in existed.
         if ($periodScopesStatistics || (isset($periodBudget) && $periodBudget > 0)) { ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="budget_period">
                 <h2><?= translate(isset($periodBudget) && $periodBudget > 0 ? 'period_budget' : 'payment_period', $i18n) ?></h2>
                 <?php if (isset($budgetPeriodLabel)) { ?>
                     <p class="header-subtitle"><?= translate('current_period', $i18n) ?>: <?= htmlspecialchars($budgetPeriodLabel, ENT_QUOTES, 'UTF-8') ?></p>
@@ -1041,7 +1071,7 @@ if ($consumptionMonthly > 0) {
     </div>
 
         <?php if (isset($inactiveSubscriptions) && $inactiveSubscriptions > 0 && isset($totalSavingsPerMonth) && $totalSavingsPerMonth > 0) { ?>
-            <div class="dashboard-panel">
+            <div class="dashboard-panel" data-panel="savings">
                 <h2><?= translate('your_savings', $i18n) ?></h2>
                 <div class="dashboard-subscriptions-list">
                     <div class="subscription-item thin">

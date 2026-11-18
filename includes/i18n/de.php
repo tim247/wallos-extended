@@ -1646,6 +1646,10 @@ $i18n = [
     'price_trend_inflation' => 'Inflation',
     'price_trend_note' => 'Markiert: stärker gestiegen als die Inflation. Grundlage ist der Verbraucherpreisindex des Statistischen Bundesamts (Jahresdurchschnitt).',
     'child_savings_rate' => 'Sparrate (zahlen die Eltern)',
+    'dashboard_customise' => 'Dashboard anpassen',
+    'dashboard_customise_intro' => 'Wähle, welche Bereiche auf dem Dashboard erscheinen. Bereiche ohne Daten bleiben ohnehin ausgeblendet.',
+    'dashboard_panel_consumption_month' => 'Verbrauch letzter Monat',
+    'dashboard_panel_meter_charts' => 'Zähler-Diagramme',
 ];
 
 

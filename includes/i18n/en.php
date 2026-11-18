@@ -1627,6 +1627,10 @@ $i18n = [
     'price_trend_inflation' => 'Inflation',
     'price_trend_note' => 'Marked: rose faster than inflation. Based on the German consumer price index (yearly average).',
     'child_savings_rate' => 'Savings rate (paid by the parents)',
+    'dashboard_customise' => 'Customise dashboard',
+    'dashboard_customise_intro' => 'Choose which panels appear on the dashboard. Panels without data stay hidden anyway.',
+    'dashboard_panel_consumption_month' => 'Consumption last month',
+    'dashboard_panel_meter_charts' => 'Meter charts',
 ];
 
 

@@ -7628,3 +7628,7 @@ input.below-break-even {
 /* Button rows on the household and finance pages: side by side with a gap, wrapping on phones. */
 .life .buttons, .finances .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
 .life .buttons > .button, .finances .buttons > .button { flex: 0 0 auto; }
+
+/* Dashboard: customise button above the panels, one checkbox per row in its dialog. */
+.dashboard-customise { display: flex; justify-content: flex-end; margin: 0 0 12px; }
+#dashboard-panels-dialog .checkbox-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; text-align: left; }
