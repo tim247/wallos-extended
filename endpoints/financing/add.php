@@ -126,11 +126,14 @@ if ($isEdit) {
 
 header('Content-Type: application/json');
 if ($stmt->execute()) {
-    $allowanceStmt = $db->prepare('UPDATE loans SET extra_allowance_pct = :pct, extra_allowance_amount = :amount WHERE id = :id AND user_id = :userId');
+    $allowanceStmt = $db->prepare('UPDATE loans SET extra_allowance_pct = :pct, extra_allowance_amount = :amount, first_payment_date = :firstPayment WHERE id = :id AND user_id = :userId');
     $allowanceStmt->bindValue(':pct', max(0.0, min(100.0, floatval(str_replace(',', '.', $_POST['extra_allowance_pct'] ?? '0')))), SQLITE3_FLOAT);
     $allowanceStmt->bindValue(':amount', max(0.0, floatval(str_replace(',', '.', $_POST['extra_allowance_amount'] ?? '0'))), SQLITE3_FLOAT);
     $allowanceStmt->bindValue(':id', $isEdit ? $id : $db->lastInsertRowID(), SQLITE3_INTEGER);
     $allowanceStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $firstPayment = $loanType === 'bausparen' ? (string) ($_POST['first_payment_date'] ?? '') : '';
+    $firstPayment = preg_match('/^\d{4}-\d{2}-\d{2}$/', $firstPayment) ? $firstPayment : null;
+    $allowanceStmt->bindValue(':firstPayment', $firstPayment, $firstPayment ? SQLITE3_TEXT : SQLITE3_NULL);
     $allowanceStmt->execute();
     $text = $isEdit ? 'loan_updated_successfully' : 'loan_added_successfully';
     echo json_encode(['success' => true, 'message' => translate($text, $i18n)]);

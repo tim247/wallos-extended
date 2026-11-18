@@ -819,6 +819,11 @@ function loanCurrencyFormat($amount, $loan, $currencies, $mainCurrencyCode)
           </div>
         </div>
       </div>
+      <div class="form-group">
+        <label for="loan-first-payment"><?= translate('first_payment_date', $i18n) ?></label>
+        <input type="date" id="loan-first-payment" name="first_payment_date">
+        <small class="loan-anchor-hint"><?= translate('first_payment_date_hint', $i18n) ?></small>
+      </div>
     </div>
 
     <div class="form-group">

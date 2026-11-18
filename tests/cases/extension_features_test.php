@@ -710,3 +710,11 @@ wallos_test('cron logs are found in Docker and in the LXC log folder', function 
     array_map('unlink', glob("$dir/*/*.log"));
     assert_same("$dir/docker", cronLogDir(["$dir/docker", "$dir/lxc"]), 'no logs anywhere: the first folder');
 });
+
+wallos_test('Bausparvertrag deposits start on the first debit date when set', function () {
+    require_once WALLOS_ROOT . '/includes/financing_calculations.php';
+    $loan = ['start_date' => '2026-01-08', 'monthly_rate' => 100, 'principal' => 20000, 'interest_rate' => 0.1, 'bausparen_min_savings_pct' => 40, 'bausparen_fee' => 200];
+    $dates = fn($loan) => array_slice(array_column(computeBausparSchedule($loan, '2026-11-18')['savings_rows'], 'date'), 0, 4);
+    assert_same(['2026-01-08', '2026-02-08', '2026-03-08', '2026-04-08'], $dates($loan), 'default: one month after the start');
+    assert_same(['2026-01-08', '2026-01-30', '2026-02-28', '2026-03-30'], $dates($loan + ['first_payment_date' => '2026-01-30']), 'fee at the start, deposits from the first debit');
+});

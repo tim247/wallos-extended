@@ -373,7 +373,8 @@ function computeBausparSchedule(array $loan, ?string $asOfDate = null, ?string $
     }
 
     // ── Phase 1: Sparphase ────────────────────────────────────────────────
-    $startDay = (int) (new DateTime($loan['start_date']))->format('d');
+    $firstPayment = !empty($loan['first_payment_date']) ? $loan['first_payment_date'] : null;
+    $startDay = (int) (new DateTime($firstPayment ?? $loan['start_date']))->format('d');
     // The Abschlussgebühr is offset against the first deposits: the balance starts at minus the fee.
     $savings = -$fee;
     $totalSavingsInterest = 0.0;
@@ -388,9 +389,9 @@ function computeBausparSchedule(array $loan, ?string $asOfDate = null, ?string $
 
     while ($n < 1200 && ($payoutOn !== null || $savings < $minSavings)) {
         $n++;
-        $payDate = new DateTime($loan['start_date']);
+        $payDate = new DateTime($firstPayment ?? $loan['start_date']); // first debit date when set, else one month after the start
         $payDate->modify('first day of this month');
-        $payDate->modify('+' . $n . ' months');
+        $payDate->modify('+' . ($firstPayment ? $n - 1 : $n) . ' months');
         $payDate->setDate(
             (int) $payDate->format('Y'),
             (int) $payDate->format('m'),

@@ -1650,6 +1650,8 @@ $i18n = [
     'dashboard_customise_intro' => 'Wähle, welche Bereiche auf dem Dashboard erscheinen. Bereiche ohne Daten bleiben ohnehin ausgeblendet.',
     'dashboard_panel_consumption_month' => 'Verbrauch letzter Monat',
     'dashboard_panel_meter_charts' => 'Zähler-Diagramme',
+    'first_payment_date' => 'Erste Abbuchung',
+    'first_payment_date_hint' => 'Optional, wenn die erste Sparrate nicht einen Monat nach Beginn abgebucht wird. Die weiteren Raten folgen monatlich zu diesem Tag.',
 ];
 
 

@@ -1631,6 +1631,8 @@ $i18n = [
     'dashboard_customise_intro' => 'Choose which panels appear on the dashboard. Panels without data stay hidden anyway.',
     'dashboard_panel_consumption_month' => 'Consumption last month',
     'dashboard_panel_meter_charts' => 'Meter charts',
+    'first_payment_date' => 'First debit',
+    'first_payment_date_hint' => 'Optional, if the first deposit is not debited one month after the start. Later deposits follow monthly on this day.',
 ];
 
 
