@@ -238,10 +238,11 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     // Next scheduled instalment (for the "upcoming" panel).
     $nextLoanDate = null;
     $nextLoanAmount = null;
-    foreach (($schedule['rows'] ?? []) as $schedRow) {
-        if ($schedRow['date'] >= $today) {
+    // Bausparverträge have no 'rows': deposits in the savings phase, then the loan repayment.
+    foreach (array_merge($schedule['rows'] ?? [], $schedule['savings_rows'] ?? [], $schedule['repayment_rows'] ?? []) as $schedRow) {
+        if ($schedRow['date'] >= $today && ($schedRow['payment'] ?? $schedRow['deposit'] ?? 0) > 0) {
             $nextLoanDate = $schedRow['date'];
-            $nextLoanAmount = $schedRow['payment'];
+            $nextLoanAmount = $schedRow['payment'] ?? $schedRow['deposit'];
             break;
         }
     }
