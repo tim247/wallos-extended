@@ -88,9 +88,9 @@ if (in_array($kind, ['vehicle', 'fuel', 'child'], true)) {
         $memberId = (int) ($data['household_id'] ?? 0);
         $name = $owns('household', $memberId) ? 'ok' : '';
         $values = [':member' => $memberId, ':birth' => $date('birthdate'), ':benefit' => $money('child_benefit'),
-            ':maintenance' => $money('maintenance'), ':care' => $money('care_costs'), ':notes' => $text('notes', 1000)];
-        $columns = 'household_id = :member, birthdate = :birth, child_benefit = :benefit, maintenance = :maintenance, care_costs = :care, notes = :notes';
-        $insert = '(user_id, household_id, birthdate, child_benefit, maintenance, care_costs, notes) VALUES (:userId, :member, :birth, :benefit, :maintenance, :care, :notes)';
+            ':maintenance' => $money('maintenance'), ':care' => $money('care_costs'), ':savings' => $money('savings_rate'), ':notes' => $text('notes', 1000)];
+        $columns = 'household_id = :member, birthdate = :birth, child_benefit = :benefit, maintenance = :maintenance, care_costs = :care, savings_rate = :savings, notes = :notes';
+        $insert = '(user_id, household_id, birthdate, child_benefit, maintenance, care_costs, savings_rate, notes) VALUES (:userId, :member, :birth, :benefit, :maintenance, :care, :savings, :notes)';
     }
     if ($name === '') {
         die(json_encode(['success' => false, 'message' => translate('fill_all_fields', $i18n)]));

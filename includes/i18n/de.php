@@ -1645,6 +1645,7 @@ $i18n = [
     'price_trend_change' => 'Änderung',
     'price_trend_inflation' => 'Inflation',
     'price_trend_note' => 'Markiert: stärker gestiegen als die Inflation. Grundlage ist der Verbraucherpreisindex des Statistischen Bundesamts (Jahresdurchschnitt).',
+    'child_savings_rate' => 'Sparrate (zahlen die Eltern)',
 ];
 
 

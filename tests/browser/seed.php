@@ -50,7 +50,7 @@ foreach ([[60, 40, 70, 10000], [30, 35, 63, 10600], [1, 38, 69, 11200]] as [$ago
 }
 $db->exec("INSERT INTO reminders (user_id, kind, category, name, holder, due_date) VALUES ($u, 'maintenance', 'tuev', 'TÜV', 'M-AB 1234', date('now', '+40 days'))");
 $db->exec("INSERT INTO household (name, user_id) VALUES ('Kind', $u)");
-$db->exec("INSERT INTO children (user_id, household_id, birthdate, child_benefit, care_costs, exams_done) VALUES ($u, " . $db->lastInsertRowID() . ", date('now', '-200 days'), 255, 180, 'U2,U3')");
+$db->exec("INSERT INTO children (user_id, household_id, birthdate, child_benefit, care_costs, savings_rate, exams_done) VALUES ($u, " . $db->lastInsertRowID() . ", date('now', '-200 days'), 255, 180, 50, 'U2,U3')");
 $db->exec("INSERT INTO inventory (user_id, name, purchase_date, price, warranty_until) VALUES ($u, 'Waschmaschine', '2025-01-10', 699, date('now', '+20 days'))");
 $db->exec("INSERT INTO emergency_entries (user_id, section, name, info, detail, updated_at) VALUES ($u, 'contacts', 'Hausarzt', '030 1234567', '', date('now'))");
 $db->exec("INSERT INTO user (username, email, password, main_currency, language, readonly_of)

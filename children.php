@@ -54,7 +54,8 @@ $deleteQuestion = htmlspecialchars(json_encode(translate('finance_delete_confirm
       <div class="statistic"><span><?= $fmt((float) $child['child_benefit']) ?></span><div class="title"><?= translate('child_benefit', $i18n) ?></div></div>
       <div class="statistic"><span><?= $fmt((float) $child['maintenance']) ?></span><div class="title"><?= translate('child_maintenance', $i18n) ?></div></div>
       <div class="statistic"><span><?= $fmt((float) $child['care_costs']) ?></span><div class="title"><?= translate('child_care_costs', $i18n) ?></div></div>
-      <div class="statistic highlight"><span><?= $fmt($child['child_benefit'] + $child['maintenance'] - $child['care_costs']) ?></span><div class="title"><?= translate('child_balance', $i18n) ?></div></div>
+      <div class="statistic"><span><?= $fmt((float) $child['savings_rate']) ?></span><div class="title"><?= translate('child_savings_rate', $i18n) ?></div></div>
+      <div class="statistic highlight"><span><?= $fmt($child['child_benefit'] + $child['maintenance'] - $child['care_costs'] - $child['savings_rate']) ?></span><div class="title"><?= translate('child_balance', $i18n) ?></div></div>
     </div>
     <p><a href="person.php?member=<?= (int) $child['household_id'] ?>"><i class="fa-solid fa-users"></i> <?= translate('child_person_view', $i18n) ?></a></p>
 
@@ -104,6 +105,7 @@ $deleteQuestion = htmlspecialchars(json_encode(translate('finance_delete_confirm
         <label><?= translate('child_benefit', $i18n) ?><span class="input-unit" data-unit="<?= htmlspecialchars($mainCurrencyCode) ?> / <?= translate('month', $i18n) ?>"><input type="number" name="child_benefit" step="0.01" min="0"></span></label>
         <label><?= translate('child_maintenance', $i18n) ?><span class="input-unit" data-unit="<?= htmlspecialchars($mainCurrencyCode) ?> / <?= translate('month', $i18n) ?>"><input type="number" name="maintenance" step="0.01" min="0"></span></label>
         <label><?= translate('child_care_costs', $i18n) ?><span class="input-unit" data-unit="<?= htmlspecialchars($mainCurrencyCode) ?> / <?= translate('month', $i18n) ?>"><input type="number" name="care_costs" step="0.01" min="0"></span></label>
+        <label><?= translate('child_savings_rate', $i18n) ?><span class="input-unit" data-unit="<?= htmlspecialchars($mainCurrencyCode) ?> / <?= translate('month', $i18n) ?>"><input type="number" name="savings_rate" step="0.01" min="0"></span></label>
         <label><?= translate('notes', $i18n) ?><input type="text" name="notes" maxlength="1000"></label>
         <div class="buttons">
           <button type="button" class="secondary-button thin" onclick="this.closest('dialog').close()"><?= translate('cancel', $i18n) ?></button>

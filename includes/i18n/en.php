@@ -1626,6 +1626,7 @@ $i18n = [
     'price_trend_change' => 'Change',
     'price_trend_inflation' => 'Inflation',
     'price_trend_note' => 'Marked: rose faster than inflation. Based on the German consumer price index (yearly average).',
+    'child_savings_rate' => 'Savings rate (paid by the parents)',
 ];
 
 
