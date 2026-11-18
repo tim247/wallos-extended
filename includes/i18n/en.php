@@ -1636,6 +1636,8 @@ $i18n = [
     'insurance_term_end' => 'Term until (end of contract)',
     'insurance_term_end_hint' => 'Optional, e.g. for life insurances with a fixed expiry date. No premiums after that date, the insurance does not renew.',
     'insurance_term_until' => 'Term until',
+    'hint_hide' => 'Hide tip',
+    'hints_show_hidden' => 'Show hidden tips again (%d)',
 ];
 
 

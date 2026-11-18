@@ -7632,3 +7632,10 @@ input.below-break-even {
 /* Dashboard: customise button above the panels, one checkbox per row in its dialog. */
 .dashboard-customise { display: flex; justify-content: flex-end; margin: 0 0 12px; }
 #dashboard-panels-dialog .checkbox-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; text-align: left; }
+
+/* Insurance tips: small x per tip to hide it, link to show hidden ones again. */
+.insurance-overview button.hint-hide, .insurance-overview button.hint-show-all { all: unset; cursor: pointer; color: var(--text-color); opacity: .55; }
+.insurance-overview button.hint-hide { padding: 0 6px; margin-left: 4px; }
+.insurance-overview button.hint-hide:hover, .insurance-overview button.hint-show-all:hover { opacity: 1; }
+.insurance-overview button.hint-show-all { display: inline-block; margin-top: 8px; font-size: 13px; text-decoration: underline; }
+.insurance-overview button:focus-visible { outline: 2px solid var(--main-color); border-radius: 4px; }

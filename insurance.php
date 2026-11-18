@@ -226,15 +226,33 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
     <h2 class="archive-title"><i class="fa-solid fa-box-archive"></i> <?= translate('archive', $i18n) ?></h2>
   <?php endif; ?>
 
-  <?php if ($overview): ?>
+  <?php
+  // Tips the user hid: keyed by a hash of the text, so a tip comes back when its content changes.
+  $hiddenHints = array_filter(explode(',', (string) ($settings['insurance_hidden_hints'] ?? '')));
+  $hiddenHintCount = count($overview);
+  $overview = array_filter($overview, fn($hint) => !in_array(substr(md5($hint[1]), 0, 8), $hiddenHints, true));
+  $hiddenHintCount -= count($overview);
+  $canHideHints = empty($isReadOnlyAccount);
+  ?>
+  <?php if ($overview || $hiddenHintCount): ?>
     <section class="insurance-overview" aria-labelledby="insurance-overview-title">
       <h3 id="insurance-overview-title"><i class="fa-solid fa-lightbulb"></i> <?= translate('insurance_overview', $i18n) ?></h3>
       <ul>
         <?php foreach ($overview as [$icon, $text]): ?>
-          <li><i class="fa-solid <?= $icon ?>" aria-hidden="true"></i> <?= $text ?></li>
+          <li><i class="fa-solid <?= $icon ?>" aria-hidden="true"></i> <span><?= $text ?></span>
+            <?php if ($canHideHints): ?><button type="button" class="hint-hide" title="<?= translate('hint_hide', $i18n) ?>" aria-label="<?= translate('hint_hide', $i18n) ?>" onclick="hideInsuranceHint('<?= substr(md5($text), 0, 8) ?>')"><i class="fa-solid fa-xmark"></i></button><?php endif; ?></li>
         <?php endforeach; ?>
       </ul>
+      <?php if ($hiddenHintCount && $canHideHints): ?>
+        <button type="button" class="hint-show-all" onclick="hideInsuranceHint('')"><?= sprintf(translate('hints_show_hidden', $i18n), $hiddenHintCount) ?></button>
+      <?php endif; ?>
     </section>
+    <script>
+      function hideInsuranceHint(key) {
+        fetch('endpoints/insurance/hide_hint.php', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken }, body: JSON.stringify({ key }) })
+          .then((r) => r.json()).then((data) => data.success ? location.reload() : showErrorMessage(data.message));
+      }
+    </script>
   <?php endif; ?>
   <div class="module-cards" id="insurances">
     <?php foreach ($insurances as $insurance):

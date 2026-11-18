@@ -1655,6 +1655,8 @@ $i18n = [
     'insurance_term_end' => 'Laufzeit bis (Vertragsende)',
     'insurance_term_end_hint' => 'Optional, z. B. bei Lebens- oder Risikolebensversicherungen mit festem Ablaufdatum. Danach fallen keine Beiträge mehr an, die Versicherung verlängert sich nicht.',
     'insurance_term_until' => 'Laufzeit bis',
+    'hint_hide' => 'Tipp ausblenden',
+    'hints_show_hidden' => 'Ausgeblendete Tipps wieder anzeigen (%d)',
 ];
 
 
