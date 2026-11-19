@@ -25,7 +25,7 @@ function logo_fetch_files()
 {
     return [
         'endpoints/payments/add.php',
-        'endpoints/subscription/add.php',
+        'includes/logo_upload.php', // used by subscriptions, contracts and insurances
         'api/payment_methods/set_payment_methods.php',
         'api/subscriptions/set_subscriptions.php',
     ];
@@ -87,7 +87,8 @@ wallos_test('every copy of the logo fetch answers in the same shape', function (
 wallos_test('every caller reads the answer before using it', function () {
     $callSites = 0;
 
-    foreach (logo_fetch_files() as $path) {
+    // Plus the files that only call the shared helper in includes/logo_upload.php.
+    foreach ([...logo_fetch_files(), 'endpoints/subscription/add.php', 'includes/item_logo.php'] as $path) {
         $source = file_get_contents(WALLOS_ROOT . '/' . $path);
         $lines = preg_split('/\R/', $source);
 
@@ -115,5 +116,5 @@ wallos_test('every caller reads the answer before using it', function () {
         }
     }
 
-    assert_same(6, $callSites, 'all six call sites were found and checked');
+    assert_same(7, $callSites, 'all seven call sites (six before, plus contracts/insurances) were found and checked');
 });

@@ -19,16 +19,14 @@ function deleteLogoFileIfUnused($db, $filename, $logosDir)
         return;
     }
 
-    $stmt = $db->prepare(
-        'SELECT 1 FROM subscriptions WHERE logo = :name OR logo_variant = :name
-         UNION ALL
-         SELECT 1 FROM contracts WHERE logo = :name
-         UNION ALL
-         SELECT 1 FROM insurances WHERE logo = :name
-         UNION ALL
-         SELECT 1 FROM payment_methods WHERE icon = :name
-         LIMIT 1'
-    );
+    $sql = 'SELECT 1 FROM subscriptions WHERE logo = :name OR logo_variant = :name';
+    // Contracts and insurances have logos since migration 000130; older schemas (tests) lack the column.
+    foreach (['contracts', 'insurances'] as $table) {
+        if ($db->querySingle("SELECT COUNT(*) FROM pragma_table_info('$table') WHERE name = 'logo'")) {
+            $sql .= " UNION ALL SELECT 1 FROM $table WHERE logo = :name";
+        }
+    }
+    $stmt = $db->prepare($sql . ' UNION ALL SELECT 1 FROM payment_methods WHERE icon = :name LIMIT 1');
     $stmt->bindValue(':name', $filename, SQLITE3_TEXT);
     $result = $stmt->execute();
 
