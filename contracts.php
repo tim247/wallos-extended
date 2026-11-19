@@ -144,6 +144,9 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
         data-deadline="<?= $contract['deadline_info']['deadline'] ?? '' ?>" data-member-name="<?= $members[$contract['payer_user_id']]['name'] ?? '' ?>"
         data-member="<?= (int) $contract['payer_user_id'] ?>" data-group="<?= (int) $contract['category_id'] ?>">
         <div class="module-card-main" onClick="openEditContract(event, <?= $contract['id'] ?>)">
+          <?php if (!empty($contract['logo'])): ?>
+            <div class="module-card-icon module-card-logo"><img src="images/uploads/logos/<?= htmlspecialchars($contract['logo']) ?>" alt="" loading="lazy"></div>
+          <?php endif; ?>
           <div class="module-card-info">
             <span class="module-card-title"><?= $contract['name'] ?></span>
             <span class="module-card-subtitle">
@@ -258,9 +261,10 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
       </div>
     <?php endforeach; ?>
 
-    <div class="form-group">
-      <input type="text" id="contract-name" name="name" autocomplete="off"
-        placeholder="<?= translate('contract_name', $i18n) ?>" required>
+    <div class="form-group-inline">
+      <input type="text" id="contract-name" name="name" autocomplete="off" data-logo-name
+        placeholder="<?= translate('contract_name', $i18n) ?>" required oninput="setSearchButtonStatus()">
+      <?php require 'includes/logo_picker.php'; ?>
     </div>
 
     <div class="form-group">
@@ -491,6 +495,7 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
 <?php require 'includes/cancellation_modal.php'; ?>
 <script src="scripts/paperless.js?<?= $assetVersion ?>"></script>
 <script src="scripts/files.js?<?= $assetVersion ?>"></script>
+<script src="scripts/logo-search.js?<?= $assetVersion ?>"></script>
 <script>window.mainCurrencyCode = <?= json_encode($mainCurrencyCode) ?>;</script>
 <script src="scripts/contracts.js?<?= $assetVersion ?>"></script>
 <script src="scripts/module-filter.js?<?= $assetVersion ?>"></script>

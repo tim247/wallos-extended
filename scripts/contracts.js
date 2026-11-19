@@ -21,6 +21,7 @@ function resetContractForm() {
   const form = document.querySelector("#contract-form-data");
   form.reset();
   document.querySelector("#contract-id").value = "";
+  setLogoPreview("");
   if (typeof resetPaperlessPanel === "function") resetPaperlessPanel();
   if (typeof resetFilesPanel === "function") resetFilesPanel();
   document.querySelector("#contract-form-title").textContent = translate("add_contract");
@@ -49,6 +50,7 @@ function closeContractForm() {
 }
 
 function fillContractForm(contract) {
+  setLogoPreview(contract.logo || "");
   document.querySelector("#contract-form-title").textContent = translate("edit_contract");
   document.querySelector("#contract-id").value = contract.id;
   if (typeof loadPaperlessPanel === "function") loadPaperlessPanel("contract", contract.id);

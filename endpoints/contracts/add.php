@@ -154,7 +154,9 @@ if ($stmt->execute()) {
     $taxStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
     $taxStmt->execute();
     $text = $isEdit ? 'contract_updated_successfully' : 'contract_added_successfully';
-    echo json_encode(['success' => true, 'status' => 'Success', 'message' => translate($text, $i18n)]);
+    require_once '../../includes/item_logo.php';
+    $logoWarning = saveItemLogo($db, 'contracts', (int) $savedId, (int) $userId, $name, $settings ?: [], $i18n);
+    echo json_encode(['success' => true, 'status' => 'Success', 'message' => translate($text, $i18n)] + ($logoWarning !== '' ? ['logo_warning' => $logoWarning] : []));
 } else {
     echo json_encode(['success' => false, 'message' => translate('error', $i18n) . ': ' . $db->lastErrorMsg()]);
 }

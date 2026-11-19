@@ -273,7 +273,11 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
         data-deadline="<?= $insurance['deadline_info']['deadline'] ?? '' ?>" data-member-name="<?= $members[$insurance['payer_user_id']]['name'] ?? '' ?>"
         data-member="<?= (int) $insurance['payer_user_id'] ?>" data-group="<?= htmlspecialchars($insurance['insurance_type']) ?>">
         <div class="module-card-main" onClick="openEditInsurance(event, <?= $insurance['id'] ?>)">
-          <div class="module-card-icon"><i class="fa-solid <?= $typeIcon ?>"></i></div>
+          <?php if (!empty($insurance['logo'])): ?>
+            <div class="module-card-icon module-card-logo"><img src="images/uploads/logos/<?= htmlspecialchars($insurance['logo']) ?>" alt="" loading="lazy"></div>
+          <?php else: ?>
+            <div class="module-card-icon"><i class="fa-solid <?= $typeIcon ?>"></i></div>
+          <?php endif; ?>
           <div class="module-card-info">
             <span class="module-card-title"><?= $insurance['name'] ?></span>
             <span class="module-card-subtitle">
@@ -392,9 +396,10 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
   <form action="endpoints/insurance/add.php" method="post" id="insurance-form-data">
     <input type="hidden" id="insurance-id" name="id">
 
-    <div class="form-group">
-      <input type="text" id="insurance-name" name="name" autocomplete="off"
-        placeholder="<?= translate('insurance_name', $i18n) ?>" required>
+    <div class="form-group-inline">
+      <input type="text" id="insurance-name" name="name" autocomplete="off" data-logo-name
+        placeholder="<?= translate('insurance_name', $i18n) ?>" required oninput="setSearchButtonStatus()">
+      <?php require 'includes/logo_picker.php'; ?>
     </div>
 
     <div class="form-group">
@@ -717,6 +722,7 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
 <?php require 'includes/cancellation_modal.php'; ?>
 <script src="scripts/paperless.js?<?= $assetVersion ?>"></script>
 <script src="scripts/files.js?<?= $assetVersion ?>"></script>
+<script src="scripts/logo-search.js?<?= $assetVersion ?>"></script>
 <script src="scripts/insurance.js?<?= $assetVersion ?>"></script>
 <script src="scripts/module-filter.js?<?= $assetVersion ?>"></script>
 <?php

@@ -13,6 +13,13 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $logosOnDB[] = $row['logo_variant'];
 }
 
+// Contracts and insurances have logos, too.
+foreach (['contracts', 'insurances'] as $table) {
+    $result = $db->query("SELECT logo FROM $table WHERE logo != ''");
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $logosOnDB[] = $row['logo'];
+    }
+}
 $logosOnDB = array_unique($logosOnDB);
 
 $uploadDir = '../../images/uploads/logos/';

@@ -8,6 +8,7 @@ function resetInsuranceForm() {
   const form = document.querySelector("#insurance-form-data");
   form.reset();
   document.querySelector("#insurance-id").value = "";
+  setLogoPreview("");
   if (typeof resetPaperlessPanel === "function") resetPaperlessPanel();
   if (typeof resetFilesPanel === "function") resetFilesPanel();
   document.querySelector("#insurance-form-title").textContent = translate("add_insurance");
@@ -38,6 +39,7 @@ function closeInsuranceForm() {
 }
 
 function fillInsuranceForm(insurance) {
+  setLogoPreview(insurance.logo || "");
   document.querySelector("#insurance-form-title").textContent = translate("edit_insurance");
   document.querySelector("#insurance-id").value = insurance.id;
   if (typeof loadPaperlessPanel === "function") loadPaperlessPanel("insurance", insurance.id);

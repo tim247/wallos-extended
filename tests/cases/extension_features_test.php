@@ -781,3 +781,13 @@ wallos_test('Kfz-Steuer counts in the fixed costs as its own area', function () 
         assert_contains("'vehicle' =>", file_get_contents(WALLOS_ROOT . '/' . $file), $file . ' knows the area');
     }
 });
+
+wallos_test('contracts and insurances keep their logos when unused logos are cleaned up', function () {
+    foreach (['includes/logo_cleanup.php', 'endpoints/admin/deleteunusedlogos.php'] as $file) {
+        $source = file_get_contents(WALLOS_ROOT . '/' . $file);
+        assert_contains('contracts', $source, $file . ' looks at contracts');
+        assert_contains('insurances', $source, $file . ' looks at insurances');
+    }
+    $upload = file_get_contents(WALLOS_ROOT . '/includes/logo_upload.php');
+    assert_not_contains("'/../../includes/", $upload, 'paths fit the includes folder');
+});

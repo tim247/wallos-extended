@@ -1,7 +1,7 @@
 <?php
 
 // Deletes a logo file from the logos directory unless a subscription (logo or
-// logo_variant) or a payment method (icon) still names it. clone.php copies a
+// logo_variant), a contract or insurance (logo) or a payment method (icon) still names it. clone.php copies a
 // logo filename into a second row, so a file detached from one row can still
 // be in use; the check runs across all users since the directory is shared.
 // $filename is the bare name as stored (e.g. "1712-netflix.png"); $logosDir
@@ -21,6 +21,10 @@ function deleteLogoFileIfUnused($db, $filename, $logosDir)
 
     $stmt = $db->prepare(
         'SELECT 1 FROM subscriptions WHERE logo = :name OR logo_variant = :name
+         UNION ALL
+         SELECT 1 FROM contracts WHERE logo = :name
+         UNION ALL
+         SELECT 1 FROM insurances WHERE logo = :name
          UNION ALL
          SELECT 1 FROM payment_methods WHERE icon = :name
          LIMIT 1'

@@ -194,12 +194,6 @@ $headerClass = count($subscriptions) > 0 ? "main-actions" : "main-actions hidden
 
 $subscriptionsView = (isset($_COOKIE['subscriptionsView']) && $_COOKIE['subscriptionsView'] === 'grid') ? 'grid' : 'list';
 ?>
-<style>
-  .logo-preview:after {
-    content: '<?= translate('upload_logo', $i18n) ?>';
-  }
-</style>
-
 <section class="contain">
   <header class="<?= $headerClass ?>" id="main-actions">
     <div class="main-actions-primary">
@@ -471,40 +465,8 @@ $subscriptionsView = (isset($_COOKIE['subscriptionsView']) && $_COOKIE['subscrip
         placeholder="<?= translate('subscription_name', $i18n) ?>"
         onchange="setSearchButtonStatus()" onkeypress="this.onchange();" onpaste="this.onchange();"
         oninput="this.onchange();" required>
-      <label for="logo" class="logo-preview">
-        <img src="" alt="<?= translate('logo_preview', $i18n) ?>" id="form-logo">
-      </label>
-      <input type="file" id="logo" name="logo" accept="image/jpeg, image/png, image/gif, image/webp, image/svg+xml"
-        onchange="handleFileSelect(event)" class="hidden-input">
-      <input type="hidden" id="logo-url" name="logo-url">
-      <div id="logo-search-button" class="image-button medium disabled" title="<?= translate('search_logo', $i18n) ?>"
-        onClick="searchLogo()">
-        <i class="fa-solid fa-magnifying-glass"></i>
-      </div>
+      <?php require 'includes/logo_picker.php'; ?>
       <input type="hidden" id="id" name="id">
-      <div class="logo-search-backdrop" id="logo-search-backdrop" onClick="closeLogoSearch()"></div>
-      <div id="logo-search-results" class="logo-search"<?= !empty($googleSearchEnabled) ? ' data-google-search="1"' : '' ?>>
-        <button type="button" class="close-logo-search" onClick="closeLogoSearch()" title="<?= translate('cancel', $i18n) ?>">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-        <header>
-          <h3 id="logo-search-title" data-title="<?= translate('web_search', $i18n) ?>">
-            <?= translate('web_search', $i18n) ?>
-          </h3>
-        </header>
-        <div class="logo-search-controls">
-          <div class="logo-search-query">
-            <input type="text" id="logo-search-query" autocomplete="off" inputmode="search"
-              placeholder="<?= translate('search_logo', $i18n) ?>"
-              aria-label="<?= translate('search_logo', $i18n) ?>">
-            <button type="button" id="logo-search-submit" title="<?= translate('search', $i18n) ?>">
-              <i class="fa-solid fa-magnifying-glass"></i>
-            </button>
-          </div>
-          <div id="logo-search-nav" class="logo-search-nav"></div>
-        </div>
-        <div id="logo-search-images"></div>
-      </div>
     </div>
 
     <div class="form-group-inline">
@@ -801,6 +763,7 @@ $subscriptionsView = (isset($_COOKIE['subscriptionsView']) && $_COOKIE['subscrip
 </section>
 
 <?php require_once 'includes/subscription_details_popup.php'; ?>
+<script src="scripts/logo-search.js?<?= $assetVersion ?>"></script>
 <script src="scripts/subscriptions.js?<?= $assetVersion ?>"></script>
 <?php
 if (isset($_GET['add'])) {
