@@ -1664,6 +1664,9 @@ $i18n = [
     'price_history_hint' => 'Änderungen am Preis oben werden automatisch mit dem heutigen Datum eingetragen. Frühere Preise kannst du hier nachtragen.',
     'change' => 'Veränderung',
     'price_history_current' => 'Aktuell',
+    'cancellation_mail_text' => 'Text für den E-Mail-Versand',
+    'copy_text' => 'Text kopieren',
+    'copied' => 'Kopiert',
 ];
 
 

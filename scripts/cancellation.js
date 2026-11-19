@@ -37,6 +37,8 @@ function openCancellation(event, type, id) {
       if (!data.success) return showErrorMessage(data.message);
       cancellationState.type = type;
       cancellationState.id = id;
+      cancellationField("mail").hidden = true;
+      cancellationField("mail-text").value = "";
       const today = new Date().toISOString().split("T")[0];
       document.getElementById("cancellation-title").textContent = `${translate("cancellation_letter")}: ${data.name}`;
       cancellationField("sender-name").value = data.sender_name;
@@ -79,7 +81,15 @@ function generateCancellationLetter() {
         const data = await response.json();
         throw new Error(data.message);
       }
-      const match = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") || "");
+      const disposition = response.headers.get("content-disposition") || "";
+      const utf8 = /filename\*=UTF-8''([^;]+)/.exec(disposition);
+      const match = utf8 ? [null, decodeURIComponent(utf8[1])] : /filename="([^"]+)"/.exec(disposition);
+      const letter = response.headers.get("x-letter-text");
+      if (letter) {
+        const text = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(letter), (c) => c.charCodeAt(0))));
+        cancellationField("mail-text").value = text.body;
+        cancellationField("mail").hidden = false;
+      }
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
@@ -89,6 +99,18 @@ function generateCancellationLetter() {
     })
     .catch((error) => showErrorMessage(error.message || translate("unknown_error")))
     .finally(() => (button.disabled = false));
+}
+
+function copyCancellationText(button) {
+  const text = cancellationField("mail-text");
+  navigator.clipboard.writeText(text.value).then(() => {
+    const label = button.innerHTML;
+    button.innerHTML = `<i class="fa-solid fa-check"></i> ${button.dataset.done}`;
+    setTimeout(() => (button.innerHTML = label), 2000);
+  }, () => {
+    text.select();
+    document.execCommand("copy");
+  });
 }
 
 function setCancellationStatus(action) {

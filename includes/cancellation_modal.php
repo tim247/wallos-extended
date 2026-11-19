@@ -49,6 +49,14 @@
       id="cancellation-generate" onClick="generateCancellationLetter()">
   </div>
 
+  <div class="form-group" id="cancellation-mail" hidden>
+    <label for="cancellation-mail-text"><?= translate('cancellation_mail_text', $i18n) ?></label>
+    <textarea id="cancellation-mail-text" rows="9" readonly></textarea>
+    <div class="buttons">
+      <button type="button" class="button secondary-button thin" data-done="<?= translate('copied', $i18n) ?>" onClick="copyCancellationText(this)"><i class="fa-solid fa-copy"></i> <?= translate('copy_text', $i18n) ?></button>
+    </div>
+  </div>
+
   <hr>
   <div class="form-group">
     <label for="cancellation-status-date"><?= translate('cancellation_status', $i18n) ?></label>

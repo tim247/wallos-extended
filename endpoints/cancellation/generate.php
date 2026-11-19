@@ -48,16 +48,22 @@ if (($item['cancel_mode'] ?? '') === 'switch_only') {
         ? preg_replace('/Mit freundlichen Grüßen/', $switchLine . "\n\nMit freundlichen Grüßen", $template['body'], 1)
         : $template['body'] . "\n\n" . $switchLine;
 }
-$pdf = cancellationLetterPdf($template, [
+$letterCtx = [
     'sender_name' => $senderName, 'sender_address' => $senderAddress,
     'provider' => $item['_provider'], 'recipient_address' => $recipientAddress,
     'item_name' => $item['name'], 'number' => $item['_number'], 'number_label' => $item['_number_label'],
     'terminate_on' => $terminateOn, 'deadline' => $deadline['deadline'] ?? '',
     'date' => $date, 'place' => $place,
-]);
+];
+$pdf = cancellationLetterPdf($template, $letterCtx);
+// The letter text (from the salutation on) for sending by e-mail, base64 JSON so line breaks survive the header.
+[, , , $subject, $body] = cancellationLetterParts($template, $letterCtx);
+header('X-Letter-Text: ' . base64_encode(json_encode(['subject' => $subject, 'body' => $body])));
 
-$slug = trim(preg_replace('/[^A-Za-z0-9]+/', '-', (string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $item['name'])), '-') ?: 'Vertrag';
+$fileName = cancellationFileName($date, (string) ($item['_provider'] ?: $item['name']));
+$asciiName = preg_replace('/[^A-Za-z0-9 ._-]/', '', (string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $fileName));
 header('Content-Type: application/pdf');
-header('Content-Disposition: attachment; filename="Kuendigung-' . $slug . '.pdf"');
+header('Content-Disposition: attachment; filename="' . $asciiName . '"; filename*=UTF-8\'\'' . rawurlencode($fileName));
+header('Access-Control-Expose-Headers: Content-Disposition, X-Letter-Text');
 header('X-Content-Type-Options: nosniff');
 echo $pdf;

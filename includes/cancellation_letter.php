@@ -54,6 +54,20 @@ function cancellationFill(string $text, array $values): string
 /** @param array $ctx see keys below */
 function cancellationLetterPdf(array $template, array $ctx): string
 {
+    [$senderLines, $recipientLines, $dateLine, $subject, $body] = cancellationLetterParts($template, $ctx);
+    return (new LetterPdf())->letter($senderLines, $recipientLines, $dateLine, $subject, $body, $subject);
+}
+
+/** File name "26 11 19 - Grenzland Fitness - Kündigung.pdf": letter date (YY MM DD) - provider - Kündigung. */
+function cancellationFileName(string $date, string $provider): string
+{
+    $provider = trim(preg_replace('/\s+/u', ' ', preg_replace('#[\\\\/:*?"<>|\x00-\x1f]+#u', ' ', $provider)));
+    return date('y m d', strtotime($date)) . ' - ' . ($provider !== '' ? $provider : 'Vertrag') . ' - Kündigung.pdf';
+}
+
+/** @return array{0: string[], 1: string[], 2: string, 3: string, 4: string} sender, recipient, date line, subject, body */
+function cancellationLetterParts(array $template, array $ctx): array
+{
     $address = array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) ($ctx['sender_address'] ?? ''))), 'strlen'));
     $senderLines = array_merge([(string) ($ctx['sender_name'] ?? '')], $address);
     $recipientLines = array_merge(
@@ -81,7 +95,7 @@ function cancellationLetterPdf(array $template, array $ctx): string
     $place = trim((string) ($ctx['place'] ?? ''));
     $dateLine = ($place !== '' ? $place . ', den ' : '') . $values['datum'];
 
-    return (new LetterPdf())->letter($senderLines, $recipientLines, $dateLine, $subject, $body, $subject);
+    return [$senderLines, $recipientLines, $dateLine, $subject, $body];
 }
 
 /** Item of the current user from contracts / insurances, with provider and number resolved. */

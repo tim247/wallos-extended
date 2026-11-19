@@ -737,3 +737,9 @@ wallos_test('duplicate insurances only when the same person is covered twice', f
     $car = fn($name) => ['name' => $name, 'insurance_type' => 'car', 'insured_persons' => '', 'payer_user_id' => 1];
     assert_same([], duplicateInsurances([$car('Golf'), $car('Polo')]), 'two cars are normal');
 });
+
+wallos_test('the cancellation PDF is named date - provider - Kündigung', function () {
+    require_once WALLOS_ROOT . '/includes/cancellation_letter.php';
+    assert_same('26 11 19 - Grenzland Fitness - Kündigung.pdf', cancellationFileName('2026-11-19', 'Grenzland Fitness'), 'YY MM DD - provider');
+    assert_same('26 01 05 - A B GmbH - Kündigung.pdf', cancellationFileName('2026-01-05', 'A/B: GmbH '), 'characters not allowed in file names removed');
+});
