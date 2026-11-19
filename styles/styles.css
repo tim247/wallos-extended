@@ -7406,10 +7406,28 @@ input.below-break-even {
   margin: 8px 0 4px;
 }
 
+.person-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .person-chips .module-filter-chip {
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border: 1px solid var(--input-border-color);
+  border-radius: 10px;
+  background-color: var(--box-background-color);
+  color: var(--main-color);
+}
+
+.person-chips .module-filter-chip:hover {
+  border-color: var(--main-color);
 }
 
 .person-chips .module-filter-chip[aria-current="page"] {
