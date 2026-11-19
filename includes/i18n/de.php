@@ -1667,6 +1667,12 @@ $i18n = [
     'cancellation_mail_text' => 'Text für den E-Mail-Versand',
     'copy_text' => 'Text kopieren',
     'copied' => 'Kopiert',
+    'vehicle_tax' => 'Kfz-Steuer',
+    'vehicle_tax_amount' => 'Betrag pro Jahr',
+    'vehicle_tax_due' => 'fällig am',
+    'vehicle_tax_pending' => 'Neuer Betrag (Bescheid)',
+    'vehicle_tax_pending_hint' => 'Optional: Kommt ein neuer Steuerbescheid, trag den neuen Betrag mit Datum ein. Ab dem Datum gilt er automatisch, der alte Betrag landet im Preisverlauf.',
+    'vehicle_tax_next_debit' => 'Nächste Abbuchung',
 ];
 
 

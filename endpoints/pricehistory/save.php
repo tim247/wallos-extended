@@ -6,7 +6,8 @@ require_once '../../includes/validate_endpoint.php';
 header('Content-Type: application/json');
 
 $data = json_decode(file_get_contents('php://input'), true) ?: [];
-$tables = ['contract' => 'contracts', 'insurance' => 'insurances'];
+// type => [table, price column]; vehicle_tax is the yearly Kfz-Steuer of a vehicle.
+$tables = ['contract' => ['contracts', 'price'], 'insurance' => ['insurances', 'price'], 'vehicle_tax' => ['vehicles', 'tax_amount']];
 $type = (string) ($data['type'] ?? '');
 $itemId = intval($data['item_id'] ?? 0);
 $action = (string) ($data['action'] ?? 'list');
@@ -14,7 +15,7 @@ $fail = fn() => die(json_encode(['success' => false, 'message' => translate('fil
 if (!isset($tables[$type])) {
     $fail();
 }
-$stmt = $db->prepare("SELECT price FROM {$tables[$type]} WHERE id = :id AND user_id = :userId");
+$stmt = $db->prepare("SELECT {$tables[$type][1]} AS price FROM {$tables[$type][0]} WHERE id = :id AND user_id = :userId");
 $stmt->bindValue(':id', $itemId, SQLITE3_INTEGER);
 $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
 $item = $stmt->execute()->fetchArray(SQLITE3_ASSOC);

@@ -35,6 +35,48 @@ function vehicleFuelStats(array $fuel, string $today): array
 }
 
 /** German child check-ups: code => [window opens, window closes] after birth. */
+/** Next Kfz-Steuer debit on or after today: the stored date moved on by whole years (it is debited yearly). */
+function vehicleTaxNextDue(?string $due, string $today): ?string
+{
+    if (!$due) {
+        return null;
+    }
+    $date = new DateTime($due);
+    while ($date->format('Y-m-d') < $today) {
+        $date->modify('+1 year');
+    }
+    return $date->format('Y-m-d');
+}
+
+/**
+ * Takes over announced Kfz-Steuer amounts whose date has come: the trigger records the change in the
+ * price history, which then gets the announced date instead of today.
+ */
+function vehicleTaxApplyPending(SQLite3 $db, int $userId, string $today): void
+{
+    $stmt = $db->prepare('SELECT id, tax_pending_amount, tax_pending_date FROM vehicles WHERE user_id = :userId AND tax_pending_date IS NOT NULL AND tax_pending_date <= :today');
+    $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $stmt->bindValue(':today', $today);
+    $result = $stmt->execute();
+    $due = [];
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $due[] = $row;
+    }
+    foreach ($due as $row) {
+        $before = (int) $db->querySingle('SELECT COALESCE(MAX(id), 0) FROM price_history');
+        $update = $db->prepare('UPDATE vehicles SET tax_amount = :amount, tax_pending_amount = NULL, tax_pending_date = NULL WHERE id = :id AND user_id = :userId');
+        $update->bindValue(':amount', (float) $row['tax_pending_amount'], SQLITE3_FLOAT);
+        $update->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+        $update->bindValue(':userId', $userId, SQLITE3_INTEGER);
+        $update->execute();
+        $dated = $db->prepare("UPDATE price_history SET changed_at = :date WHERE id > :before AND item_type = 'vehicle_tax' AND item_id = :id");
+        $dated->bindValue(':date', $row['tax_pending_date']);
+        $dated->bindValue(':before', $before, SQLITE3_INTEGER);
+        $dated->bindValue(':id', $row['id'], SQLITE3_INTEGER);
+        $dated->execute();
+    }
+}
+
 const CHILD_EXAMS = [
     'U2' => ['+3 days', '+10 days'],
     'U3' => ['+28 days', '+35 days'],

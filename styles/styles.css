@@ -6329,6 +6329,11 @@ body.details-open {
     white-space: normal;
   }
 
+  /* Household pages (vehicles, children): the two-column overviews wrap instead of scrolling sideways */
+  .life .bank-table td {
+    white-space: normal;
+  }
+
   .report .split-header,
   .bank-import .form-group-inline {
     flex-wrap: wrap;

@@ -1648,6 +1648,12 @@ $i18n = [
     'cancellation_mail_text' => 'Text for sending by e-mail',
     'copy_text' => 'Copy text',
     'copied' => 'Copied',
+    'vehicle_tax' => 'Vehicle tax',
+    'vehicle_tax_amount' => 'Amount per year',
+    'vehicle_tax_due' => 'due on',
+    'vehicle_tax_pending' => 'New amount (tax notice)',
+    'vehicle_tax_pending_hint' => 'Optional: when a new tax notice arrives, enter the new amount with its date. It applies automatically from that date, the old amount goes to the price history.',
+    'vehicle_tax_next_debit' => 'Next debit',
 ];
 
 

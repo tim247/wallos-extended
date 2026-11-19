@@ -46,7 +46,8 @@ if ($dashVehicles):
         <ul class="upcoming-events">
             <?php foreach ($dashVehicles as $vehicle):
                 $cost = vehicleFuelStats($fuel[(int) $vehicle['id']] ?? [], $dashToday)['monthly']
-                    + ($monthlyOf['insurances'][(int) $vehicle['insurance_id']] ?? 0) + ($monthlyOf['contracts'][(int) $vehicle['contract_id']] ?? 0);
+                    + ($monthlyOf['insurances'][(int) $vehicle['insurance_id']] ?? 0) + ($monthlyOf['contracts'][(int) $vehicle['contract_id']] ?? 0)
+                    + (float) ($vehicle['tax_amount'] ?? 0) / 12;
                 $next = $dashNext([$vehicle['name'], $vehicle['plate']], VEHICLE_REMINDER_CATEGORIES); ?>
                 <li class="upcoming-event"><a href="vehicles.php">
                     <span class="upcoming-event-date"><?= $next ? $dashDate($next['due_date']) : '' ?></span>

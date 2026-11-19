@@ -743,3 +743,20 @@ wallos_test('the cancellation PDF is named date - provider - Kündigung', functi
     assert_same('26 11 19 - Grenzland Fitness - Kündigung.pdf', cancellationFileName('2026-11-19', 'Grenzland Fitness'), 'YY MM DD - provider');
     assert_same('26 01 05 - A B GmbH - Kündigung.pdf', cancellationFileName('2026-01-05', 'A/B: GmbH '), 'characters not allowed in file names removed');
 });
+
+wallos_test('Kfz-Steuer: next debit moves on yearly, an announced amount applies on its date', function () {
+    require_once WALLOS_ROOT . '/includes/household_extras.php';
+    assert_same('2026-12-05', vehicleTaxNextDue('2024-12-05', '2026-11-19'), 'rolled on to the next year');
+    assert_same('2026-11-19', vehicleTaxNextDue('2026-11-19', '2026-11-19'), 'today stays today');
+    assert_same(null, vehicleTaxNextDue(null, '2026-11-19'), 'no date');
+    $db = new SQLite3(':memory:');
+    $db->exec('CREATE TABLE price_history (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, item_type TEXT, item_id INTEGER, old_price REAL, new_price REAL, changed_at TEXT DEFAULT (date(\'now\')), notified INTEGER DEFAULT 0)');
+    $db->exec('CREATE TABLE vehicles (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, plate TEXT, first_registration TEXT, insurance_id INTEGER, contract_id INTEGER, notes TEXT)');
+    require WALLOS_ROOT . '/migrations/000128.php';
+    $db->exec("INSERT INTO vehicles (id, user_id, name, tax_amount, tax_pending_amount, tax_pending_date) VALUES (1, 7, 'Golf', 120, 140, '2026-04-01'), (2, 7, 'Polo', 80, 90, '2027-01-01')");
+    vehicleTaxApplyPending($db, 7, '2026-11-19');
+    assert_same(140.0, $db->querySingle('SELECT tax_amount FROM vehicles WHERE id = 1'), 'due announcement applied');
+    assert_same(null, $db->querySingle('SELECT tax_pending_date FROM vehicles WHERE id = 1'), 'announcement cleared');
+    assert_same(80.0, $db->querySingle('SELECT tax_amount FROM vehicles WHERE id = 2'), 'future announcement waits');
+    assert_same(['old_price' => 120.0, 'new_price' => 140.0, 'changed_at' => '2026-04-01'], $db->querySingle("SELECT old_price, new_price, changed_at FROM price_history WHERE item_type = 'vehicle_tax'", true), 'history dated on the announced day');
+});

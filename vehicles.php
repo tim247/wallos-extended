@@ -24,6 +24,9 @@ $rows = function (string $sql) use ($db, $userId): array {
 $monthly = fn(array $row) => getPricePerMonth($row['cycle'], $row['frequency'], (float) $row['price']);
 $insurances = array_column($rows("SELECT id, name, price, cycle, frequency, insurance_type FROM insurances WHERE user_id = :userId AND archived = 0 ORDER BY insurance_type != 'car', name"), null, 'id');
 $contracts = array_column($rows("SELECT id, name, price, cycle, frequency, contract_type FROM contracts WHERE user_id = :userId AND archived = 0 ORDER BY contract_type != 'leasing', name"), null, 'id');
+if (!$readOnlyView) {
+  vehicleTaxApplyPending($db, (int) $userId, $today);
+}
 $vehicles = $rows('SELECT * FROM vehicles WHERE user_id = :userId ORDER BY name COLLATE NOCASE');
 $fuelByVehicle = [];
 foreach ($rows('SELECT * FROM vehicle_fuel WHERE user_id = :userId ORDER BY fuel_date DESC, id DESC') as $row) {
@@ -44,14 +47,16 @@ $deleteQuestion = htmlspecialchars(json_encode(translate('finance_delete_confirm
     $stats = vehicleFuelStats($fuel, $today);
     $insurance = $insurances[$vehicle['insurance_id']] ?? null;
     $contract = $contracts[$vehicle['contract_id']] ?? null;
-    $total = $stats['monthly'] + ($insurance ? $monthly($insurance) : 0) + ($contract ? $monthly($contract) : 0);
+    $tax = (float) $vehicle['tax_amount'];
+    $taxDue = vehicleTaxNextDue($vehicle['tax_due'], $today);
+    $total = $stats['monthly'] + ($insurance ? $monthly($insurance) : 0) + ($contract ? $monthly($contract) : 0) + $tax / 12;
     $keys = array_filter([mb_strtolower(trim($vehicle['name'])), mb_strtolower(trim($vehicle['plate']))]);
     $own = array_filter($reminders, fn($r) => in_array(mb_strtolower(trim(html_entity_decode($r['holder']))), $keys, true)); ?>
     <h3><i class="fa-solid fa-car"></i> <?= htmlspecialchars($vehicle['name']) ?>
       <?= $vehicle['plate'] !== '' ? '<small>· ' . htmlspecialchars($vehicle['plate']) . '</small>' : '' ?>
       <?php if (!$readOnlyView): ?>
         <span class="no-print">
-          <button class="image-button" onclick="lifeEdit(JSON.parse(this.dataset.row))" data-row="<?= htmlspecialchars(json_encode($vehicle, JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES) ?>"><i class="fa-solid fa-pen"></i></button>
+          <button class="image-button" onclick="lifeEdit(JSON.parse(this.dataset.row)); priceHistoryLoad('vehicle_tax', <?= (int) $vehicle['id'] ?>)" data-row="<?= htmlspecialchars(json_encode($vehicle, JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES) ?>"><i class="fa-solid fa-pen"></i></button>
           <button class="image-button" onclick="lifeDelete('vehicle', <?= (int) $vehicle['id'] ?>, <?= $deleteQuestion ?>)"><i class="fa-solid fa-trash-can"></i></button>
         </span>
       <?php endif; ?>
@@ -68,6 +73,10 @@ $deleteQuestion = htmlspecialchars(json_encode(translate('finance_delete_confirm
         <td><?= $insurance ? '<a href="insurance.php">' . $insurance['name'] . '</a> · ' . $fmt($monthly($insurance)) : '–' ?></td></tr>
       <tr><td><i class="fa-solid fa-file-signature"></i> <?= translate('vehicle_contract', $i18n) ?></td>
         <td><?= $contract ? '<a href="contracts.php">' . $contract['name'] . '</a> · ' . $fmt($monthly($contract)) : '–' ?></td></tr>
+      <tr class="<?= $taxDue && $taxDue <= date('Y-m-d', strtotime('+30 days')) ? 'warning' : '' ?>"><td><i class="fa-solid fa-landmark"></i> <?= translate('vehicle_tax', $i18n) ?></td>
+        <td><?php if ($tax > 0): ?><?= $fmt($tax) ?> / <?= translate('year', $i18n) ?><?= $taxDue ? ' · ' . translate('vehicle_tax_due', $i18n) . ' ' . date('d.m.Y', strtotime($taxDue)) : '' ?>
+          <?php if (!empty($vehicle['tax_pending_date'])): ?><br><small><?= sprintf(translate('price_from_date', $i18n), date('d.m.Y', strtotime($vehicle['tax_pending_date'])), $fmt((float) $vehicle['tax_pending_amount'])) ?></small><?php endif; ?>
+        <?php else: ?>–<?php endif; ?></td></tr>
       <?php foreach ($own as $reminder):
         $days = $reminder['due_date'] ? (int) floor((strtotime($reminder['due_date']) - strtotime($today)) / 86400) : null; ?>
         <tr class="<?= $days !== null && $days < 0 ? 'warning' : '' ?>"><td><i class="fa-solid <?= REMINDER_CATEGORIES[$reminder['category']][1] ?? 'fa-calendar-check' ?>"></i> <?= translate('reminder_cat_' . $reminder['category'], $i18n) ?></td>
@@ -102,7 +111,7 @@ $deleteQuestion = htmlspecialchars(json_encode(translate('finance_delete_confirm
 
   <?php if (!$readOnlyView): ?>
     <div class="buttons no-print">
-      <button class="button thin" onclick="lifeEdit({})"><i class="fa-solid fa-plus"></i> <?= translate('vehicle_add', $i18n) ?></button>
+      <button class="button thin" onclick="lifeEdit({}); priceHistoryLoad('vehicle_tax', 0)"><i class="fa-solid fa-plus"></i> <?= translate('vehicle_add', $i18n) ?></button>
       <a class="button secondary-button thin" href="reminders.php"><i class="fa-solid fa-calendar-check"></i> <?= translate('reminders', $i18n) ?></a>
     </div>
 
@@ -121,6 +130,13 @@ $deleteQuestion = htmlspecialchars(json_encode(translate('finance_delete_confirm
             <?php foreach ($contracts as $contract): ?><option value="<?= (int) $contract['id'] ?>"><?= $contract['name'] ?></option><?php endforeach; ?>
           </select></label>
         <label><?= translate('notes', $i18n) ?><input type="text" name="notes" maxlength="1000"></label>
+        <h4><i class="fa-solid fa-landmark"></i> <?= translate('vehicle_tax', $i18n) ?></h4>
+        <label><?= translate('vehicle_tax_amount', $i18n) ?><span class="input-unit" data-unit="<?= htmlspecialchars($mainCurrencyCode) ?> / <?= translate('year', $i18n) ?>"><input type="number" name="tax_amount" step="0.01" min="0"></span></label>
+        <label><?= translate('vehicle_tax_next_debit', $i18n) ?><input type="date" name="tax_due"></label>
+        <label><?= translate('vehicle_tax_pending', $i18n) ?><span class="input-unit" data-unit="<?= htmlspecialchars($mainCurrencyCode) ?> / <?= translate('year', $i18n) ?>"><input type="number" name="tax_pending_amount" step="0.01" min="0"></span></label>
+        <label><?= translate('valid_from', $i18n) ?><input type="date" name="tax_pending_date"></label>
+        <small class="loan-anchor-hint"><?= translate('vehicle_tax_pending_hint', $i18n) ?></small>
+        <?php $priceHistoryType = 'vehicle_tax'; require 'includes/price_history_panel.php'; ?>
         <div class="buttons">
           <button type="button" class="secondary-button thin" onclick="this.closest('dialog').close()"><?= translate('cancel', $i18n) ?></button>
           <input type="submit" class="thin" value="<?= translate('save', $i18n) ?>">
