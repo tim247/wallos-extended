@@ -72,7 +72,7 @@ function financeBreakdown(array $incomes, array $costItems, array $expenses, arr
 {
     $income = array_sum(array_column($incomes, 'monthly'));
     $lines = [];
-    foreach (['insurance', 'loan', 'contract', 'subscription', 'meter'] as $type) {
+    foreach (['insurance', 'loan', 'contract', 'subscription', 'meter', 'vehicle'] as $type) {
         $lines[$type] = array_sum(array_column(array_filter($costItems, fn($item) => $item['type'] === $type), 'monthly'));
     }
     $lines['variable'] = array_sum(array_column($expenses, 'monthly'));

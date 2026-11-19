@@ -35,7 +35,7 @@ $userId = (int) $user['id'];
 $GLOBALS['userId'] = $userId;
 
 $items = householdCostItems($db, $userId);
-$monthly = ['subscription' => 0.0, 'contract' => 0.0, 'insurance' => 0.0, 'loan' => 0.0, 'meter' => 0.0];
+$monthly = ['subscription' => 0.0, 'contract' => 0.0, 'insurance' => 0.0, 'loan' => 0.0, 'meter' => 0.0, 'vehicle' => 0.0];
 foreach ($items as $item) {
     $monthly[$item['type']] += $item['monthly'];
 }

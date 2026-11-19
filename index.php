@@ -386,6 +386,29 @@ foreach ($loanProgress as $loan) {
     }
 }
 
+// Kfz-Steuer debits within the next 30 days (announced new amounts are taken over first).
+require_once 'includes/household_extras.php';
+if (empty($isReadOnlyAccount)) {
+    vehicleTaxApplyPending($db, (int) $userId, $today);
+}
+$taxStmt = $db->prepare('SELECT id, name, tax_amount, tax_due FROM vehicles WHERE user_id = :userId AND tax_amount > 0 AND tax_due IS NOT NULL');
+$taxStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+$taxResult = $taxStmt->execute();
+while ($taxResult && $vehicle = $taxResult->fetchArray(SQLITE3_ASSOC)) {
+    $taxDue = vehicleTaxNextDue($vehicle['tax_due'], $today);
+    if ($taxDue <= $next30) {
+        $upcomingEvents[] = [
+            'type' => 'vehicle',
+            'icon' => 'fa-car',
+            'name' => translate('vehicle_tax', $i18n) . ' · ' . htmlspecialchars($vehicle['name']),
+            'date' => $taxDue,
+            'detail' => CurrencyFormatter::format((float) $vehicle['tax_amount'], $mainCurrencyCode),
+            'link' => 'vehicles.php',
+            'class' => '',
+        ];
+    }
+}
+
 // Deadlines & maintenance inside their reminder window (overdue ones too).
 require_once 'includes/life_admin.php';
 $reminderStmt = $db->prepare("SELECT * FROM reminders WHERE user_id = :userId AND due_date IS NOT NULL
@@ -518,7 +541,9 @@ $upcomingEvents = array_slice($upcomingEvents, 0, 10);
 
 /* ---------- totals ---------- */
 $subscriptionsMonthly = $totalCostPerMonth ?? 0;
-$totalMonthlyBurden = $subscriptionsMonthly + $contractsMonthly + $insurancesMonthly + $loansMonthly + $consumptionMonthly;
+// Kfz-Steuer: a twelfth of the yearly amount, like in finances.
+$vehicleTaxMonthly = array_sum(array_column(array_filter($costItems, fn($item) => $item['type'] === 'vehicle'), 'monthly'));
+$totalMonthlyBurden = $subscriptionsMonthly + $contractsMonthly + $insurancesMonthly + $loansMonthly + $consumptionMonthly + $vehicleTaxMonthly;
 
 $burdenSplitDataPoints = [];
 if ($subscriptionsMonthly > 0) {
@@ -529,6 +554,9 @@ if ($contractsMonthly > 0) {
 }
 if ($insurancesMonthly > 0) {
     $burdenSplitDataPoints[] = ['label' => translate('insurances', $i18n), 'y' => round($insurancesMonthly, 2)];
+}
+if ($vehicleTaxMonthly > 0) {
+    $burdenSplitDataPoints[] = ['label' => translate('vehicle_tax', $i18n), 'y' => round($vehicleTaxMonthly, 2)];
 }
 if ($loansMonthly > 0) {
     $burdenSplitDataPoints[] = ['label' => translate('financing', $i18n), 'y' => round($loansMonthly, 2)];

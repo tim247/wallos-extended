@@ -8,7 +8,7 @@ if (empty($userId)) {
     exit;
 }
 
-$labels = ['subscription' => 'subscriptions', 'contract' => 'contracts', 'insurance' => 'insurances', 'loan' => 'financing', 'meter' => 'consumption'];
+$labels = ['subscription' => 'subscriptions', 'contract' => 'contracts', 'insurance' => 'insurances', 'loan' => 'financing', 'meter' => 'consumption', 'vehicle' => 'vehicles'];
 $members = [];
 $stmt = $db->prepare('SELECT id, name FROM household WHERE user_id = :userId');
 $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);

@@ -760,3 +760,22 @@ wallos_test('Kfz-Steuer: next debit moves on yearly, an announced amount applies
     assert_same(80.0, $db->querySingle('SELECT tax_amount FROM vehicles WHERE id = 2'), 'future announcement waits');
     assert_same(['old_price' => 120.0, 'new_price' => 140.0, 'changed_at' => '2026-04-01'], $db->querySingle("SELECT old_price, new_price, changed_at FROM price_history WHERE item_type = 'vehicle_tax'", true), 'history dated on the announced day');
 });
+
+wallos_test('Kfz-Steuer reminder: 30 days ahead, once per debit date', function () {
+    require_once WALLOS_ROOT . '/includes/household_extras.php';
+    $car = fn($due, $notified = null, $amount = 120) => ['id' => 1, 'tax_amount' => $amount, 'tax_due' => $due, 'tax_notified_for' => $notified];
+    $due = fn(array $list) => array_column($list, 'next_due');
+    assert_same(['2026-12-05'], $due(vehicleTaxReminders([$car('2025-12-05')], '2026-11-19')), 'rolled on and within 30 days');
+    assert_same([], $due(vehicleTaxReminders([$car('2025-12-05', '2026-12-05')], '2026-11-19')), 'already reminded for this date');
+    assert_same(['2026-12-05'], $due(vehicleTaxReminders([$car('2025-12-05', '2025-12-05')], '2026-11-19')), 'last year\'s reminder does not count');
+    assert_same([], $due(vehicleTaxReminders([$car('2027-03-01')], '2026-11-19')), 'too far ahead');
+    assert_same([], $due(vehicleTaxReminders([$car('2025-12-05', null, 0)], '2026-11-19')), 'no amount, no reminder');
+});
+
+wallos_test('Kfz-Steuer counts in the fixed costs as its own area', function () {
+    $costs = file_get_contents(WALLOS_ROOT . '/includes/household_costs.php');
+    assert_contains("'type' => 'vehicle'", $costs, 'cost item of type vehicle');
+    foreach (['finances.php', 'includes/report_body.php', 'endpoints/report/export.php', 'bankimport.php', 'api/summary/get_summary.php'] as $file) {
+        assert_contains("'vehicle' =>", file_get_contents(WALLOS_ROOT . '/' . $file), $file . ' knows the area');
+    }
+});

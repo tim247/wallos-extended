@@ -22,7 +22,7 @@ $left = $incomeMonthly - $fixedMonthly - $variableMonthly - $savingsMonthly;
 
 $breakdown = financeBreakdown($incomes, $costItems, $expenses, $goals);
 $lineLabels = ['insurance' => 'insurances', 'loan' => 'financing', 'contract' => 'contracts', 'subscription' => 'subscriptions',
-    'meter' => 'consumption', 'variable' => 'variable_expenses', 'savings' => 'savings_goals'];
+    'meter' => 'consumption', 'vehicle' => 'vehicles', 'variable' => 'variable_expenses', 'savings' => 'savings_goals'];
 $cashflow = financeCashflow($db, $userId, $incomes, $costItems, $expenses, (int) date('Y'), (int) date('n'));
 $outlook = financeOutlook($db, $userId, $incomes);
 $people = financePerPerson($db, $userId, $incomes, $costItems, $expenses);

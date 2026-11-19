@@ -45,6 +45,13 @@ function householdCostItems(SQLite3 $db, int $userId): array
             ];
         }
     }
+    // Kfz-Steuer: yearly, counted with a twelfth per month; the plate finds the Bundeskasse debit on the statement.
+    $taxLabel = function_exists('translate') ? translate('vehicle_tax', $GLOBALS['i18n'] ?? []) : 'Kfz-Steuer';
+    foreach ($rows('SELECT * FROM vehicles WHERE user_id = :userId AND tax_amount > 0') as $row) {
+        $items[] = ['type' => 'vehicle', 'id' => (int) $row['id'], 'name' => $taxLabel . ' · ' . $row['name'],
+            'match' => trim($row['plate'] . ' ' . $taxLabel), 'amount' => (float) $row['tax_amount'],
+            'price' => (float) $row['tax_amount'], 'monthly' => round((float) $row['tax_amount'] / 12, 2), 'payer_id' => 0, 'tax' => 0];
+    }
     foreach ($rows("SELECT * FROM loans WHERE user_id = :userId AND archived = 0") as $row) {
         $schedule = loadLoanSchedule($db, $userId, $row, date('Y-m-d'));
         if ($schedule['error'] !== null || $schedule['balance_as_of'] <= 0) {

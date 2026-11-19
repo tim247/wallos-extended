@@ -714,6 +714,36 @@ while ($userToNotify = $usersToNotify->fetchArray(SQLITE3_ASSOC)) {
             $update->execute();
         }
 
+        // Kfz-Steuer: 30 days before the debit, once per due date.
+        require_once __DIR__ . '/../../includes/household_extras.php';
+        vehicleTaxApplyPending($db, (int) $userId, $todayString);
+        $stmt = $db->prepare('SELECT id, name, plate, tax_amount, tax_due, tax_notified_for FROM vehicles WHERE user_id = :user_id AND tax_amount > 0 AND tax_due IS NOT NULL');
+        $stmt->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+        $resultTax = $stmt->execute();
+        $vehicles = [];
+        while ($vehicle = $resultTax->fetchArray(SQLITE3_ASSOC)) {
+            $vehicles[] = $vehicle;
+        }
+        foreach (vehicleTaxReminders($vehicles, $todayString) as $vehicle) {
+            $notify[$mainMemberId][$i] = [
+                'name' => translate('vehicle_tax', $i18n) . ': ' . $vehicle['name'] . ($vehicle['plate'] !== '' ? ' (' . $vehicle['plate'] . ')' : '')
+                    . ' – ' . date('d.m.Y', strtotime($vehicle['next_due'])),
+                'price' => number_format((float) $vehicle['tax_amount'], 2, ',', '.'),
+                'currency' => '',
+                'category' => translate('vehicles', $i18n),
+                'payer' => $mainMemberName,
+                'date' => $vehicle['next_due'],
+                'url' => '',
+                'notes' => '',
+            ];
+            $i++;
+            $update = $db->prepare('UPDATE vehicles SET tax_notified_for = :due WHERE id = :id AND user_id = :user_id');
+            $update->bindValue(':due', $vehicle['next_due']);
+            $update->bindValue(':id', $vehicle['id'], SQLITE3_INTEGER);
+            $update->bindValue(':user_id', $userId, SQLITE3_INTEGER);
+            $update->execute();
+        }
+
         // Inactivity guard: remind the owner 14, 7, 3, 2 and 1 day(s) before the trusted person is contacted.
         require_once __DIR__ . '/../../includes/deadman.php';
         $deadman = deadmanSettings($db, (int) $userId);

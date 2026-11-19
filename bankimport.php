@@ -12,6 +12,7 @@ $typeInfo = [
   'insurance' => ['fa-shield-halved', 'insurance.php', 'insurances'],
   'loan' => ['fa-landmark', 'financing.php', 'financing'],
   'meter' => ['fa-gauge', 'consumption.php', 'consumption'],
+  'vehicle' => ['fa-car', 'vehicles.php', 'vehicles'],
 ];
 
 $result = null;

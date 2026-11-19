@@ -48,6 +48,20 @@ function vehicleTaxNextDue(?string $due, string $today): ?string
     return $date->format('Y-m-d');
 }
 
+/** Vehicles whose Kfz-Steuer is debited within $days and not reminded for that date yet, with 'next_due'. */
+function vehicleTaxReminders(array $vehicles, string $today, int $days = 30): array
+{
+    $until = date('Y-m-d', strtotime($today . ' +' . $days . ' days'));
+    $out = [];
+    foreach ($vehicles as $vehicle) {
+        $due = (float) $vehicle['tax_amount'] > 0 ? vehicleTaxNextDue($vehicle['tax_due'], $today) : null;
+        if ($due !== null && $due <= $until && ($vehicle['tax_notified_for'] ?? null) !== $due) {
+            $out[] = $vehicle + ['next_due' => $due];
+        }
+    }
+    return $out;
+}
+
 /**
  * Takes over announced Kfz-Steuer amounts whose date has come: the trigger records the change in the
  * price history, which then gets the announced date instead of today.

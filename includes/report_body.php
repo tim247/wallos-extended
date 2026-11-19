@@ -10,6 +10,7 @@ $areas = [
   'insurance' => 'insurances',
   'loan' => 'financing',
   'meter' => 'consumption',
+  'vehicle' => 'vehicles',
 ];
 
 $items = householdCostItems($db, $userId);
