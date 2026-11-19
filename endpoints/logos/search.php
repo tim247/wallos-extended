@@ -60,8 +60,13 @@ if (isset($_GET['search'])) {
             curl_setopt($ch, CURLOPT_NOPROXY, '*');
         }
         $response = curl_exec($ch);
+        // Kept for the error answer: "duckduckgo.com HTTP 403" says more than "no results".
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($status !== 200) {
+            $GLOBALS['logoSearchProblems'][] = $host . ' HTTP ' . $status . (curl_error($ch) !== '' ? ' ' . curl_error($ch) : '');
+        }
         unset($ch);
-        return $response ?: null;
+        return $status === 200 && $response ? $response : null;
     }
 
     function getVqdToken($query) {
@@ -76,24 +81,30 @@ if (isset($_GET['search'])) {
         // Ask DuckDuckGo specifically for transparent PNGs. The transparent
         // colour filter alone can still return JPEG/WebP thumbnails or source
         // images with an opaque background.
-        $params = http_build_query([
-            'l'   => 'us-en',
-            'o'   => 'json',
-            'q'   => urldecode($query),
-            'vqd' => $vqd,
-            'f'   => ',,transparent,Wide,',
-            'p'   => '1',
-        ]);
-
-        $response = curlGet("https://duckduckgo.com/i.js?{$params}", [
-            'Accept: application/json',
-            'Referer: https://duckduckgo.com/',
-        ]);
-
-        if (!$response) return null;
-
-        $data = json_decode($response, true);
-        if (!isset($data['results']) || empty($data['results'])) return null;
+        // DuckDuckGo started refusing the transparent filter (HTTP 403) while the plain query works,
+        // so a refused filtered request is asked once more without it; the PNG sorting below stays.
+        static $filterRefused = false;
+        $data = null;
+        foreach ($filterRefused ? [null] : [',,transparent,Wide,', null] as $filter) {
+            $params = http_build_query(array_filter([
+                'l'   => 'us-en',
+                'o'   => 'json',
+                'q'   => urldecode($query),
+                'vqd' => $vqd,
+                'f'   => $filter,
+                'p'   => '1',
+            ]));
+            $response = curlGet("https://duckduckgo.com/i.js?{$params}", [
+                'Accept: application/json',
+                'Referer: https://duckduckgo.com/',
+            ]);
+            $data = $response ? json_decode($response, true) : null;
+            if (!empty($data['results'])) {
+                break;
+            }
+            $filterRefused = $filterRefused || $filter !== null;
+        }
+        if (empty($data['results'])) return null;
 
         $pngResults = [];
         $otherResults = [];
@@ -213,12 +224,15 @@ if (isset($_GET['search'])) {
         $payload = json_encode(['results' => $results]);
         file_put_contents($cacheFile, $payload);
         echo $payload;
-    } elseif ($source === 'brave') {
-        echo json_encode(['error' => 'Brave returned no results or rate-limited the request. Try again in a minute.']);
-    } elseif ($source === 'duckduckgo') {
-        echo json_encode(['error' => 'DuckDuckGo returned no results or rate-limited the request.']);
     } else {
-        echo json_encode(['error' => 'Failed to fetch images from both DuckDuckGo and Brave.']);
+        $why = !empty($GLOBALS['logoSearchProblems']) ? ' (' . implode(', ', array_unique($GLOBALS['logoSearchProblems'])) . ')' : '';
+        if ($source === 'brave') {
+            echo json_encode(['error' => 'Brave returned no results or rate-limited the request. Try again in a minute.' . $why]);
+        } elseif ($source === 'duckduckgo') {
+            echo json_encode(['error' => 'DuckDuckGo returned no results or rate-limited the request.' . $why]);
+        } else {
+            echo json_encode(['error' => 'Failed to fetch images from both DuckDuckGo and Brave.' . $why]);
+        }
     }
 
 } else {
