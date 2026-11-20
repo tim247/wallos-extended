@@ -7,6 +7,9 @@
 #
 # Before updating, the database is copied to /var/backups/wallos-extended/.
 set -euo pipefail
+# pct enter passes the host locale (e.g. en_US.UTF-8), which the container lacks: apt and perl would warn.
+export LC_ALL=C.UTF-8 LANG=C.UTF-8
+unset LANGUAGE
 
 REPO=${REPO:-tim247/wallos-extended}
 APP_DIR=/var/www/wallos-extended

@@ -6,6 +6,9 @@
 #
 # Runs inside the LXC container as root (create-lxc.sh does that for you).
 set -euo pipefail
+# pct enter passes the host locale (e.g. en_US.UTF-8), which the container lacks: apt and perl would warn.
+export LC_ALL=C.UTF-8 LANG=C.UTF-8
+unset LANGUAGE
 
 APP_DIR=/var/www/wallos-extended
 LOG_DIR=/var/log/wallos-extended
