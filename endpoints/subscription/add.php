@@ -82,6 +82,13 @@ if ($isEdit) {
             'currency_id' => $currencyId,
             'effective_date' => $priceEffectiveDate,
         ];
+    } elseif ($futurePrice !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $priceEffectiveDate)) {
+        // A change dated today or earlier has already happened: take the price over at once and log it
+        // with its own date (it used to be dropped silently), like contracts and insurances.
+        $price = floatval($futurePrice);
+        $logPriceChange = $currentRow !== false && floatval($currentRow['price']) != $price
+            ? ['price' => $price, 'currency_id' => $currencyId, 'effective_date' => $priceEffectiveDate]
+            : $logPriceChange;
     }
 }
 
@@ -299,6 +306,15 @@ if ($stmt->execute()) {
             $historyStmt->bindValue(':currencyId', $logPriceChange['currency_id'], SQLITE3_INTEGER);
             $historyStmt->bindValue(':effectiveDate', $logPriceChange['effective_date'], SQLITE3_TEXT);
             $historyStmt->execute();
+            if ($logPriceChange['effective_date'] < $today) {
+                // The price_history trigger dated the change today; it happened on the given date.
+                $datedStmt = $db->prepare("UPDATE price_history SET changed_at = :date WHERE id = (SELECT MAX(id) FROM price_history
+                    WHERE item_type = 'subscription' AND item_id = :id AND user_id = :userId)");
+                $datedStmt->bindValue(':date', $logPriceChange['effective_date'], SQLITE3_TEXT);
+                $datedStmt->bindValue(':id', $id, SQLITE3_INTEGER);
+                $datedStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+                $datedStmt->execute();
+            }
         }
         // The planned-change fields represent the single scheduled increase:
         // clear any previous pending row and re-insert when set.

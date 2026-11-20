@@ -791,3 +791,10 @@ wallos_test('contracts and insurances keep their logos when unused logos are cle
     $upload = file_get_contents(WALLOS_ROOT . '/includes/logo_upload.php');
     assert_not_contains("'/../../includes/", $upload, 'paths fit the includes folder');
 });
+
+wallos_test('a subscription price change dated today or earlier is applied at once', function () {
+    $source = file_get_contents(WALLOS_ROOT . '/endpoints/subscription/add.php');
+    assert_contains('$priceEffectiveDate > $today', $source, 'future dates stay pending');
+    assert_contains('$price = floatval($futurePrice);', $source, 'past dates set the price');
+    assert_contains("UPDATE price_history SET changed_at = :date", $source, 'the history gets the given date');
+});
