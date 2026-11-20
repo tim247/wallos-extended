@@ -1,5 +1,5 @@
 <?php
-$version = "v5.11.1"; // upstream Wallos version this build is based on
+$version = "v5.11.2"; // upstream Wallos version this build is based on
 // Wallos Extended release (written by the release build into RELEASE, e.g. v5.11.1-ext.6).
 // Updates are checked against the Wallos Extended releases on GitHub.
 $extRepository = 'tim247/wallos-extended';

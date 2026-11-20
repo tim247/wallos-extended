@@ -5,6 +5,7 @@
 if (!function_exists('getPricePerMonth')) {
     function getPricePerMonth($cycle, $frequency, $price)
     {
+        $frequency = max(1, (int) $frequency); // upstream 5.11.2: never divide by a zero/negative frequency
         switch ($cycle) {
             case 1:
                 $numberOfPaymentsPerMonth = (30 / $frequency);

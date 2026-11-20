@@ -4,6 +4,7 @@ require_once 'validate.php';
 require_once __DIR__ . '/../../includes/connect_endpoint_crontabs.php';
 
 require 'settimezone.php';
+require_once __DIR__ . '/../../includes/payment_schedule.php';
 
 require_once __DIR__ . '/../../includes/pending_prices.php';
 echo 'Announced price changes applied: ' . applyPendingPrices($db) . "<br />\n";
@@ -23,42 +24,23 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $cycles[$cycleId] = $row;
 }
 
-$query = "SELECT id, next_payment, frequency, cycle FROM subscriptions WHERE next_payment < :currentDate AND auto_renew = 1 AND inactive = 0 AND archived = 0";
+$query = "SELECT id, next_payment, frequency, cycle FROM subscriptions WHERE next_payment < :currentDate AND auto_renew = 1 AND inactive = 0 AND archived = 0 AND cycle IN (1, 2, 3, 4)";
 $stmt = $db->prepare($query);
 $stmt->bindValue(':currentDate', $currentDate->format('Y-m-d'));
 $result = $stmt->execute();
 
 while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     $subscriptionId = $row['id'];
-    $nextPaymentDate = new DateTime($row['next_payment']);
-    $frequency = $row['frequency'];
-    $cycle = $cycles[$row['cycle']]['name'];
-
-    // Calculate the interval to add based on the cycle
-    $intervalSpec = "P";
-    if ($cycle == 'Daily') {
-        $intervalSpec .= "{$frequency}D";
-    } elseif ($cycle === 'Weekly') {
-        $intervalSpec .= "{$frequency}W";
-    } elseif ($cycle === 'Monthly') {
-        $intervalSpec .= "{$frequency}M";
-    } elseif ($cycle === 'Yearly') {
-        $intervalSpec .= "{$frequency}Y";
+    try {
+        $nextPaymentDate = wallos_advance_payment($row['next_payment'], $row['frequency'], $row['cycle'], $currentDate);
+        $updateStmt = $db->prepare("UPDATE subscriptions SET next_payment = :nextPaymentDate WHERE id = :subscriptionId");
+        $updateStmt->bindValue(':nextPaymentDate', $nextPaymentDate->format('Y-m-d'));
+        $updateStmt->bindValue(':subscriptionId', $subscriptionId);
+        $updateStmt->execute();
+    } catch (Throwable $e) {
+        error_log('Skipping subscription ' . $subscriptionId . ': ' . $e->getMessage());
+        continue;
     }
-
-    $interval = new DateInterval($intervalSpec);
-
-    // Add intervals until the next payment date is in the future
-    while ($nextPaymentDate < $currentDate) {
-        $nextPaymentDate->add($interval);
-    }
-
-    // Update the subscription's next_payment date
-    $updateQuery = "UPDATE subscriptions SET next_payment = :nextPaymentDate WHERE id = :subscriptionId";
-    $updateStmt = $db->prepare($updateQuery);
-    $updateStmt->bindValue(':nextPaymentDate', $nextPaymentDate->format('Y-m-d'));
-    $updateStmt->bindValue(':subscriptionId', $subscriptionId);
-    $updateStmt->execute();
 }
 
 $formattedDate = $currentDate->format('Y-m-d');
