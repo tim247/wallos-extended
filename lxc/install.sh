@@ -132,6 +132,11 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [ -f "$HERE/update.sh" ]; then
     install -m 755 "$HERE/update.sh" /usr/local/bin/update
 fi
+# "pct enter" opens a shell whose PATH may lack /usr/local/bin: a link in /usr/bin makes "update" work there, too.
+if [ -f /usr/local/bin/update ]; then
+    chmod 755 /usr/local/bin/update
+    ln -sf /usr/local/bin/update /usr/bin/update
+fi
 cat > /etc/motd <<EOF
 
   Wallos Extended $(cat "$APP_DIR/RELEASE" 2>/dev/null || echo "")

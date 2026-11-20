@@ -66,4 +66,5 @@ fi
 msg_info "Update installieren"
 bash "$TMP/install.sh" --update "$TMP/wallos-extended-app.tar.gz"
 install -m 755 "$TMP/update.sh" /usr/local/bin/update
+ln -sf /usr/local/bin/update /usr/bin/update # reachable after "pct enter", whose PATH may lack /usr/local/bin
 msg_ok "Wallos Extended $CURRENT -> $TARGET aktualisiert"

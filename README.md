@@ -183,7 +183,7 @@ Wie bei den [community-scripts](https://community-scripts.org) führen Dialoge d
 **Standard** oder **Erweitert** (Container-ID, CPU, RAM, Speicher, feste IP, Datenübernahme).
 
 **Update:** im Container einfach `update` eingeben – sichert die Datenbank und installiert die neueste Version.
-Meldet die Shell `update: command not found`, das Skript direkt starten:
+Meldet die Shell `update: command not found` (ältere Versionen nach `pct enter`), das Skript direkt starten – ab `v5.11.1-ext.14` reicht danach immer `update`:
 
 ```bash
 bash /usr/local/bin/update
