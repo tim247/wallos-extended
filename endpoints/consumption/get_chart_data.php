@@ -60,6 +60,8 @@ echo json_encode([
     'success' => true,
     'meter_id' => $meterId,
     'unit' => $meter['unit'],
+    // Gas: m³ to kWh, so the forecast can show both.
+    'conversion_factor' => $meter['meter_type'] === 'gas' && !empty($meter['conversion_factor']) ? (float) $meter['conversion_factor'] : null,
     'monthly' => $buckets,
     'forecast' => $forecast,
     'forecast_cost' => $forecastCost,

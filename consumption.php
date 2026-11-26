@@ -374,6 +374,11 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
                   <?= number_format($meter['ytd_units'] + $meter['forecast']['projected_units'], 0, ',', '.') ?>
                   <?= $unitLabel ?>
                 </span>
+                <?php if ($meter['meter_type'] === 'gas' && !empty($meter['conversion_factor'])): ?>
+                  <span class="forecast-units-secondary">
+                    <?= number_format(($meter['ytd_units'] + $meter['forecast']['projected_units']) * (float) $meter['conversion_factor'], 0, ',', '.') ?> kWh
+                  </span>
+                <?php endif; ?>
                 <span class="forecast-label"><?= translate('projected_consumption_total', $i18n) ?></span>
                 <span class="forecast-label forecast-method"><?= translate('forecast_basis_' . ($meter['forecast']['method'] ?? 'recent_average'), $i18n) ?></span>
                 <?php if ($meter['forecast_cost'] !== null && $meter['meter_type'] !== 'pv_generation'): ?>

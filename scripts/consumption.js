@@ -323,6 +323,7 @@ function updateForecast(meterId, targetDate) {
       const unitDisplay = data.unit === 'm3' ? 'm³' : data.unit;
       let html =
         `<span class="forecast-units">+${nf.format(data.forecast.projected_units)} ${unitDisplay}</span>` +
+        (data.conversion_factor ? `<span class="forecast-units-secondary">+${nf.format(data.forecast.projected_units * data.conversion_factor)} kWh</span>` : '') +
         `<span class="forecast-label">${translate('projected_consumption_period')}</span>`;
       if (data.forecast_cost !== null) {
         const cf = new Intl.NumberFormat(navigator.language, {
