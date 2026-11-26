@@ -410,6 +410,9 @@ function parseGermanNumber(value) {
   value = value.trim().replace(/\s/g, '');
   if (value === '') return null;
   if (value.includes(',')) value = value.replace(/\./g, '').replace(',', '.');
+  // "2.657.232" (dots as thousands and decimal mark, e.g. from Home Assistant): the last dot is the
+  // decimal one. parseFloat would stop at the second dot and read 2.657.
+  else if ((value.match(/\./g) || []).length > 1) value = value.replace(/\.(?=.*\.)/g, '');
   const num = parseFloat(value);
   return isNaN(num) ? null : num;
 }
