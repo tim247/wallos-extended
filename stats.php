@@ -19,6 +19,7 @@ $code = $row['code'];
 require_once 'includes/stats_calculations.php';
 require_once 'includes/financing_calculations.php';
 require_once 'includes/consumption_calculations.php';
+require_once 'includes/consumption_insights.php';
 
 /* ---------- Household finance extension: module aggregates ---------- */
 $hfToday = date('Y-m-d');
@@ -98,7 +99,7 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
     $readings[] = $r;
   }
   $computed = computeConsumptionSegments($readings);
-  $forecast = computeForecast($computed['segments'], $hfEndOfYear);
+  $forecast = meterForecast($db, (int) $userId, $row, $computed['segments'], $hfEndOfYear);
   if ($forecast === null || $forecast['per_day'] <= 0) {
     continue;
   }

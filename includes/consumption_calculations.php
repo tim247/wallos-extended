@@ -88,7 +88,7 @@ function computeMonthlyBuckets(array $segments): array
  *   days: int, method: string
  * }|null Null when there is not enough data (fewer than 1 segment).
  */
-function computeForecast(array $segments, string $targetDate, int $lookbackDays = 90): ?array
+function computeForecast(array $segments, string $targetDate, int $lookbackDays = 90, string $mode = 'auto'): ?array
 {
     if (count($segments) === 0) {
         return null;
@@ -137,7 +137,8 @@ function computeForecast(array $segments, string $targetDate, int $lookbackDays 
     $lastYearRecentTo = date('Y-m-d', strtotime($forecastStart . ' -1 year'));
     [$lyRecentUnits, $lyRecentDays] = $windowFn($lastYearRecentFrom, $lastYearRecentTo);
 
-    if ($seasonDays >= max(1, (int) ($daysAhead * 0.5)) && $lyRecentDays > 0 && $lyRecentUnits > 0) {
+    // $mode 'recent' keeps the plain average; 'auto' and 'previous_year' use last year when there is enough of it.
+    if ($mode !== 'recent' && $seasonDays >= max(1, (int) ($daysAhead * 0.5)) && $lyRecentDays > 0 && $lyRecentUnits > 0) {
         $seasonPerDay = $seasonUnits / $seasonDays;
         $trend = $recentPerDay / ($lyRecentUnits / $lyRecentDays);
         // Keep the trend factor within sane bounds.
@@ -171,4 +172,98 @@ function computeUnitsInWindow(array $segments, string $from, string $to): float
         }
     }
     return round($units, 2);
+}
+
+/**
+ * Forecast for gas / heating from heating degree days instead of a plain average.
+ *
+ * Fits units = base_per_day * days + per_hdd * HDD over the reading segments of the last two years
+ * (HDD = sum of max(0, 15 °C - daily mean)), then projects from the last reading to $targetDate:
+ * days with a measured temperature use it, later days the mean HDD of the same calendar day in the
+ * years on record. Null when the temperatures do not cover enough segments or the fit makes no sense
+ * - the caller then falls back to computeForecast().
+ *
+ * @param array $temps [Y-m-d => daily mean °C]
+ */
+function computeDegreeDayForecast(array $segments, string $targetDate, array $temps, float $baseTemp = 15.0): ?array
+{
+    if (count($segments) === 0 || count($temps) < 365) {
+        return null;
+    }
+    $hdd = fn(float $t) => max(0.0, $baseTemp - $t);
+    $last = end($segments)['to'];
+    $fitFrom = date('Y-m-d', strtotime($last . ' -730 days'));
+
+    // Least squares without intercept: units = a * days + b * hdd (2x2 normal equations).
+    $sdd = $sdh = $shh = $sud = $suh = 0.0;
+    $used = 0;
+    foreach ($segments as $segment) {
+        if ($segment['to'] <= $fitFrom || $segment['days'] <= 0) {
+            continue;
+        }
+        $known = 0;
+        $segmentHdd = 0.0;
+        for ($d = $segment['from']; $d < $segment['to']; $d = date('Y-m-d', strtotime($d . ' +1 day'))) {
+            if (isset($temps[$d])) {
+                $known++;
+                $segmentHdd += $hdd((float) $temps[$d]);
+            }
+        }
+        if ($known < $segment['days'] * 0.9) {
+            continue; // weather missing for this stretch
+        }
+        $segmentHdd *= $segment['days'] / $known;
+        $days = (float) $segment['days'];
+        $units = (float) $segment['delta'];
+        $sdd += $days * $days;
+        $sdh += $days * $segmentHdd;
+        $shh += $segmentHdd * $segmentHdd;
+        $sud += $units * $days;
+        $suh += $units * $segmentHdd;
+        $used++;
+    }
+    $det = $sdd * $shh - $sdh * $sdh;
+    if ($used < 4 || $shh <= 0 || abs($det) < 1e-9) {
+        return null;
+    }
+    $perDay = ($sud * $shh - $suh * $sdh) / $det;
+    $perHdd = ($suh * $sdd - $sud * $sdh) / $det;
+    if ($perDay < 0) { // no negative base load: all of it is heating
+        $perDay = 0.0;
+        $perHdd = $suh / $shh;
+    }
+    if ($perHdd <= 0) {
+        return null; // consumption does not follow the temperature (e.g. no heating on this meter)
+    }
+
+    // Typical HDD per calendar day from the years on record.
+    $climate = [];
+    foreach ($temps as $day => $t) {
+        $md = substr($day, 5) === '02-29' ? '02-28' : substr($day, 5);
+        $climate[$md][] = $hdd((float) $t);
+    }
+    $daysAhead = 0;
+    $projected = 0.0;
+    for ($d = $last; $d < $targetDate; $d = date('Y-m-d', strtotime($d . ' +1 day'))) {
+        $md = substr($d, 5) === '02-29' ? '02-28' : substr($d, 5);
+        if (isset($temps[$d])) {
+            $dayHdd = $hdd((float) $temps[$d]);
+        } elseif (!empty($climate[$md])) {
+            $dayHdd = array_sum($climate[$md]) / count($climate[$md]);
+        } else {
+            return null;
+        }
+        $projected += $perDay + $perHdd * $dayHdd;
+        $daysAhead++;
+    }
+    return [
+        'per_day' => $daysAhead > 0 ? round($projected / $daysAhead, 4) : round($perDay, 4),
+        'projected_units' => round($projected, 2),
+        'from' => $last,
+        'to' => $targetDate,
+        'days' => $daysAhead,
+        'method' => 'degree_days',
+        'base_per_day' => round($perDay, 3),
+        'per_hdd' => round($perHdd, 4),
+    ];
 }

@@ -137,6 +137,12 @@ if ($isEdit) {
 
 header('Content-Type: application/json');
 if ($stmt->execute()) {
+    $forecastMethod = in_array($_POST['forecast_method'] ?? '', ['auto', 'weather', 'previous_year', 'recent'], true) ? $_POST['forecast_method'] : 'auto';
+    $methodStmt = $db->prepare('UPDATE meters SET forecast_method = :method WHERE id = :id AND user_id = :userId');
+    $methodStmt->bindValue(':method', $forecastMethod);
+    $methodStmt->bindValue(':id', $isEdit ? $id : $db->lastInsertRowID(), SQLITE3_INTEGER);
+    $methodStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $methodStmt->execute();
     $text = $isEdit ? 'meter_updated_successfully' : 'meter_added_successfully';
     echo json_encode(['success' => true, 'status' => 'Success', 'message' => translate($text, $i18n)]);
 } else {

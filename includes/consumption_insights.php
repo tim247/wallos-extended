@@ -431,3 +431,60 @@ function consumptionHttpGet(string $url): ?string
     $body = @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => 15, 'header' => "User-Agent: Wallos-Extended\r\n"]]));
     return $body === false ? null : $body;
 }
+
+const METER_FORECAST_METHODS = ['auto', 'weather', 'previous_year', 'recent'];
+
+/** Cached daily mean temperatures of a location (no network: the daily cron fills the cache). */
+function cachedDailyTemperatures(SQLite3 $db, ?float $lat, ?float $lon): array
+{
+    if ($lat === null || $lon === null) {
+        return [];
+    }
+    $stmt = $db->prepare('SELECT day, temp_mean FROM weather_daily WHERE location = :loc AND temp_mean IS NOT NULL ORDER BY day');
+    $stmt->bindValue(':loc', sprintf('%.2f,%.2f', $lat, $lon));
+    $result = $stmt->execute();
+    $days = [];
+    while ($result && $row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $days[$row['day']] = (float) $row['temp_mean'];
+    }
+    return $days;
+}
+
+/**
+ * Forecast of a meter with its chosen method. 'weather' (and 'auto' for gas / heating meters)
+ * uses heating degree days when a location and enough temperatures are there, otherwise it
+ * falls back to the previous-year comparison / average of computeForecast().
+ */
+function meterForecast(SQLite3 $db, int $userId, array $meter, array $segments, string $targetDate): ?array
+{
+    $mode = in_array($meter['forecast_method'] ?? 'auto', METER_FORECAST_METHODS, true) ? ($meter['forecast_method'] ?? 'auto') : 'auto';
+    if ($mode === 'weather' || ($mode === 'auto' && meterIsHeating($meter))) {
+        static $temps = [];
+        if (!isset($temps[$userId])) {
+            $settings = loadConsumptionSettings($db, $userId);
+            $temps[$userId] = cachedDailyTemperatures($db, $settings['latitude'] !== null ? (float) $settings['latitude'] : null,
+                $settings['longitude'] !== null ? (float) $settings['longitude'] : null);
+        }
+        $weather = computeDegreeDayForecast($segments, $targetDate, $temps[$userId]);
+        if ($weather !== null) {
+            return $weather;
+        }
+    }
+    return computeForecast($segments, $targetDate, 90, $mode === 'recent' ? 'recent' : 'auto');
+}
+
+/** Daily cron: keeps the temperatures of every location with gas / heating meters up to date. */
+function refreshWeatherCache(SQLite3 $db): int
+{
+    $rows = $db->query("SELECT DISTINCT s.latitude, s.longitude FROM consumption_settings s
+        WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL
+        AND EXISTS (SELECT 1 FROM meters m WHERE m.user_id = s.user_id AND m.archived = 0
+            AND (m.meter_type = 'gas' OR m.is_heating = 1 OR m.forecast_method = 'weather'))");
+    $count = 0;
+    while ($rows && $row = $rows->fetchArray(SQLITE3_ASSOC)) {
+        // Three years back: two to fit the model, more for the typical temperature of each calendar day.
+        loadDailyTemperatures($db, (float) $row['latitude'], (float) $row['longitude'], date('Y-m-d', strtotime('-3 years')), date('Y-m-d'));
+        $count++;
+    }
+    return $count;
+}

@@ -1654,6 +1654,15 @@ $i18n = [
     'vehicle_tax_pending' => 'New amount (tax notice)',
     'vehicle_tax_pending_hint' => 'Optional: when a new tax notice arrives, enter the new amount with its date. It applies automatically from that date, the old amount goes to the price history.',
     'vehicle_tax_next_debit' => 'Next debit',
+    'forecast_method' => 'Forecast method',
+    'forecast_method_auto' => 'Automatic',
+    'forecast_method_weather' => 'Weather-based (heating degree days)',
+    'forecast_method_previous_year' => 'Previous-year comparison',
+    'forecast_method_recent' => 'Average of the last 90 days',
+    'forecast_method_hint' => 'Automatic: gas and heating weather-based (with a location in the consumption settings), otherwise previous year or average.',
+    'forecast_basis_degree_days' => 'weather-based (heating degree days)',
+    'forecast_basis_seasonal' => 'from the previous year',
+    'forecast_basis_recent_average' => 'from the 90-day average',
 ];
 
 

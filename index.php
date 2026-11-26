@@ -297,7 +297,7 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
     }
     // Keep only the last 6 months for the snapshot.
     $buckets = array_slice($buckets, -6, 6, true);
-    $forecast = computeForecast($computed['segments'], $endOfYear);
+    $forecast = meterForecast($db, (int) $userId, $row, $computed['segments'], $endOfYear);
 
     $isPv = $row['meter_type'] === 'pv_feed_in';
     if ($isPv && $forecast !== null && $forecast['per_day'] > 0) {

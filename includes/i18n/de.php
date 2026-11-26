@@ -1673,6 +1673,15 @@ $i18n = [
     'vehicle_tax_pending' => 'Neuer Betrag (Bescheid)',
     'vehicle_tax_pending_hint' => 'Optional: Kommt ein neuer Steuerbescheid, trag den neuen Betrag mit Datum ein. Ab dem Datum gilt er automatisch, der alte Betrag landet im Preisverlauf.',
     'vehicle_tax_next_debit' => 'Nächste Abbuchung',
+    'forecast_method' => 'Prognose-Methode',
+    'forecast_method_auto' => 'Automatisch',
+    'forecast_method_weather' => 'Witterungsgeführt (Heizgradtage)',
+    'forecast_method_previous_year' => 'Vorjahresvergleich',
+    'forecast_method_recent' => 'Durchschnitt der letzten 90 Tage',
+    'forecast_method_hint' => 'Automatisch: Gas und Heizung witterungsgeführt (mit Standort in den Verbrauchs-Einstellungen), sonst Vorjahresvergleich bzw. Durchschnitt.',
+    'forecast_basis_degree_days' => 'witterungsgeführt (Heizgradtage)',
+    'forecast_basis_seasonal' => 'nach Vorjahresvergleich',
+    'forecast_basis_recent_average' => 'nach Durchschnitt der letzten 90 Tage',
 ];
 
 

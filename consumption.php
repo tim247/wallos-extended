@@ -74,7 +74,7 @@ foreach ($meters as &$meter) {
   $meter['segments'] = $computed['segments'];
   $meter['warnings'] = $computed['warnings'];
   $meter['monthly'] = computeMonthlyBuckets($computed['segments']);
-  $meter['forecast'] = computeForecast($computed['segments'], $endOfYear);
+  $meter['forecast'] = meterForecast($db, (int) $userId, $meter, $computed['segments'], $endOfYear);
   $meter['ytd_units'] = computeUnitsInWindow($computed['segments'], date('Y') . '-01-01', $today);
 
   $meter['forecast_cost'] = null;
@@ -155,7 +155,7 @@ foreach ($meters as &$meter) {
       $periodStart = date('Y-m-d', strtotime($periodStart . ' +1 year'));
     }
     $periodEnd = date('Y-m-d', strtotime($periodStart . ' +1 year'));
-    $periodForecast = computeForecast($computed['segments'], $periodEnd);
+    $periodForecast = meterForecast($db, (int) $userId, $meter, $computed['segments'], $periodEnd);
     if ($periodForecast !== null && $periodStart <= $today) {
       // Measured units inside the period + forecast for the days not covered by readings yet.
       $forecastFrom = max($periodForecast['from'], $periodStart);
@@ -375,6 +375,7 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
                   <?= $unitLabel ?>
                 </span>
                 <span class="forecast-label"><?= translate('projected_consumption_total', $i18n) ?></span>
+                <span class="forecast-label forecast-method"><?= translate('forecast_basis_' . ($meter['forecast']['method'] ?? 'recent_average'), $i18n) ?></span>
                 <?php if ($meter['forecast_cost'] !== null && $meter['meter_type'] !== 'pv_generation'): ?>
                   <span class="forecast-cost <?= $isPv ? 'positive' : '' ?>">
                     <?= CurrencyFormatter::format($meter['forecast_cost'], $meterCode) ?>
@@ -740,6 +741,16 @@ $headerClass = count($meters) > 0 ? "main-actions" : "main-actions hidden";
       <label for="meter-price-valid-from"><?= translate('price_valid_from', $i18n) ?></label>
       <input type="date" id="meter-price-valid-from" name="price_valid_from" autocomplete="off">
       <small class="loan-anchor-hint"><?= translate('price_valid_from_hint', $i18n) ?></small>
+    </div>
+
+    <div class="form-group">
+      <label for="meter-forecast-method"><?= translate('forecast_method', $i18n) ?></label>
+      <select id="meter-forecast-method" name="forecast_method">
+        <?php foreach (METER_FORECAST_METHODS as $forecastMethod): ?>
+          <option value="<?= $forecastMethod ?>"><?= translate('forecast_method_' . $forecastMethod, $i18n) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <small class="loan-anchor-hint"><?= translate('forecast_method_hint', $i18n) ?></small>
     </div>
 
     <div class="form-group-inline" id="meter-heating-group">

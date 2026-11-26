@@ -798,3 +798,37 @@ wallos_test('a subscription price change dated today or earlier is applied at on
     assert_contains('$price = floatval($futurePrice);', $source, 'past dates set the price');
     assert_contains("UPDATE price_history SET changed_at = :date", $source, 'the history gets the given date');
 });
+
+wallos_test('gas forecast from heating degree days follows the weather of the year', function () {
+    require_once WALLOS_ROOT . '/includes/consumption_calculations.php';
+    // Three years of temperatures; 2026 after the last reading is 3 °C milder. Use = 1 m³/day + 0.5 m³ per degree day.
+    $temps = [];
+    for ($t = strtotime('2023-06-01'); $t <= strtotime('2026-12-31'); $t += 86400) {
+        $d = date('Y-m-d', $t);
+        $temps[$d] = 10 - 10 * cos(2 * M_PI * ((int) date('z', $t) - 15) / 365) + ($d >= '2026-01-21' ? 3 : 0) + 3 * sin($t / 86400 / 5);
+    }
+    $use = fn($d) => 1 + 0.5 * max(0, 15 - $temps[$d]);
+    $readings = [];
+    $v = 0;
+    for ($t = strtotime('2023-06-01'); $t <= strtotime('2026-01-20'); $t += 7 * 86400) {
+        $readings[] = ['reading_date' => date('Y-m-d', $t), 'reading_value' => $v, 'is_meter_change' => 0];
+        for ($k = 0; $k < 7; $k++) {
+            $v += $use(date('Y-m-d', $t + $k * 86400));
+        }
+    }
+    $segments = computeConsumptionSegments($readings)['segments'];
+    $real = 0;
+    for ($t = strtotime(end($segments)['to']); $t < strtotime('2026-12-31'); $t += 86400) {
+        $real += $use(date('Y-m-d', $t));
+    }
+    $known = array_filter($temps, fn($d) => $d <= '2026-11-24', ARRAY_FILTER_USE_KEY);
+    $weather = computeDegreeDayForecast($segments, '2026-12-31', $known);
+    assert_same('degree_days', $weather['method'], 'degree days used');
+    assert_same(1.0, round($weather['base_per_day'], 2), 'base load found');
+    assert_same(0.5, round($weather['per_hdd'], 2), 'use per degree day found');
+    assert_true(abs($weather['projected_units'] / $real - 1) < 0.1, 'within 10 % of the real use');
+    $previousYear = computeForecast($segments, '2026-12-31');
+    assert_true(abs($weather['projected_units'] - $real) < abs($previousYear['projected_units'] - $real), 'closer than the previous-year comparison');
+    assert_same('recent_average', computeForecast($segments, '2026-12-31', 90, 'recent')['method'], 'the plain average can be forced');
+    assert_same(null, computeDegreeDayForecast($segments, '2026-12-31', []), 'no weather, no degree-day forecast');
+});

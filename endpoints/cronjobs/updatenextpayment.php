@@ -8,6 +8,8 @@ require_once __DIR__ . '/../../includes/payment_schedule.php';
 
 require_once __DIR__ . '/../../includes/pending_prices.php';
 echo 'Announced price changes applied: ' . applyPendingPrices($db) . "<br />\n";
+require_once __DIR__ . '/../../includes/consumption_insights.php';
+echo 'Weather locations refreshed for the gas/heating forecast: ' . refreshWeatherCache($db) . "<br />\n";
 
 $date = new DateTime('now');
 echo "\n" . $date->format('Y-m-d') . " " . $date->format('H:i:s') . "<br />\n";

@@ -38,7 +38,8 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 
 $computed = computeConsumptionSegments($readings);
 $buckets = computeMonthlyBuckets($computed['segments']);
-$forecast = computeForecast($computed['segments'], $targetDate);
+require_once '../../includes/consumption_insights.php';
+$forecast = meterForecast($db, (int) $userId, $meter, $computed['segments'], $targetDate);
 
 $forecastCost = null;
 if ($forecast !== null) {

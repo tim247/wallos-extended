@@ -72,7 +72,8 @@ function householdCostItems(SQLite3 $db, int $userId): array
             continue;
         }
         $readings = $rows('SELECT reading_date, reading_value, is_meter_change FROM meter_readings WHERE meter_id = ' . (int) $row['id'] . ' AND user_id = :userId ORDER BY reading_date');
-        $forecast = computeForecast(computeConsumptionSegments($readings)['segments'], date('Y') . '-12-31');
+        require_once __DIR__ . '/consumption_insights.php';
+        $forecast = meterForecast($db, $userId, $row, computeConsumptionSegments($readings)['segments'], date('Y') . '-12-31');
         if ($forecast === null || $forecast['per_day'] <= 0) {
             continue;
         }

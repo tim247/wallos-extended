@@ -206,6 +206,7 @@ function openEditMeter(event, id) {
       document.querySelector('#meter-billing-start').value = meter.billing_start || '';
       document.querySelector('#meter-reminder-days').value = meter.reading_reminder_days || '';
       document.querySelector('#meter-is-heating').checked = Number(meter.is_heating) === 1;
+      document.querySelector('#meter-forecast-method').value = meter.forecast_method || 'auto';
       document.querySelector('#meter-contract').value = meter.contract_id || '';
       document.querySelector('#meter-guarantee').value = meter.price_guarantee_until || '';
       document.querySelector('#meter-reference-price').value = Number(meter.reference_price) || '';
