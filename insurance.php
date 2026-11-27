@@ -450,21 +450,6 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
       </select>
     </div>
 
-    <details class="pending-price-details" id="insurance-pending-details">
-      <summary><i class="fa-solid fa-arrow-trend-up"></i> <?= translate('announce_price_change', $i18n) ?></summary>
-      <div class="form-group-inline">
-        <div class="grow">
-          <label for="insurance-pending-price"><?= translate('new_price', $i18n) ?></label>
-          <input type="number" step="0.01" min="0" id="insurance-pending-price" name="pending_price" autocomplete="off">
-        </div>
-        <div class="grow">
-          <label for="insurance-pending-date"><?= translate('valid_from', $i18n) ?></label>
-          <input type="date" id="insurance-pending-date" name="pending_price_date" autocomplete="off">
-        </div>
-      </div>
-      <small class="loan-anchor-hint"><?= translate('announce_price_change_hint', $i18n) ?></small>
-    </details>
-
     <div class="form-group">
       <label for="insurance-cycle"><?= translate('payment_every', $i18n) ?></label>
       <div class="inline">
@@ -685,7 +670,7 @@ $archiveUrl = 'insurance.php' . ($showArchived ? '' : '?state=archived');
         placeholder="<?= translate('notes', $i18n) ?>">
     </div>
 
-    <?php $priceHistoryType = 'insurance'; require 'includes/price_history_panel.php'; ?>
+    <?php $priceHistoryType = 'insurance'; $priceHistoryField = '#insurance-price'; require 'includes/price_history_panel.php'; ?>
 
     <section class="insurance-panel" id="insurance-claims-panel" hidden>
       <h4><i class="fa-solid fa-file-medical"></i> <?= translate('claims_and_balance', $i18n) ?></h4>

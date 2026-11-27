@@ -179,13 +179,16 @@ if ($stmt->execute()) {
     $copy = implode(', ', array_map(fn($f) => "$f = (SELECT p.$f FROM insurances p WHERE p.id = insurances.parent_id)", POLICY_TERM_FIELDS));
     $db->exec("UPDATE insurances SET $copy WHERE user_id = " . (int) $userId . " AND parent_id IS NOT NULL AND (id = " . (int) $savedId . " OR parent_id = " . (int) $savedId . ")");
     require_once '../../includes/pending_prices.php';
-    [$pendingPrice, $pendingDate] = pendingPriceFromRequest($_POST);
-    $pendingStmt = $db->prepare('UPDATE insurances SET pending_price = :price, pending_price_date = :date WHERE id = :id AND user_id = :userId');
-    $pendingStmt->bindValue(':price', $pendingPrice, $pendingPrice === null ? SQLITE3_NULL : SQLITE3_FLOAT);
-    $pendingStmt->bindValue(':date', $pendingDate, $pendingDate === null ? SQLITE3_NULL : SQLITE3_TEXT);
-    $pendingStmt->bindValue(':id', $savedId, SQLITE3_INTEGER);
-    $pendingStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
-    $pendingStmt->execute();
+    // The planned change lives in the price list now; older clients may still send these fields.
+    if (array_key_exists('pending_price', $_POST)) {
+        [$pendingPrice, $pendingDate] = pendingPriceFromRequest($_POST);
+        $pendingStmt = $db->prepare('UPDATE insurances SET pending_price = :price, pending_price_date = :date WHERE id = :id AND user_id = :userId');
+        $pendingStmt->bindValue(':price', $pendingPrice, $pendingPrice === null ? SQLITE3_NULL : SQLITE3_FLOAT);
+        $pendingStmt->bindValue(':date', $pendingDate, $pendingDate === null ? SQLITE3_NULL : SQLITE3_TEXT);
+        $pendingStmt->bindValue(':id', $savedId, SQLITE3_INTEGER);
+        $pendingStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+        $pendingStmt->execute();
+    }
     applyPendingPrices($db, $userId); // a date today or in the past applies at once
     $taxStmt = $db->prepare('UPDATE insurances SET tax_deductible = :tax WHERE id = :id AND user_id = :userId');
     $taxStmt->bindValue(':tax', isset($_POST['tax_deductible']) ? 1 : 0, SQLITE3_INTEGER);

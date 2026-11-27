@@ -894,7 +894,7 @@ $i18n = [
     "csv_no_valid_rows" => "No valid rows found.",
     "planned_price_change" => "Planned price change",
     "new_price" => "New price",
-    "price_history" => "Price history",
+    'price_history' => 'Prices',
     "price_increase_from" => "Price change effective",
     "price_increase_to" => "Price changes to",
     "price_development" => "Price development",
@@ -1641,8 +1641,8 @@ $i18n = [
     'price_history_since' => 'Valid from',
     'price_history_before' => 'Before',
     'price_history_total' => 'Total since the first entry',
-    'price_history_empty' => 'No price changes yet. Add earlier prices with the date they applied from.',
-    'price_history_hint' => 'Changes to the price above are recorded automatically with today\'s date. Add earlier prices here.',
+    'price_history_empty' => 'No prices yet.',
+    'price_history_hint' => 'Date in the future: planned, applies on that day. Today or earlier and newer than all entries: becomes the current price at once. Older: added as an earlier price.',
     'change' => 'Change',
     'price_history_current' => 'Current',
     'cancellation_mail_text' => 'Text for sending by e-mail',
@@ -1663,6 +1663,7 @@ $i18n = [
     'forecast_basis_degree_days' => 'weather-based (heating degree days)',
     'forecast_basis_seasonal' => 'from the previous year',
     'forecast_basis_recent_average' => 'from the 90-day average',
+    'price_history_planned' => 'planned from',
 ];
 
 

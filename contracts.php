@@ -302,21 +302,6 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
       </select>
     </div>
 
-    <details class="pending-price-details" id="contract-pending-details">
-      <summary><i class="fa-solid fa-arrow-trend-up"></i> <?= translate('announce_price_change', $i18n) ?></summary>
-      <div class="form-group-inline">
-        <div class="grow">
-          <label for="contract-pending-price"><?= translate('new_price', $i18n) ?></label>
-          <input type="number" step="0.01" min="0" id="contract-pending-price" name="pending_price" autocomplete="off">
-        </div>
-        <div class="grow">
-          <label for="contract-pending-date"><?= translate('valid_from', $i18n) ?></label>
-          <input type="date" id="contract-pending-date" name="pending_price_date" autocomplete="off">
-        </div>
-      </div>
-      <small class="loan-anchor-hint"><?= translate('announce_price_change_hint', $i18n) ?></small>
-    </details>
-
     <div class="form-group">
       <label for="contract-cycle"><?= translate('payment_every', $i18n) ?></label>
       <div class="inline">
@@ -477,7 +462,7 @@ $archiveUrl = 'contracts.php' . ($showArchived ? '' : '?state=archived');
         placeholder="<?= translate('notes', $i18n) ?>">
     </div>
 
-    <?php $priceHistoryType = 'contract'; require 'includes/price_history_panel.php'; ?>
+    <?php $priceHistoryType = 'contract'; $priceHistoryField = '#contract-price'; require 'includes/price_history_panel.php'; ?>
 
     <?php $paperlessType = 'contract'; require 'includes/paperless_panel.php'; ?>
     <?php $filesType = 'contract'; require 'includes/files_panel.php'; ?>

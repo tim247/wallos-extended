@@ -133,10 +133,7 @@ $deleteQuestion = htmlspecialchars(json_encode(translate('finance_delete_confirm
         <h4><i class="fa-solid fa-landmark"></i> <?= translate('vehicle_tax', $i18n) ?></h4>
         <label><?= translate('vehicle_tax_amount', $i18n) ?><span class="input-unit" data-unit="<?= htmlspecialchars($mainCurrencyCode) ?> / <?= translate('year', $i18n) ?>"><input type="number" name="tax_amount" step="0.01" min="0"></span></label>
         <label><?= translate('vehicle_tax_next_debit', $i18n) ?><input type="date" name="tax_due"></label>
-        <label><?= translate('vehicle_tax_pending', $i18n) ?><span class="input-unit" data-unit="<?= htmlspecialchars($mainCurrencyCode) ?> / <?= translate('year', $i18n) ?>"><input type="number" name="tax_pending_amount" step="0.01" min="0"></span></label>
-        <label><?= translate('valid_from', $i18n) ?><input type="date" name="tax_pending_date"></label>
-        <small class="loan-anchor-hint"><?= translate('vehicle_tax_pending_hint', $i18n) ?></small>
-        <?php $priceHistoryType = 'vehicle_tax'; require 'includes/price_history_panel.php'; ?>
+        <?php $priceHistoryType = 'vehicle_tax'; $priceHistoryField = '#life-dialog [name=tax_amount]'; require 'includes/price_history_panel.php'; ?>
         <div class="buttons">
           <button type="button" class="secondary-button thin" onclick="this.closest('dialog').close()"><?= translate('cancel', $i18n) ?></button>
           <input type="submit" class="thin" value="<?= translate('save', $i18n) ?>">

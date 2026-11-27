@@ -913,7 +913,7 @@ $i18n = [
     "csv_no_valid_rows" => "Keine gültigen Zeilen gefunden.",
     "planned_price_change" => "Geplante Preisänderung",
     "new_price" => "Neuer Preis",
-    "price_history" => "Preisverlauf",
+    'price_history' => 'Preise',
     "price_increase_from" => "Preisänderung ab",
     "price_increase_to" => "Preis ändert sich auf",
     "price_development" => "Preisentwicklung",
@@ -1660,8 +1660,8 @@ $i18n = [
     'price_history_since' => 'Gültig ab',
     'price_history_before' => 'Vorher',
     'price_history_total' => 'Gesamt seit dem ersten Eintrag',
-    'price_history_empty' => 'Noch keine Preisänderungen. Trage frühere Preise mit dem Datum ein, ab dem sie galten.',
-    'price_history_hint' => 'Änderungen am Preis oben werden automatisch mit dem heutigen Datum eingetragen. Frühere Preise kannst du hier nachtragen.',
+    'price_history_empty' => 'Noch keine Preise eingetragen.',
+    'price_history_hint' => 'Datum in der Zukunft: wird als geplante Änderung vorgemerkt und gilt ab dem Tag. Heute oder früher und neuer als alle Einträge: wird sofort der aktuelle Preis. Älter: wird als früherer Preis nachgetragen.',
     'change' => 'Veränderung',
     'price_history_current' => 'Aktuell',
     'cancellation_mail_text' => 'Text für den E-Mail-Versand',
@@ -1682,6 +1682,7 @@ $i18n = [
     'forecast_basis_degree_days' => 'witterungsgeführt (Heizgradtage)',
     'forecast_basis_seasonal' => 'nach Vorjahresvergleich',
     'forecast_basis_recent_average' => 'nach Durchschnitt der letzten 90 Tage',
+    'price_history_planned' => 'geplant ab',
 ];
 
 

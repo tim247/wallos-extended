@@ -11,6 +11,9 @@ function priceHistoryRequest(panel, body) {
       return false;
     }
     priceHistoryRender(panel, data);
+    // The list may have changed the current price: keep the form's price field in step, or saving it would undo that.
+    const field = panel.dataset.priceField ? document.querySelector(panel.dataset.priceField) : null;
+    if (field && typeof data.current === "number") field.value = data.current;
     return true;
   });
 }
@@ -24,19 +27,24 @@ function priceHistoryRender(panel, data) {
     panel.querySelector(".price-history-list").innerHTML = `<p class="settings-notes">${L.empty}</p>`;
     return;
   }
-  const first = entries[0].price;
-  const last = entries[entries.length - 1].price;
+  // The total runs up to today's price; a planned change is shown but not counted.
+  const applied = entries.filter((e) => !e.pending);
+  const first = applied[0].price;
+  const last = applied[applied.length - 1].price;
+  const label = (e) => e.pending ? `${L.planned} ${new Date(e.date).toLocaleDateString()}`
+    : e.current ? L.current : e.date ? new Date(e.date).toLocaleDateString() : L.before;
+  const action = (e) => e.pending ? "delete_pending" : e.start_of ? "delete_start" : e.id ? "delete" : null;
   panel.querySelector(".price-history-list").innerHTML = `
     <div class="table-scroll"><table class="schedule-table">
       <thead><tr><th>${L.since}</th><th>${L.price}</th><th>${L.change}</th><th></th></tr></thead>
       <tbody>${entries.map((e, i) => {
         const prev = i > 0 ? entries[i - 1].price : null;
         const change = prev && prev !== e.price ? `${e.price > prev ? "+" : ""}${num(e.price - prev)} (${pct(prev, e.price)})` : "—";
-        return `<tr><td>${e.current ? L.current : e.date ? new Date(e.date).toLocaleDateString() : L.before}</td><td>${num(e.price)}</td>
+        return `<tr class="${e.pending ? "price-planned" : ""}"><td>${label(e)}</td><td>${num(e.price)}</td>
           <td class="${prev && e.price > prev ? "negative" : ""}">${change}</td>
-          <td class="reading-actions">${e.id ? `<button type="button" class="image-button" title="${L.delete}" onclick="priceHistoryDelete(this, ${e.id})"><i class="fa-solid fa-trash"></i></button>` : ""}</td></tr>`;
+          <td class="reading-actions">${action(e) ? `<button type="button" class="image-button" title="${L.delete}" onclick="priceHistoryDelete(this, ${e.id || e.start_of || 0}, '${action(e)}')"><i class="fa-solid fa-trash"></i></button>` : ""}</td></tr>`;
       }).join("")}</tbody></table></div>
-    ${entries.length > 1 && first !== last ? `<p><strong>${L.total}: ${pct(first, last)}</strong></p>` : ""}`;
+    ${applied.length > 1 && first !== last ? `<p><strong>${L.total}: ${pct(first, last)}</strong></p>` : ""}`;
 }
 
 function priceHistoryLoad(type, itemId) {
@@ -61,6 +69,7 @@ function priceHistoryAdd(button) {
   });
 }
 
-function priceHistoryDelete(button, id) {
-  priceHistoryRequest(button.closest(".price-history"), { action: "delete", id });
+// action: delete (an entry), delete_start (the starting price), delete_pending (the planned change)
+function priceHistoryDelete(button, id, action = "delete") {
+  priceHistoryRequest(button.closest(".price-history"), { action, id });
 }

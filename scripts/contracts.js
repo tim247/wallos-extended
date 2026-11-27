@@ -59,9 +59,6 @@ function fillContractForm(contract) {
   document.querySelector("#contract-provider").value = contract.provider;
   document.querySelector("#contract-number").value = contract.contract_number;
   document.querySelector("#contract-price").value = contract.price;
-  document.querySelector("#contract-pending-price").value = contract.pending_price ?? "";
-  document.querySelector("#contract-pending-date").value = contract.pending_price_date ?? "";
-  document.querySelector("#contract-pending-details").open = !!contract.pending_price_date;
   document.querySelector("#contract-currency").value = contract.currency_id;
   document.querySelector("#contract-frequency").value = contract.frequency;
   document.querySelector("#contract-cycle").value = contract.cycle;

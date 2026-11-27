@@ -52,9 +52,6 @@ function fillInsuranceForm(insurance) {
   document.querySelector("#insurance-cancel-mode").dataset.touched = "1"; // keep what was saved
   toggleInsuranceCancelArea();
   document.querySelector("#insurance-price").value = insurance.price;
-  document.querySelector("#insurance-pending-price").value = insurance.pending_price ?? "";
-  document.querySelector("#insurance-pending-date").value = insurance.pending_price_date ?? "";
-  document.querySelector("#insurance-pending-details").open = !!insurance.pending_price_date;
   document.querySelector("#insurance-currency").value = insurance.currency_id;
   document.querySelector("#insurance-frequency").value = insurance.frequency;
   document.querySelector("#insurance-cycle").value = insurance.cycle;

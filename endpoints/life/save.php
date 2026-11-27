@@ -72,13 +72,12 @@ if (in_array($kind, ['vehicle', 'fuel', 'child'], true)) {
             ':contract' => $contractId > 0 && $owns('contracts', $contractId) ? $contractId : null,
             ':notes' => $text('notes', 1000),
             ':tax' => $money('tax_amount'), ':taxDue' => $date('tax_due'),
-            ':taxPending' => ($data['tax_pending_amount'] ?? '') !== '' && $date('tax_pending_date') ? $money('tax_pending_amount') : null,
-            ':taxPendingDate' => ($data['tax_pending_amount'] ?? '') !== '' ? $date('tax_pending_date') : null,
         ];
+        // The planned tax change is kept in the price list (endpoints/pricehistory/save.php), not in this form.
         $columns = 'name = :name, plate = :plate, first_registration = :first, insurance_id = :insurance, contract_id = :contract, notes = :notes,
-            tax_amount = :tax, tax_due = :taxDue, tax_pending_amount = :taxPending, tax_pending_date = :taxPendingDate';
-        $insert = '(user_id, name, plate, first_registration, insurance_id, contract_id, notes, tax_amount, tax_due, tax_pending_amount, tax_pending_date)
-            VALUES (:userId, :name, :plate, :first, :insurance, :contract, :notes, :tax, :taxDue, :taxPending, :taxPendingDate)';
+            tax_amount = :tax, tax_due = :taxDue';
+        $insert = '(user_id, name, plate, first_registration, insurance_id, contract_id, notes, tax_amount, tax_due)
+            VALUES (:userId, :name, :plate, :first, :insurance, :contract, :notes, :tax, :taxDue)';
     } elseif ($kind === 'fuel') {
         $vehicleId = (int) ($data['vehicle_id'] ?? 0);
         $name = $date('fuel_date') ?? '';
